@@ -1,0 +1,32 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {toggleDrawer = id; writeToStdin = id; }; 
+            CLASS = LHController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                cancelButton = NSButton; 
+                defaultButton = NSButton; 
+                eTimeField = NSTextField; 
+                inputBox = NSBox; 
+                inputButton = NSButton; 
+                inputField = NSTextField; 
+                inputTitle = NSTextField; 
+                mainImage = NSImageView; 
+                mainView = NSView; 
+                progBar = NSProgressIndicator; 
+                progBarView = NSView; 
+                progMessageField = NSTextField; 
+                stderrDrawer = NSDrawer; 
+                stderrDrawerView = NSView; 
+                stderrTextView = NSTextView; 
+                stdoutField = NSTextField; 
+                superBox = NSBox; 
+                titleField = NSTextField; 
+            }; 
+            SUPERCLASS = NSObject; 
+        }
+    ); 
+    IBVersion = 1; 
+}

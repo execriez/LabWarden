@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# Short:    Do something before an app is Launched
+# Version:  1.33.0, 29-March-2016
+# Author:   Mark J Swift
+#
+# Called by appwarden as follows:    
+#   appwarden-WillLaunch "WillLaunch:Epoch:ApplicationBundleIdentifier:ApplicationName:ApplicationPath:ApplicationProcessIdentifier"
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- Trigger the AppDidLaunch policy (and pass it the app info) --
+
+/usr/local/LabWarden/lib/Trigger "AppWillLaunch" "$(whoami)" "${1}"
+
+# ---

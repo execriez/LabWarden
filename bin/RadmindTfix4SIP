@@ -1,0 +1,178 @@
+#!/bin/bash
+#
+# Short:    Process a Radmind transcript to be compatible with SIP on OSX
+# Version:  1.07, 01-March-2016
+# Author:   Mark J Swift
+#
+# Usage:    
+#   RadmindTfix4SIP.sh SourceTranscriptFile [DestTranscriptFile]
+
+# Should we look for (and exclude) files with an extended attributes of type com.apple.rootless
+GLB_FindRootlessAttributes="yes"
+
+# Full soucre of this script
+GLB_MySource="${0}"
+
+# Filename of this script
+GLB_MyScript="$(basename "${GLB_MySource}")"
+
+# Filename without extension
+GLB_MyName="$(basename "${GLB_MySource}" | sed 's|\.[^.]*$||')"
+
+# Path to this script
+GLB_MyDir="$(dirname "${GLB_MySource}")"
+
+# Get system info
+GLB_SystemVersionStampAsString=$(sw_vers -productVersion)
+GLB_SystemVersionStampAsNumber=0
+for num in $(echo ${GLB_SystemVersionStampAsString}".0.0.0.0" | cut -d"." -f1-4 | tr "." "\n")
+do
+  GLB_SystemVersionStampAsNumber=$((${GLB_SystemVersionStampAsNumber}*256+${num}))
+done
+
+# Get parameter(s)
+GLB_TranscriptFile="${1}"
+if test -z "${GLB_TranscriptFile}"
+then
+  echo 1>&2 "Syntax: ${GLB_MyScript} SourceTranscriptFile [DestTranscriptFile]"
+  exit 0
+fi
+
+GLB_ProcessedFile="${2}"
+if test -z "${GLB_ProcessedFile}"
+then
+  GLB_ProcessedFile="${GLB_TranscriptFile}"
+  
+fi
+
+if [ "${GLB_TranscriptFile}" != "${GLB_ProcessedFile}" ]
+then
+  cp -f "${GLB_TranscriptFile}" "${GLB_ProcessedFile}"
+  
+fi
+
+GLB_RadCmdDir="/usr/local/bin"
+if ! test -f "${GLB_RadCmdDir}"/lsort
+then
+  GLB_RadCmdDir="${GLB_MyDir}"/bin
+fi
+
+if ! test -f "${GLB_RadCmdDir}"/lsort
+then
+  GLB_RadCmdDir="${GLB_MyDir}"
+fi
+
+if ! test -f "${GLB_RadCmdDir}"/lsort
+then
+  echo 1>&2 "Error: Please install the Radmind tools"
+  exit 0
+fi
+
+if [ ${GLB_SystemVersionStampAsNumber} -lt 168493056 ]
+then
+  # If we are on a pre 10.11 system without SIP, we might still want to exclude the SIP files
+  GLB_RootlessConfFile="${GLB_MyDir}/rootless.conf"
+
+  # However, we don't want to look for com.apple.rootless extended attributes
+  GLB_FindRootlessAttributes="no"
+  
+else
+  # This file contains a list of protected dirs
+  GLB_RootlessConfFile="/System/Library/Sandbox/rootless.conf"
+  
+fi
+
+if test -f ${GLB_RootlessConfFile}
+then
+  # When done, its nice to know how long it took
+  GLB_START_EPOCH=$(date -u "+%s")
+
+  # Create a temporary directory
+  GLB_TmpDir=$(mktemp -d "$(basename ${0}).XXXXXXXX")
+
+  # First check if we are case sensitive or not
+  cat "${GLB_ProcessedFile}" | grep -E "^([+-] )?. " > "${GLB_TmpDir}"/tmp1.T
+  "${GLB_RadCmdDir}"/lsort -I "${GLB_TmpDir}"/tmp1.T > "${GLB_TmpDir}"/tmp2.T
+  if test -z "$(diff -q "${GLB_TmpDir}"/tmp1.T "${GLB_TmpDir}"/tmp2.T)"
+  then
+    GLB_SortOption="-I"
+  
+  else
+    GLB_SortOption=""
+  
+  fi
+
+  GLB_CTLM=$(echo "a" | tr "a" "\015")
+
+  # Calculate what we need to exclude
+  cat "${GLB_RootlessConfFile}" | sort -u | grep -E "^\t" | tr -d "\t" | grep -Ev "/\*$" > "${GLB_TmpDir}"/exc.txt
+
+  # Calculate what we need to include
+  cat "${GLB_RootlessConfFile}" | sort -u | grep -E "^\*" | sed "s|^\*||" | tr -d "\t" > "${GLB_TmpDir}"/inc.txt
+  
+  # Calculate what includes should actually be excluded
+  cat "${GLB_RootlessConfFile}" | sort -u | grep -E "/\*$" | tr -d "\t" | sed "s|/\*$||" > "${GLB_TmpDir}"/iex.txt
+
+  # Calculate what actually needs to be included
+  echo "$(echo "$(cat "${GLB_TmpDir}"/inc.txt;cat "${GLB_TmpDir}"/iex.txt)" | sort | uniq; cat "${GLB_TmpDir}"/iex.txt)" | sort | uniq -u > "${GLB_TmpDir}"/inc2.txt
+
+  # Calculate what actually needs to be excluded
+  echo "$(cat "${GLB_TmpDir}"/exc.txt;cat "${GLB_TmpDir}"/iex.txt)" | sort | uniq > "${GLB_TmpDir}"/exc2.txt
+  
+  if [ "${GLB_FindRootlessAttributes}" = "yes" ]
+  then
+    # Find files that have a com.apple.rootless extended attribute (takes a while).
+  
+    # Work out which mounted directories to ignore when searching for restricted files
+    GLB_PrunePathsMounts="$(mount | sed -E 's|(^.*) on (.*) (\(.*\))|\2|' | grep -v '^/$' | sed "s|^|-path '|;s|$|' -prune -o|" | tr "\n" " " | sed "s|$|-path '/*'|" )"
+
+    # Full list of directories to ignore when searching for restricted files
+    GLB_PrunePaths="$(echo "${GLB_PrunePathsMounts}" | sed "s|^|\\\( |;s|$| \\\) -and |")"
+
+    # Build the find command in a string
+    GLB_FindCommand="/usr/bin/find / ${GLB_PrunePaths} -and -xattrname com.apple.rootless -exec echo {} \;"
+
+    cp "${GLB_TmpDir}"/exc2.txt "${GLB_TmpDir}"/exc3.txt
+    eval "${GLB_FindCommand}" >> "${GLB_TmpDir}"/exc3.txt
+    cat "${GLB_TmpDir}"/exc3.txt | sort | uniq > "${GLB_TmpDir}"/exc2.txt
+
+  fi
+
+  # Calculate what we need to exclude
+  GLB_Pattern=""
+  while read GLB_RootlessExclude
+  do
+    GLB_RootlessExclude=$(echo "${GLB_RootlessExclude}" | sed 's|\\|\\\\|g;s| |\\b|g;s|''${GLB_CTLM}''|\\r|g' | sed 's|\\|\\\\|g;s|\[|\\\[|g;s|\]|\\\]|g;s|(|\\\(|g;s|)|\\\)|g;s|\.|\\\.|g;s|\^|\\\^|g;s|\$|\\\$|g;s|\?|\\\?|g;s|\*|\\\*|g;s|\+|\\\+|g')
+    GLB_Pattern="${GLB_Pattern}|^([+-] )?. ${GLB_RootlessExclude}"
+  done < <(cat "${GLB_TmpDir}"/exc2.txt)
+  GLB_Pattern=$(echo "${GLB_Pattern}" | sed 's/^|//g')
+  cat "${GLB_ProcessedFile}" | grep -E "${GLB_Pattern}" > "${GLB_TmpDir}"/exc.T
+
+  # Calculate what we need to include
+  GLB_Pattern=""
+  while read GLB_RootlessInclude
+  do
+    GLB_RootlessInclude=$(echo "${GLB_RootlessInclude}" | sed 's|\\|\\\\|g;s| |\\b|g;s|''${GLB_CTLM}''|\\r|g' | sed 's|\\|\\\\|g;s|\[|\\\[|g;s|\]|\\\]|g;s|(|\\\(|g;s|)|\\\)|g;s|\.|\\\.|g;s|\^|\\\^|g;s|\$|\\\$|g;s|\?|\\\?|g;s|\*|\\\*|g;s|\+|\\\+|g')
+    GLB_Pattern="${GLB_Pattern}|^([+-] )?. ${GLB_RootlessInclude}"
+  done < <(cat "${GLB_TmpDir}"/inc2.txt)
+  GLB_Pattern=$(echo "${GLB_Pattern}" | sed 's/^|//g')
+  cat "${GLB_ProcessedFile}" | grep -E "${GLB_Pattern}" > "${GLB_TmpDir}"/inc.T
+
+  # Anything in the includes needs to be removed from the excludes
+  cp "${GLB_TmpDir}"/exc.T "${GLB_TmpDir}"/tmp.T
+  cat "${GLB_TmpDir}"/inc.T >> "${GLB_TmpDir}"/tmp.T
+  cat "${GLB_TmpDir}"/tmp.T | sort | uniq -u | "${GLB_RadCmdDir}"/lsort ${GLB_SortOption} > "${GLB_TmpDir}"/exc.T
+
+  # Remove the remaining excludes from the main transcript
+  diff "${GLB_ProcessedFile}" "${GLB_TmpDir}"/exc.T --suppress-common-lines | grep "^< " | sed "s|^< ||" > "${GLB_TmpDir}"/tmp.T
+  
+  # Move into place
+  cp "${GLB_TmpDir}"/tmp.T "${GLB_ProcessedFile}"
+
+  # Get rid of temporary files
+  rm -fR "${GLB_TmpDir}"
+
+  # All done
+  echo 1>&2 "${GLB_MyName} processed the transcript in "$(($(date -u "+%s")-${GLB_START_EPOCH}))" seconds"
+
+fi
