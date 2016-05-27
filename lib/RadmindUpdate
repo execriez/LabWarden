@@ -1,0 +1,263 @@
+#!/bin/bash
+#
+# Short:    Simple Radmind update script
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
+# eg: Radmind "172.18.1.24,sha1,0,-I,15000"
+#
+# The optional NotifyURI is a server web URI that notifies the deployment server that an update is
+# about to happen. The server should do what it needs to in order to process the future update.
+# Ideally, the server should query AD and build a new set of manifests and catalogues based on 
+# workstation AD group memberships and the OS version (which is passed to the URI).
+#
+# The optional SuccessURI is a server web URI that notifies the server that the update was a success.
+#
+# The optional FailURI is a server web URI that notifies the server that the update failed.
+
+# ---
+
+# Get filename of this script
+GLB_ThisScriptName="$(basename "${0}")"
+
+# Get dir of this script
+GLB_ThisScriptDir="$(dirname "${0}")"
+
+# Get Process ID of this script
+GLB_ThisScriptPID=$$
+
+# ---
+
+# Get user name
+GLB_ThisUserName="$(whoami)"
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  # we only like root
+  exit 0
+fi
+
+# ---
+
+# Get parameter(s)
+GLB_Param="${1}"
+if test -z "${GLB_Param}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+GLB_NotifyURI="${2}"
+GLB_SuccessURI="${3}"
+GLB_FailURI="${4}"
+
+# ---
+
+# Parse the 1st parameter
+
+# Get Radmind server address
+GLB_RadServer=$(echo "${GLB_Param}" | cut -d"," -f1)
+
+# Checksum eg sha1
+GLB_RadCksum=$(echo "${GLB_Param}" | cut -d"," -f2)
+
+# TLS auth level. 0: None; 1: Verify Server; 2: Verify Server & Client
+GLB_RadAuthLevel=$(echo "${GLB_Param}" | cut -d"," -f3)
+
+# Get transcript case. -I means ignore case in filenames
+GLB_CaseSwitch=$(echo "${GLB_Param}" | cut -d"," -f4)
+
+# Get Maximum negative changes
+GLB_MaxDeletes=$(echo "${GLB_Param}" | cut -d"," -f5)
+
+# ---
+
+# urlencode/urldecode functions - thanks to https://gist.github.com/cdown/1163649
+f_urlencode() {
+    # urlencode <string>
+
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            *) printf '%s' "$c" | xxd -p -c1 |
+                   while read c; do printf '%%%s' "$c"; done ;;
+        esac
+    done
+}
+
+# Save a message to the log file
+f_showmessage()   # messagetxt
+{
+  echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_ThisScriptName}[${GLB_ThisScriptPID}]: ${1}"
+}
+
+f_showerror()   # messagetxt
+{
+  f_showmessage "${1}"
+
+  # Update the RemoteDesktop Computer Info Fields #4
+  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 "${1}"
+
+  if test -n "${GLB_FailURI}"
+  then
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(f_urlencode "${1}") "${GLB_FailURI}"
+    if [ $? != "0" ]
+    then
+      # Some kind of error occurred
+      f_showmessage "NOTE, cannot connect to ${GLB_FailURI}"
+    fi
+  fi
+}
+
+f_showsuccess()   # messagetxt
+{
+  f_showmessage "${1}"
+
+  # Update the RemoteDesktop Computer Info Fields #4
+  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
+
+  if test -n "${GLB_SuccessURI}"
+  then
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(f_urlencode "") "${GLB_SuccessURI}"
+    if [ $? != "0" ]
+    then
+      # Some kind of error occurred
+      f_showmessage "NOTE, cannot connect to ${GLB_SuccessURI}"
+    fi
+  fi
+}
+
+# ---
+
+GLB_SystemVersionStampAsString="$(sw_vers -productVersion)"
+
+# ---
+
+if test -n "${GLB_NotifyURI}"
+then
+  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(f_urlencode "${GLB_SystemVersionStampAsString}") "${GLB_NotifyURI}"
+  if [ $? != "0" ]
+  then
+    # Some kind of error occurred
+    f_showerror "ERROR, cannot connect to ${GLB_NotifyURI}"
+    exit 0
+  fi
+fi
+
+# ---
+
+# RADMIND UPDATE HERE - ktcheck/fsdiff/lapply
+
+LCL_fsdiffPath="/"
+LCL_fsdiffOutput="/tmp/diff.T.$$"
+
+f_showmessage "NOTE, checking server $GLB_RadServer for transcript changes"
+
+/usr/local/bin/ktcheck 2>&1 -i -c${GLB_RadCksum} -w${GLB_RadAuthLevel} -h${GLB_RadServer}
+rc="$?"
+
+# Check exit status of ktcheck. If > 1, an error occurred.
+case "${rc}" in
+0)
+  f_showmessage "NOTE, no transcript changes found - no need to update"
+  exit 0
+  ;;
+1)
+  f_showmessage "NOTE, Transcript changes found"
+  ;;
+*)
+  f_showerror "ERROR, update aborted - ktcheck failed (${rc})"
+  exit 0
+  ;;
+esac
+
+f_showmessage "NOTE, Examining the filesystem for differences..."
+
+# run fsdiff, redirecting output to a file.
+rm -f ${LCL_fsdiffOutput}
+/usr/local/bin/fsdiff ${GLB_CaseSwitch} -A -o${LCL_fsdiffOutput} -% ${LCL_fsdiffPath}
+rc="$?"
+
+case "${rc}" in
+0)
+  ;;
+*)
+  # try opposite case
+  if test -z "${GLB_CaseSwitch}"
+  then
+    GLB_CaseSwitch="-I"
+  else
+    GLB_CaseSwitch=""
+  fi
+        
+  # run fsdiff, redirecting output to a file.
+  rm -f ${LCL_fsdiffOutput}
+  /usr/local/bin/fsdiff ${GLB_CaseSwitch} -A -o${LCL_fsdiffOutput} -% ${LCL_fsdiffPath}
+  rc="$?"
+
+  case "$rc" in
+  0)
+    ;;
+  *)
+    rm -f ${LCL_fsdiffOutput}
+    f_showerror "ERROR, update aborted - fsdiff failed (${rc})"
+    exit 0
+    ;;
+  esac
+  ;;
+esac
+
+# Fix for SIP on 10.11
+f_showmessage "NOTE, Removing SIP protected entries from transcript"
+/usr/local/LabWarden/bin/RadmindTfix4SIP ${LCL_fsdiffOutput}
+
+# Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
+if test -n "${GLB_MaxDeletes}"
+then
+  LCL_Additions=$(cat ${LCL_fsdiffOutput} | grep "^+" | wc | tr -s " " | cut -d" " -f2)
+  LCL_Removals=$(cat ${LCL_fsdiffOutput} | grep "^-" | wc | tr -s " " | cut -d" " -f2)
+  LCL_NegChanges=$((${LCL_Removals} - ${LCL_Additions}))
+  if [ ${LCL_NegChanges} -gt 0 ]
+  then
+    if [ ${LCL_NegChanges} -gt ${GLB_MaxDeletes} ]
+    then
+      rm -f ${LCL_fsdiffOutput}
+      f_showerror "ERROR, update aborted - too many deletes (${LCL_NegChanges} -gt ${GLB_MaxDeletes})"
+      exit 0
+    fi
+  fi
+fi
+
+# Apply the changes
+launchctl stop org.cups.cupsd
+
+f_showmessage "NOTE, Applying $((${LCL_Additions} - ${LCL_Removals})) changes…(+$LCL_Additions -$LCL_Removals)"
+/usr/local/bin/lapply 2>&1 ${GLB_CaseSwitch} -i -F -% -c${GLB_RadCksum} -w${GLB_RadAuthLevel} -h${GLB_RadServer} ${LCL_fsdiffOutput}
+rc="$?"
+
+launchctl start org.cups.cupsd
+
+case "${rc}" in
+0)
+  # Restart after a successful update
+  f_showsuccess "ATTENTION, apply successful - we should reboot."
+  exit 0
+  ;;
+1)
+  f_showerror "ERROR, apply failed - no changes made"
+  #cat "${LCL_fsdiffOutput}"
+  rm -f $LCL_fsdiffOutput
+  exit 0
+  ;;
+2)
+  f_showerror "ERROR, apply failed - changes made"
+  #cat "${LCL_fsdiffOutput}"
+  rm -f $LCL_fsdiffOutput
+  exit 0
+  ;;
+esac

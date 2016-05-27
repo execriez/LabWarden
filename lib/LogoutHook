@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+# Short:    When a user logs out - call the LOGOUT trigger(s)
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as root at user login as follows:    
+#   LogoutHook username
+#
+# Executes the following Triggers
+#   UserLogout <user> (as user)
+#   LogoutEnd <user>  (as root)
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- Login/Logout hooks run as root and pass the user as first parameter --
+
+# Get user name
+GLB_ThisUserName="${1}"
+
+# We are assuming that we never log in as root, therefore the only time that
+# root logs out is when you press "Restart" or "Shutdown" at the LoginWindow
+if [ "${GLB_ThisUserName}" = "root" ]
+then
+  /usr/local/LabWarden/lib/Trigger "LoginWindowRestartOrShutdown"
+  exit 0
+fi
+
+# -- The following is executed as the user who is logging in --
+
+# 'HEREDOC' is quoted to prevent variable expansion.
+# This means that variables outside are not available.
+ 
+/usr/bin/su ${GLB_ThisUserName} <<'HEREDOC'
+
+/usr/local/LabWarden/lib/Trigger "UserLogout" "$(whoami)"
+
+HEREDOC
+
+# -- The following is executed as root --
+
+/usr/local/LabWarden/lib/Trigger "LogoutEnd" "${GLB_ThisUserName}"

@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# Short:    Trigger an escalated event (initiated by a normal user) 
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as root when a user modifies the watch folder contents:    
+
+# ---
+
+LCL_WatchPath="/usr/local/LabWarden/Escalated"
+
+while read LCL_File
+do
+  LCL_UserName="$(stat -f "%Su" "${LCL_WatchPath}/${LCL_File}")"
+  LCL_EventName="$(echo "${LCL_File}" | tr -dc [:alpha:])"
+  rm -f "${LCL_WatchPath}/${LCL_File}"
+done < <(ls -1 "${LCL_WatchPath}")
+
+if test -n "${LCL_UserName}"
+then
+  /usr/local/LabWarden/lib/Trigger "${LCL_EventName}Escalated" "${LCL_UserName}"
+fi

@@ -1,0 +1,874 @@
+#!/bin/bash
+#
+# Short:    Common library used by almost all the LabWarden scripts
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# 'CommonLib' should be included into scripts as follows:
+#   . /usr/local/LabWarden/lib/CommonLib
+#
+# Enter 'CommonLib' with the following globals defined
+#  GLB_LoggedInUserName                - the name of the logged in user, a null string signifies no-one is logged in
+#
+# 'CommonLib' calculates the following globals
+#  GLB_LabWardenVersion
+#  GLB_LabWardenSignature
+#
+#  GLB_BinDir
+#  GLB_LabConfigDir
+#
+#  GLB_ThisScriptName
+#  GLB_ThisScriptPID
+#  GLB_ThisScriptTempDir
+#
+#  GLB_ThisUserTempDir
+#  GLB_ThisUserLogDir
+#  GLB_ThisUserPrefDir
+#
+#  GLB_ThisUserName                    - the name of the user that is running this script
+#  GLB_ThisUserID
+#
+#  GLB_LoggedInUserID
+#  GLB_LoggedInUserIsAdmin
+#  GLB_LoggedInUserIsLocal
+#  GLB_LoggedInUserIsMobile
+#
+#  GLB_LoggedInUserHomeDir
+#  GLB_LoggedInUserLocalHomeDir
+#  GLB_LoggedInUserHomeNetworkDir
+#  GLB_LoggedInUserHomeNetworkURI
+#  GLB_LoggedInUserHomeIsLocal
+#
+#  GLB_BuildVersionStampAsNumber
+#  GLB_BuildVersionStampAsString
+#  GLB_SystemVersionStampAsNumber
+#  GLB_SystemVersionStampAsString
+#
+#  GLB_IPv4PrimaryService
+#  GLB_NetworkServiceDHCPOption15      - (domain)
+#  GLB_NetworkServiceInterfaceName     - e.g. Wi-Fi
+#  GLB_NetworkServiceInterfaceDevice   - e.g. en1
+#  GLB_NetworkServiceInterfaceHardware - e.g. Airport
+#
+#  GLB_ADTrustAccount
+#  GLB_ADDomainNameFlat
+#  GLB_ADDomainNameDNS
+# And when GLB_ThisUserName=root, the following global is defined
+#  GLB_ADTrustPassword
+#
+# The library defines the following function(s)
+#  f_SystemIdleSecs
+#  f_urlencode()         # <string>
+#  f_urldecode()         # <string>
+#  f_logmessage()        # <messagetxt>
+#  f_ShowNotification()  # <Title> <Text>
+#  f_SetPlistProperty()  # <plistfile> <property> <value>
+#  f_GetPlistProperty()  # <plistfile> <property> [defaultvalue]
+#  f_GetPlistArraySize   # <plistfile> <property>
+#  f_schedule4epoch()    # <TAG> <WAKETYPE> <EPOCH>
+#  f_ResolveFilename()   # <fileuri>
+#  f_TriggerEvent()      # <config> <eventHistory> [OptionalParam]
+#  f_QuickExit()         #                                          - Quickly exit the script 
+
+# ---
+
+GLB_LabWardenSignature="com.github.execriez.LabWarden"
+
+GLB_LabWardenVersion="1.0.82"
+
+# ---
+
+# The point at which we should force refresh the group policy config
+GLB_GPConfigMaxAgeHours=48
+
+# The point at which we should rebuild the group policy cache
+GLB_GPCacheMaxAgeHours=24
+
+GLB_LogMaxLength=250000
+
+# ---
+
+# Default logging setting
+GLB_LoggingDefault="on"
+GLB_LoggingStatus=${GLB_LoggingDefault}
+
+# -- Begin Function Definition --
+
+# Get seconds that mac mouse/keyboard is idle - thanks to https://github.com/CLCMacTeam/IdleLogout
+f_SystemIdleSecs()
+{
+  echo $(($(ioreg -c IOHIDSystem | sed -e '/HIDIdleTime/ !{ d' -e 't' -e '}' -e 's/.* = //g' -e 'q') / 1000000000))
+}
+
+# urlencode/urldecode functions - thanks to https://gist.github.com/cdown/1163649
+f_urlencode() {
+    # urlencode <string>
+
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            *) printf '%s' "$c" | xxd -p -c1 |
+                   while read c; do printf '%%%s' "$c"; done ;;
+        esac
+    done
+}
+
+f_urldecode() {
+    # urldecode <string>
+
+    local url_encoded="${1//+/ }"
+    printf '%b' "${url_encoded//%/\\x}"
+}
+
+# Save a message to the log file
+f_logmessage()   # messagetxt
+{
+  # Check if we need to trim the log
+  
+  touch "${GLB_ThisUserLogDir}/LabWarden.log"
+  if [ $(stat -f "%z" "${GLB_ThisUserLogDir}/LabWarden.log") -gt ${GLB_LogMaxLength} ]
+  then
+    LCL_HalfLen=$(($(cat "${GLB_ThisUserLogDir}/LabWarden.log" | wc -l)/2))
+    cat "${GLB_ThisUserLogDir}/LabWarden.log" | tail -n ${LCL_HalfLen} > "${GLB_ThisUserTempDir}/LabWarden.log.$$"
+    mv -f "${GLB_ThisUserTempDir}/LabWarden.log.$$" "${GLB_ThisUserLogDir}/LabWarden.log"
+  fi
+
+  if [ "${GLB_LoggingStatus}" = "on" ]
+  then
+    echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_ThisScriptName}[${GLB_ThisScriptPID}]: ${1}"  >> "${GLB_ThisUserLogDir}/LabWarden.log"
+    echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_ThisScriptName}[${GLB_ThisScriptPID}]: ${1}"
+  fi
+}
+
+f_RestartNow()
+{
+  f_logmessage "${1}"
+  touch "${GLB_ThisUserTempDir}/RestartNow"
+}
+
+f_ShutdownNow()
+{
+  f_logmessage "${1}"
+  touch "${GLB_ThisUserTempDir}/ShutdownNow"
+}
+
+f_QuickExit()   # Quickly exit the script 
+{
+  if test -n "${1}"
+  then
+    f_logmessage "${1}"
+  fi
+  
+  # Remove temporary files
+  rm -fR "${GLB_ThisScriptTempDir}"
+  
+  exit 99
+}
+
+# Show a pop-up notification
+f_ShowNotification() # Title Text
+{
+  local LCL_Title
+  local LCL_Text
+  local LCL_Dialog
+  local LCL_Result
+
+  LCL_Title="${1}"
+  LCL_Text="${2}"
+
+  LCL_Dialog="${GLB_BinDir}/CocoaDialog.app/Contents/MacOS/CocoaDialog"
+  if test -f "${LCL_Dialog}"
+  then
+    LCL_Result=$("${LCL_Dialog}" bubble \
+    --timeout "15" \
+    --x-placement "center" \
+    --y-placement "center" \
+    --title "${LCL_Title}" \
+    --text "${LCL_Text}" \
+    --border-color "808000" \
+    --background-bottom "cfcf4f" \
+    --background-top "ffffcf" \
+    --debug \
+    --icon "hazard")
+  fi
+}
+
+f_GetPlistArraySize()   # plistfile property - given an array property name, returns the size of the array 
+{
+  local LCL_PLISTFILE
+  local LCL_PROPERTY
+
+  LCL_PLISTFILE="${1}"
+  LCL_PROPERTY="${2}"
+
+  /usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${LCL_PROPERTY}'" "${LCL_PLISTFILE}" | grep -E "^ " | grep -E "$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${LCL_PROPERTY}'" "${LCL_PLISTFILE}" | grep -E "^ " | head -n1 | sed "s|\(^[ ]*\)\([^ ]*.*\)|\^\1\\[\^ }\]|")" | wc -l | sed "s|^[ ]*||"
+}
+
+# Set a property value in a plist file
+f_SetPlistProperty()   # plistfile property value
+{
+  local LCL_PLISTFILE
+  local LCL_PROPERTY
+  local LCL_VALUE
+  local LCL_EntryType
+  local LCL_ThisEntry
+  local LCL_ThisEntryPath
+  local LCL_ThisEntryType
+  local LCL_EntryDepth
+  local LCL_i
+  local LCL_Nexti
+  local LCL_NextEntry
+
+  LCL_PLISTFILE="${1}"
+  LCL_PROPERTY="${2}"
+  
+  # We need to escape the escape character if we want to store it as expected
+  LCL_VALUE="$(echo "${3}" | sed 's|\\|\\\\\\|g')"
+
+  # Discover Entry Value Type
+  if test -n "$(echo ${LCL_VALUE} | grep -E '[^0-9]')"
+  then
+    if test -n "$(echo ${LCL_VALUE} | grep -iE '^True$|^False$')"
+    then
+      # value is a bool
+      LCL_EntryType="bool"
+    else
+      # value is a string
+      LCL_EntryType="string"
+    fi
+  else
+    if test -n "${LCL_VALUE}"
+    then
+      # value is a integer
+      LCL_EntryType="integer"
+    else
+      # value is a string (null)
+      LCL_EntryType="string"
+    fi
+  fi
+
+  # Create Entry path
+  LCL_ThisEntryPath=""
+  LCL_EntryDepth="$(echo "${LCL_PROPERTY}" | tr ":" "\n" | wc -l | sed "s|^[ ]*||")"
+  for (( LCL_i=2; LCL_i<=${LCL_EntryDepth}; LCL_i++ ))
+  do
+    LCL_ThisEntry="$(echo "${LCL_PROPERTY}" | cut -d":" -f${LCL_i} )"
+    LCL_ThisEntryPath="${LCL_ThisEntryPath}:${LCL_ThisEntry}"
+    if [ ${LCL_i} -eq ${LCL_EntryDepth} ]
+    then
+      LCL_ThisEntryType=${LCL_EntryType}
+    else
+      LCL_Nexti=$((${LCL_i}+1))
+      LCL_NextEntry="$(echo "${LCL_PROPERTY}" | cut -d":" -f${LCL_Nexti} )"
+      if test -n "$(echo ${LCL_NextEntry} | grep -E '[^0-9]')"
+      then
+        LCL_ThisEntryType="dict"  
+      else
+        LCL_ThisEntryType="array" 
+      fi
+    fi
+    /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print '${LCL_ThisEntryPath}'" "${LCL_PLISTFILE}"
+    if [ $? -ne 0 ]
+    then
+      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Add '${LCL_ThisEntryPath}' ${LCL_ThisEntryType}" "${LCL_PLISTFILE}"
+    fi
+  done
+      
+  # Set Entry Value    
+  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set '${LCL_PROPERTY}' '${LCL_VALUE}'" "${LCL_PLISTFILE}"
+#echo /usr/libexec/PlistBuddy -c "Set '${LCL_PROPERTY}' '${LCL_VALUE}'" "${LCL_PLISTFILE}"
+  if [ $? -ne 0 ]
+  then
+    f_logmessage "ERROR, failed to set property ${LCL_PROPERTY} in ${LCL_PLISTFILE}"
+  fi
+
+}
+
+# Get a property value from a plist file
+f_GetPlistProperty()   # plistfile property [defaultvalue]
+{
+  local LCL_PLISTFILE
+  local LCL_PROPERTY
+  local LCL_DEFAULTVALUE
+  local LCL_VALUE
+
+  LCL_PLISTFILE="${1}"
+  LCL_PROPERTY="${2}"
+  LCL_DEFAULTVALUE="${3}"
+
+  LCL_VALUE=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print '${LCL_PROPERTY}'" "${LCL_PLISTFILE}")
+  if [ $? -ne 0 ]
+  then
+    if [ $# -eq 3 ]
+    then
+      f_SetPlistProperty "${LCL_PLISTFILE}" "${LCL_PROPERTY}" "${LCL_DEFAULTVALUE}"
+
+      LCL_VALUE=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${LCL_PROPERTY}'" "${LCL_PLISTFILE}")
+      if [ $? -ne 0 ]
+      then
+        f_logmessage "NOTE, failed to get property ${LCL_PROPERTY} from ${LCL_PLISTFILE}"
+      fi
+    else
+      f_logmessage "NOTE, failed to get property ${LCL_PROPERTY} from ${LCL_PLISTFILE}"
+    fi
+  fi
+
+  echo -n "${LCL_VALUE}"
+}
+
+# Schedule event for specified EPOCH time. Identify the event with a unique TAG.
+# WAKETYPE can be one of sleep, wake, poweron, shutdown, wakeorpoweron
+f_schedule4epoch()   # TAG WAKETYPE EPOCH
+{
+  local LCL_SCHED_EPOCH
+  local LCL_SCHED_LINE
+  local LCL_NOW_EPOCH
+
+  LCL_TAG=${1}
+  LCL_WAKETYPE=${2}
+  LCL_SCHED_EPOCH=${3}
+
+  LCL_NOW_EPOCH=$(date -u "+%s")
+
+  if [ ${LCL_NOW_EPOCH} -lt ${LCL_SCHED_EPOCH} ]
+  then
+    # check there isnt a named scheduled already
+    pmset -g sched | grep -i "${LCL_WAKETYPE}" | grep -i "${LCL_TAG}" | tr -s " " | cut -d " " -f5-6 | while read LCL_SCHED_LINE
+    do
+      pmset schedule cancel ${LCL_WAKETYPE} "${LCL_SCHED_LINE}" "${LCL_TAG}" 2>/dev/null
+    done
+
+    LCL_SCHED_LINE=$(date -r ${LCL_SCHED_EPOCH} "+%m/%d/%y %H:%M:%S")
+    pmset schedule ${LCL_WAKETYPE} "${LCL_SCHED_LINE}" "${LCL_TAG}"
+  fi
+}
+
+# Takes a uri, and returns a local filename.
+# Remote files (http, ftp, smb), will be downloaded to a local file.
+# The returned filename may or may not exist
+# Has got quite complex - Wish it was simpler
+f_ResolveFilename()   # fileuri - if fileuri ends in a / it is assumed to be a dir, otherwise it is assumed to be a file
+{
+  local LCL_FileURI
+  local LCL_SrcFileProtocol
+  local LCL_IsDir
+  local LCL_DstFileObject
+  local LCL_TmpDir
+  local LCL_SrcMount
+  local LCL_SrcFileObject
+  local LCL_RemoteDir
+  local LCL_SrvrHost
+  local LCL_SrvrUser
+  local LCL_SrvrPass
+  local LCL_KprincipalBefore
+  local LCL_KprincipalAfter
+  local LCL_KUser
+  local LCL_RemoteConn
+  local LCL_ExistingMount
+    
+  LCL_FileURI=${1}
+
+  LCL_SrcFileProtocol=$(echo ${LCL_FileURI} | cut -d ":" -f1)    
+  LCL_SrcFileName="$(basename "${LCL_FileURI}")"
+   
+  if test -n "$(echo ${LCL_FileURI} | grep -E ".*/$")"
+  then
+    LCL_IsDir="true"
+  else
+    LCL_IsDir="false"
+  fi
+
+  case "$LCL_SrcFileProtocol" in
+  file)
+    LCL_Host=$(echo $LCL_FileURI | cut -d "/" -f3 | tr "[A-Z]" "[a-z]" )
+    if [ "$LCL_host" = "localhost" -o "$LCL_host" = "" ]
+    then
+      LCL_SrcFileObject="/"$(echo $LCL_FileURI | cut -d "/" -f4-)
+      LCL_DstFileObject="${LCL_SrcFileObject}"
+    fi
+    ;;
+
+  http|https|ftp)
+    LCL_TmpDir="$(mktemp -dq ${GLB_ThisUserTempDir}/${GLB_ThisScriptName}-Resolved-XXXXXXXX)"
+    LCL_DstFileObject="${LCL_TmpDir}/${LCL_SrcFileName}"
+      
+    curl --max-time 120 --connect-timeout 10 -s -S "${LCL_FileURI}" > "$LCL_DstFileObject"
+    ;;
+
+  smb)
+    # Get Kerberos principal before the mount
+    LCL_KprincipalBefore="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
+    
+    # Get Kerberos user (if any)
+    LCL_KUser="$(echo "${LCL_KprincipalBefore}" | cut -d"@" -f1)"
+
+    # Get User, Password & Host
+    LCL_SrvrStr="$(echo ${LCL_FileURI} | cut -d"/" -f3)"
+    LCL_SrvrHost="$(echo ${LCL_SrvrStr} | cut -sd"@" -f2)"
+    if test -z "${LCL_SrvrHost}"
+    then
+      LCL_SrvrHost="${LCL_SrvrStr}"
+      LCL_SrvrPass=""
+      if test -n "${LCL_KUser}"
+      then
+        LCL_SrvrUser="${LCL_KUser}"
+      else
+        LCL_SrvrUser="Guest"
+        
+        if [ "${GLB_ThisUserName}" = "root" ]
+        then
+          if test -n "${GLB_ADTrustAccount}"
+          then
+            LCL_SrvrUser="${GLB_ADTrustAccount}"
+            LCL_SrvrPass="${GLB_ADTrustPassword}"   
+          fi
+        fi   
+
+      fi
+      
+    else
+      LCL_SrvrStr="$(echo ${LCL_SrvrStr} | cut -d"@" -f1)"
+      LCL_SrvrPass="$(echo ${LCL_SrvrStr} | cut -sd":" -f2)"
+      if test -z "${LCL_SrvrPass}"
+      then
+        LCL_SrvrUser="${LCL_SrvrStr}"
+        LCL_SrvrPass=""
+      else
+        LCL_SrvrUser="$(echo ${LCL_SrvrStr} | cut -d":" -f1)" 
+      fi
+    fi
+    LCL_SrvrPass=$(f_urlencode "${LCL_SrvrPass}")
+
+    
+    LCL_RemoteDir="$(echo ${LCL_FileURI} | cut -d "/" -f4- | sed "s|/$||")"
+    if [ "${LCL_IsDir}" = "false" ]
+    then
+      LCL_RemoteDir="$(dirname "${LCL_RemoteDir}")"
+    fi    
+    
+    LCL_ExistingMount=$(mount | grep " (smbfs," | grep -i "//${LCL_SrvrUser}@${LCL_SrvrHost}/${LCL_RemoteDir}" | sed -E "s|(.*)(\(smbfs,).*|\1|;s|(.*) on (.*)|\2|;s|[ ]*$||")
+
+	if test -n "${LCL_ExistingMount}"
+	then
+	  LCL_SrcMount="${LCL_ExistingMount}"
+	  
+	else
+	
+	  # Decide where we will mount the remote directory
+      LCL_SrcMount="$(mktemp -dq ${GLB_ThisUserTempDir}/${GLB_ThisScriptName}-Mount-XXXXXXXX)"
+
+	  # Build a connection string
+      if test -z "${LCL_SrvrUser}"
+      then
+        LCL_RemoteConn="//${LCL_SrvrHost}/${LCL_RemoteDir}"
+      else
+        if test -z "${LCL_SrvrPass}"
+        then
+          LCL_RemoteConn="//${LCL_SrvrUser}@${LCL_SrvrHost}/${LCL_RemoteDir}"
+        else
+          LCL_RemoteConn="//${LCL_SrvrUser}:${LCL_SrvrPass}@${LCL_SrvrHost}/${LCL_RemoteDir}"
+        fi
+      fi
+      
+      # echo DEBUG /sbin/mount_smbfs -N "${LCL_RemoteConn}" "${LCL_SrcMount}"
+      if ! /sbin/mount_smbfs 2>/dev/null -N "${LCL_RemoteConn}" "${LCL_SrcMount}"
+      then
+        # Mount failed
+        
+        # Make double sure it's not mounted
+        if [ "$(stat -f%Sd "${LCL_SrcMount}")" = "$(stat -f%Sd "/")" ]
+        then
+          # Only delete it if its empty
+          rmdir "${LCL_SrcMount}"
+          LCL_SrcMount=""
+        fi
+      fi    
+    
+    fi
+
+    if test -n "${LCL_SrcMount}"
+    then
+      # Remote directory is mounted
+      LCL_TmpDir="$(mktemp -dq ${GLB_ThisUserTempDir}/${GLB_ThisScriptName}-Resolved-XXXXXXXX)"
+      LCL_DstFileObject="${LCL_TmpDir}/${LCL_SrcFileName}"
+      
+      if [ "${LCL_IsDir}" = "false" ]
+      then
+        # copy file
+        if test -e "${LCL_SrcMount}/${LCL_SrcFileName}"
+        then
+          cp -p "${LCL_SrcMount}/${LCL_SrcFileName}" "${LCL_DstFileObject}"
+        fi
+      else
+        # copy directory
+        mkdir -p "${LCL_DstFileObject}"
+        cp -pR "${LCL_SrcMount}/" "${LCL_DstFileObject}/"
+      fi
+
+    fi
+    
+    if test -z "${LCL_ExistingMount}"
+    then
+      if test -n "${LCL_SrcMount}"
+      then
+        # unmount mount, only if it didnt already exist
+        # echo DEBUG /sbin/umount "${LCL_SrcMount}"
+        /sbin/umount "${LCL_SrcMount}"
+        
+        # Make double sure it's not mounted
+        if [ "$(stat -f%Sd "${LCL_SrcMount}")" = "$(stat -f%Sd "/")" ]
+        then
+          # Only delete it if its empty
+          rmdir "${LCL_SrcMount}"
+        fi
+
+      fi
+    fi
+    
+    # Get Kerberos principal after all this kerfuffle
+    LCL_KprincipalAfter="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
+    
+    # If there is a new Kerberos principal - destroy it
+    if [ "${LCL_KprincipalAfter}" != "${LCL_KprincipalBefore}" ]
+    then
+      kdestroy
+    fi
+
+    ;;
+
+  afp)
+    ;;
+
+  *)
+    # assume that we were passed a path rather than a uri
+    LCL_DstFileObject="${LCL_FileURI}"
+    ;;
+
+  esac	    
+
+  if test -n "${LCL_DstFileObject}"
+  then
+    # check that file exists
+    if ! test -e "${LCL_DstFileObject}"
+    then
+      LCL_DstFileObject=""
+    fi
+  fi
+    
+  echo "${LCL_DstFileObject}"
+}
+
+f_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
+{
+  local LCL_EventHistory
+  local LCL_EventName
+  local LCL_OptionalParam
+  local LCL_ConfigDir
+  local LCL_PolicyName
+  local LCL_PolicyCount
+  local LCL_EventHasPolicies
+  
+  # Get (full) event History
+  LCL_EventHistory="${1}"
+
+  # Get event that triggered this policy
+  LCL_EventName="${2}"
+
+  # Get optional parameter
+  LCL_OptionalParam="${3}"
+ 
+  f_logmessage "NOTE, event occured: '${LCL_EventHistory}:${LCL_EventName}' '${GLB_LoggedInUserName}' '${LCL_OptionalParam}' as user '${GLB_ThisUserName}' "
+
+  mkdir -p "${GLB_ThisUserTempDir}/ActiveEvents"
+  
+  # Make sure a badly defined config doesnt put us in an endless trigger loop
+  if test -n "$(echo ${LCL_EventHistory} | tr ":" "\n" | grep -E "^"${LCL_EventName}"$")"
+  then
+    f_logmessage "ERROR, event loop in config"
+    
+  else
+    # Flag that there is an event in process
+    touch "${GLB_ThisUserTempDir}/ActiveEvents/${LCL_EventName}"
+    
+    LCL_EventHasPolicies="false"
+    
+    if test -n "${GLB_LoggedInUserName}"
+    then
+      # Run through the user policies
+      LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_LoggedInUserName}"
+      LCL_DoesTriggerCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger")"
+      for (( LCL_DoesTriggerIndex=0; LCL_DoesTriggerIndex<${LCL_DoesTriggerCount}; LCL_DoesTriggerIndex++ ))
+      do
+        LCL_PolicyName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger:${LCL_DoesTriggerIndex}")
+        if test -n "${LCL_PolicyName}"
+        then
+          if test -e /usr/local/LabWarden/Policies/"${LCL_PolicyName}"
+          then
+            # Run script in background
+            /usr/local/LabWarden/Policies/"${LCL_PolicyName}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
+            LCL_EventHasPolicies="true"
+          fi
+        fi
+      done
+    fi
+
+    # Run through the workstation policies
+    LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+    LCL_DoesTriggerCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger")"
+    for (( LCL_DoesTriggerIndex=0; LCL_DoesTriggerIndex<${LCL_DoesTriggerCount}; LCL_DoesTriggerIndex++ ))
+    do
+      LCL_PolicyName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger:${LCL_DoesTriggerIndex}")
+      if test -n "${LCL_PolicyName}"
+      then
+        if test -e /usr/local/LabWarden/Policies/"${LCL_PolicyName}"
+        then
+          # Run script in background
+          /usr/local/LabWarden/Policies/"${LCL_PolicyName}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
+          LCL_EventHasPolicies="true"
+        fi
+      fi
+    done
+    
+    if [ "${LCL_EventHasPolicies}" = "false" ]
+    then
+      f_logmessage "NOTE, event ignored: '${LCL_EventHistory}:${LCL_EventName}' '${GLB_LoggedInUserName}' '${LCL_OptionalParam}' as user '${GLB_ThisUserName}' (no associated policy)"
+    fi
+  
+    # We dont want to quit until the background scripts are finished or they might terminate early
+    while [ -n "$(jobs -r)" ]
+    do
+      # we don't want to hog the CPU - so lets sleep a while
+      sleep 1
+    done
+
+    # Flag that there the event has finished
+    rm -f "${GLB_ThisUserTempDir}/ActiveEvents/${LCL_EventName}"
+  fi
+}
+
+# -- End Function Definition --
+
+# -- Get some info about this script
+
+# Get filename of this script
+GLB_ThisScriptName="$(basename "${0}")"
+
+# Get Process ID of this script
+GLB_ThisScriptPID=$$
+
+# -- Get some info about the OS
+
+# Last OS X version would probably be 10.255.25 (259Z2047)
+
+# Calculate BuildVersionStampAsNumber
+
+GLB_BuildVersionStampAsString="$(sw_vers -buildVersion)"
+
+# Split build version (eg 14A379a) into parts (14,A,379,a)
+LCL_BuildMajorNum=$(echo ${GLB_BuildVersionStampAsString} | sed "s|[a-zA-Z][0-9]*||;s|[a-zA-Z]*$||")
+LCL_BuildMinorChar=$(echo ${GLB_BuildVersionStampAsString} | sed "s|^[0-9]*||;s|[0-9]*[a-zA-Z]*$||")
+LCL_BuildRevisionNum=$(echo ${GLB_BuildVersionStampAsString} | sed "s|^[0-9]*[a-zA-Z]||;s|[a-zA-Z]*$||")
+LCL_BuildStageChar=$(echo ${GLB_BuildVersionStampAsString} | sed "s|^[0-9]*[a-zA-Z][0-9]*||")
+
+LCL_BuildMinorNum=$(($(printf "%d" "'${LCL_BuildMinorChar}")-65))
+if [ -n "${LCL_BuildStageChar}" ]
+then
+  LCL_BuildStageNum=$(($(printf "%d" "'${LCL_BuildStageChar}")-96))
+else
+  LCL_BuildStageNum=0
+fi
+
+GLB_BuildVersionStampAsNumber=$((((${LCL_BuildMajorNum}*32+${LCL_BuildMinorNum})*2048+${LCL_BuildRevisionNum})*32+${LCL_BuildStageNum}))
+
+# Calculate SystemVersionStampAsNumber
+
+GLB_SystemVersionStampAsString="$(sw_vers -productVersion)"
+
+GLB_SystemVersionStampAsNumber=0
+for LCL_Num in $(echo ${GLB_SystemVersionStampAsString}".0.0.0.0" | cut -d"." -f1-4 | tr "." "\n")
+do
+  GLB_SystemVersionStampAsNumber=$((${GLB_SystemVersionStampAsNumber}*256+${LCL_Num}))
+done
+
+# -- Get some info about the running user
+
+# Get user name
+GLB_ThisUserName="$(whoami)"
+
+# Get user ID
+GLB_ThisUserID="$(id -u ${GLB_ThisUserName})"
+
+# -- Get some info about the logged in user
+
+# Only allow specifying a different user, if we are root
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  GLB_LoggedInUserName="${GLB_ThisUserName}"
+fi
+
+if test -n "${GLB_LoggedInUserName}"
+then
+
+  # Get user ID
+  GLB_LoggedInUserID="$(id -u ${GLB_LoggedInUserName})"
+
+  # Check if user is an admin (returns "true" or "false")
+  if [ "$(dseditgroup -o checkmember -m "${GLB_LoggedInUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
+  then
+    GLB_LoggedInUserIsAdmin="true"
+  else
+    GLB_LoggedInUserIsAdmin="false"
+  fi
+
+  # Check if user is a local account (returns "true" or "false")
+  if [ "$(dseditgroup -o checkmember -m "${GLB_LoggedInUserName}" -n . localaccounts | cut -d" " -f1)" = "yes" ]
+  then
+    GLB_LoggedInUserIsLocal="true"
+  else
+    GLB_LoggedInUserIsLocal="false"
+  fi
+
+  if test -n "$(dscl 2>/dev/null localhost -read /Local/Default/Users/${GLB_LoggedInUserName} OriginalHomeDirectory)"
+  then
+    GLB_LoggedInUserIsMobile="true"
+  else
+    GLB_LoggedInUserIsMobile="false"
+  fi
+
+  # Get the User Home directory
+  GLB_LoggedInUserHomeDir=$(eval echo ~${GLB_LoggedInUserName})
+
+  # Decide whether the user home is on the local drive
+  if test -n "$(stat -f "%Sd" "${GLB_LoggedInUserHomeDir}" | grep "^disk")"
+  then
+    GLB_LoggedInUserHomeIsLocal="true"
+  else
+    GLB_LoggedInUserHomeIsLocal="false"
+  fi
+
+  # Get the network defined home directory
+  if [ "${GLB_LoggedInUserIsLocal}" = "false" ]
+  then
+    # - Network user -
+
+    # Get UserHomeNetworkURI 
+    # ie: smb://yourserver.com/staff/t/testuser
+    # or  smb://yourserver.com/Data/Student%20Homes/Active_Q2/pal/teststudpal
+
+    GLB_LoggedInUserHomeNetworkURI=$(dscl 2>/dev/null localhost -read /Search/Users/${GLB_LoggedInUserName} HomeDirectory | sed "s|HomeDirectory: ||;s|<[^>]*>||g;s|/$||;s|^[^:]*:||")
+    if test -z "${GLB_LoggedInUserHomeNetworkURI}"
+    then
+      GLB_LoggedInUserHomeNetworkURI=$(dscl 2>/dev/null localhost -read /Search/Users/${GLB_LoggedInUserName} OriginalHomeDirectory | sed "s|OriginalHomeDirectory: ||;s|<[^>]*>||g;s|/$||")
+  
+    fi  
+  
+    if test -n "${GLB_LoggedInUserHomeNetworkURI}"
+    then
+      # The user home directory has been forced from the network to a local drive
+
+      # Get full path to the network HomeDirectory 
+      # ie: /Volumes/staff/t/testuser
+      # or  /Volumes/Data/Student Homes/Active_Q2/pal/teststudpal
+      while read LCL_MountEntry
+      do
+        LCL_MountPoint=$(echo ${LCL_MountEntry} | sed -E 's|(^.*) on (.*) (\(.*\))|\2|' | grep -v '^/$')
+        LCL_MountShare=$(echo ${LCL_MountEntry} | sed -E 's|(^.*) on (.*) (\(.*\))|\1|' | sed 's|'${GLB_LoggedInUserName}'@||')
+        if test -n "$(echo "${GLB_LoggedInUserHomeNetworkURI}" | sed "s|^[^:]*:||" | grep -E "^${LCL_MountShare}")"
+        then
+          GLB_LoggedInUserHomeNetworkDir=$(f_urldecode "${LCL_MountPoint}$(echo ${GLB_LoggedInUserHomeNetworkURI} | sed "s|^[^:]*:||;s|^"${LCL_MountShare}"||")")
+          break
+        fi
+      done < <(mount | grep "//${GLB_LoggedInUserName}@")
+    
+    fi
+  fi
+
+fi
+
+# Where would the user home normally be if it were local
+if [ "${GLB_LoggedInUserName}" = "root" ]
+then
+  GLB_LoggedInUserLocalHomeDir="/var/root"
+
+else
+  GLB_LoggedInUserLocalHomeDir="/Users/${GLB_LoggedInUserName}"
+    
+fi
+
+
+# -- Decide various folder locations
+
+# Path to useful binaries
+GLB_BinDir=/usr/local/LabWarden/bin
+
+# ---
+
+# Create a temporary directory private to this user (and admins)
+GLB_ThisUserTempDir=/tmp/${GLB_ThisUserName}
+if ! test -d "${GLB_ThisUserTempDir}"
+then
+  mkdir -p "${GLB_ThisUserTempDir}"
+  chown ${GLB_ThisUserName}:admin "${GLB_ThisUserTempDir}"
+  chmod 770 "${GLB_ThisUserTempDir}"
+fi
+
+# Create a temporary directory private to this script
+GLB_ThisScriptTempDir="$(mktemp -dq ${GLB_ThisUserTempDir}/${GLB_ThisScriptName}-XXXXXXXX)"
+
+# -- Get Computer AD credentials
+
+# Get Computer AD trust account - i.e. yourcomputername$
+GLB_ADTrustAccount="$(dsconfigad 2>/dev/null -show | grep "Computer Account" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
+
+# Get Computer AD domain - i.e. your.domain.com
+GLB_ADDomainNameDNS="$(dsconfigad 2>/dev/null -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
+
+GLB_ADDomainNameFlat=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameFlat" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+if test -n "${GLB_ADDomainNameFlat}"
+then
+  GLB_ADTrustPassword=$(security find-generic-password -w -s "/Active Directory/${GLB_ADDomainNameFlat}" /Library/Keychains/System.keychain)
+fi
+
+# AD computer name (without the trailing dollar sign)
+GLB_ADComputerName=$(echo ${GLB_ADTrustAccount} | sed "s|\$$||")
+
+# ---
+
+# Decide where the config/pref/log files go
+GLB_LabConfigDir="/Library/Preferences/SystemConfiguration/${GLB_LabWardenSignature}"
+
+if [ "${GLB_ThisUserName}" = "root" ]
+then
+  mkdir -p "${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  GLB_ThisUserLogDir="/Library/Logs/${GLB_LabWardenSignature}"
+  GLB_ThisUserPrefDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+
+else
+  GLB_ThisUserLogDir="${GLB_LoggedInUserHomeDir}/Library/Logs/${GLB_LabWardenSignature}"
+  GLB_ThisUserPrefDir="${GLB_LoggedInUserHomeDir}/Library/Preferences/${GLB_LabWardenSignature}/${GLB_ADComputerName}"
+  
+fi
+
+mkdir -p "${GLB_ThisUserPrefDir}"
+mkdir -p "${GLB_ThisUserLogDir}"
+
+# -- Get Network info
+
+GLB_IPv4PrimaryService=$(echo "show State:/Network/Global/IPv4" | scutil | grep "PrimaryService" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+if test -n "${GLB_IPv4PrimaryService}"
+then
+  # Get DHCP option 15 (domain)
+  GLB_NetworkServiceDHCPOption15=$(echo "show State:/Network/Service/${GLB_IPv4PrimaryService}/DHCP" | scutil | grep "Option_15" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||" | sed -E "s/^<data> 0x//;s/00$//" | xxd -r -p)
+
+  # Get user defined name - e.g. Wi-Fi
+  GLB_NetworkServiceInterfaceName=$(echo "show Setup:/Network/Service/${GLB_IPv4PrimaryService}/Interface" | scutil | grep "UserDefinedName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+
+  # Get device name - e.g. en1
+  GLB_NetworkServiceInterfaceDevice=$(echo "show Setup:/Network/Service/${GLB_IPv4PrimaryService}/Interface" | scutil | grep "DeviceName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+
+  # Get device hardware - e.g. Airport
+  GLB_NetworkServiceInterfaceHardware=$(echo "show Setup:/Network/Service/${GLB_IPv4PrimaryService}/Interface" | scutil | grep "Hardware" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+fi
