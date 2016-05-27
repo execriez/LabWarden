@@ -30,11 +30,11 @@ Both .mobileconfig and .LabWarden.plist configurations are stored directly withi
 
 >Policy configurations are compressed, and stored in the “Notes” field of an AD group
 >
->![AD Group General Tab, Notes](images/SafariNotesPC.jpg "Policy Config")
+>![AD Group General Tab, Notes](images/SafariNotesPC.JPG "Policy Config")
 >
 >The scope of the policy is determined by group membership.
 >
->![AD Group Members Tab, Members](images/SafariMembersPC.jpg "Policy Scope")
+>![AD Group Members Tab, Members](images/SafariMembersPC.JPG "Policy Scope")
 
 With the a simple combination of AD group notes, and AD group membership, you are able to apply OS X specific group policies to workstations or users - without the need to extend the AD schema.
 
@@ -94,7 +94,7 @@ Move to a PC containing the "Microsoft Management Console" (MMC).
 
 Open up the text file that we just created, then copy all the text.
 
->![AD Group Members Tab, Members](images/PolicyBannerPackedPC.jpg "Packed Config Text")
+>![AD Group Members Tab, Members](images/PolicyBannerPackedPC.JPG "Packed Config Text")
 
 Run an MMC as a user who has permission to create and edit AD groups.
 
@@ -104,7 +104,7 @@ In the example, I have named the group "osx-wgp-gpo-PolicyBanner". The name does
 
 Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
 
->![AD Group General Tab, Notes](images/PolicyBannerNotesPC.jpg "Policy Config")
+>![AD Group General Tab, Notes](images/PolicyBannerNotesPC.JPG "Policy Config")
 
 Select the "Members" tab and add a workstation, or group of workstations that you want to apply the policy to. This is the "Scope" of the policy.
 
@@ -162,7 +162,7 @@ Move to a PC containing the "Microsoft Management Console" (MMC).
 
 Open up the text file that we just created, then copy all the text.
 
->![AD Group Members Tab, Members](images/SafariConfigPackedPC.jpg "Packed Config Text")
+>![AD Group Members Tab, Members](images/SafariConfigPackedPC.JPG "Packed Config Text")
 
 Run an MMC as a user who has permission to create and edit AD groups.
 
@@ -172,11 +172,11 @@ In the example, I have named the group "osx-wgp-gpo-SetSafariHomepage-Student". 
 
 Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
 
->![AD Group General Tab, Notes](images/SafariNotesPC.jpg "Policy Config")
+>![AD Group General Tab, Notes](images/SafariNotesPC.JPG "Policy Config")
 
 Select the "Members" tab and add a user, or group of users that you want to apply the policy to. This is the "Scope" of the policy.
 
->![AD Group Members Tab, Members](images/SafariMembersPC.jpg "Policy Scope")
+>![AD Group Members Tab, Members](images/SafariMembersPC.JPG "Policy Scope")
 
 Click "OK"
 
@@ -258,11 +258,11 @@ In the example, I have named the group "osx-wgp-gpo-AppRestrict". The name doesn
 
 Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
 
->![AD Group General Tab, Notes](images/AppRestrictNotesPC.jpg "Policy Config")
+>![AD Group General Tab, Notes](images/AppRestrictNotesPC.JPG "Policy Config")
 
 Select the "Members" tab and add a workstation, or group of workstations that you want to apply the policy to. This is the "Scope" of the policy.
 
->![AD Group Members Tab, Members](images/AppRestrictMembersPC.jpg "Policy Scope")
+>![AD Group Members Tab, Members](images/AppRestrictMembersPC.JPG "Policy Scope")
 
 Click "OK"
 
@@ -277,7 +277,7 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 >Because you chose to apply the policy to a workstation or group of workstations - the policy will affect every user who logs in.
 
->![AD Group Members Tab, Members](images/AppRestrictPopupPC.jpg "Policy Scope")
+>![AD Group Members Tab, Members](images/AppRestrictPopupPC.JPG "Policy Scope")
 
 ## Quick Demo 4
 The Notes field in AD is limited to 1024 characters - so what do you do when you have a config that is too big to fit within this limit?
