@@ -1,0 +1,160 @@
+#!/bin/bash
+#
+# Short:    Utility Script - Perform a maintenance action (workstation update)
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   /usr/local/LabWarden/util/Maintenance
+
+# Reads the software update method from the maintenance settings
+# then calls the appropriate update script. Afterwards it performs a gpupdate.
+#
+# Convenient when you want to perform a manual software update.
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# ---
+
+# Get filename of this script
+GLB_ThisScriptName="$(basename "${0}")"
+
+# Get dir of this script
+GLB_ThisScriptDir="$(dirname "${0}")"
+
+# Get Process ID of this script
+GLB_ThisScriptPID=$$
+
+# ---
+
+# Get user name
+GLB_ThisUserName="$(whoami)"
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  # we only like root
+  exit 0
+fi
+
+# ---
+
+# If we are not running from a remote shell, and iHook is available - then use it
+if test -z "$(who am i | grep -E ".*\([^(]*\)$")"
+then
+  if test -e "/usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook"
+  then
+    GLB_MyParentProcess="$(ps -o comm= $PPID | tr "/" "\n" | tail -n1)"
+    if [ "${GLB_MyParentProcess}" != "iHook" ]
+    then
+      /usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}"
+      exit 0
+    else
+      echo "%WINDOWSIZE 640 456"
+      if test -f "/usr/local/labwarden/images/${GLB_ThisScriptName}.jpg"
+      then
+        echo "%BACKGROUND /usr/local/labwarden/images/${GLB_ThisScriptName}.jpg"
+        echo "%TEXTCOLOR WHITE"
+      fi
+      echo "%UIMODE AUTOCRATIC"
+      echo "%WINDOWZOOM DISABLE"
+      echo "%SHOWTIMER"
+      echo "%TITLE ${GLB_ThisScriptName}"
+    fi
+  fi
+fi
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+f_logmessage "ATTENTION, running ${GLB_ThisScriptName} version ${LCL_ScriptVersion}"
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# Where we find the config
+LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+
+# ---
+
+LCL_UpdateArgCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:UpdateMethodArguments")"
+if [ ${LCL_UpdateArgCount} -eq 0 ]
+then
+  f_logmessage "ATTENTION, there are no defined update arguments."
+
+else
+  LCL_UpdateExeURI="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:UpdateMethodArguments:0")"
+  LCL_UpdateExe=$(f_ResolveFilename "${LCL_UpdateExeURI}")
+  if test -z "${LCL_UpdateExe}"
+  then
+    # Its possible that we are assuming the lib directory
+    LCL_UpdateExe="/usr/local/LabWarden/lib/${LCL_UpdateExeURI}"
+  fi
+  if !test -e "${LCL_UpdateExe}"
+  then
+    f_logmessage "ATTENTION, update script does not exist (${LCL_UpdateExe})"
+
+  else
+    if !test -x "${LCL_UpdateExe}"
+    then
+      chown root:wheel "${LCL_UpdateExe}"
+      chmod u+x "${LCL_UpdateExe}"
+    fi
+    for (( LCL_ArgIndex=1; LCL_ArgIndex<${LCL_UpdateArgCount}; LCL_ArgIndex++ ))
+    do
+      LCL_UpdateExe="${LCL_UpdateExe} '""$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:UpdateMethodArguments:${LCL_ArgIndex}")""'"
+    done
+
+    # Do a software update
+    f_logmessage "ATTENTION, updating workstation software (${LCL_UpdateExe})"
+    eval "${LCL_UpdateExe}" | tee -a "${GLB_ThisUserLogDir}/LabWarden.log"
+  fi
+fi
+
+# Take a note of when we ran the maintenance
+f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LCL_MyStartEpoch}"
+
+LCL_ADpath=$(dscl 2>/dev/null localhost -read "/Search/Computers/${GLB_ADTrustAccount}" distinguishedName | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${GLB_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
+if test -n "${LCL_ADpath}"
+then
+  # Update the loginWindow Text
+  LCL_LoginWindowText="$(echo ${GLB_ADTrustAccount} | sed "s|\$$||"):$(echo ${LCL_ADpath} | sed "s|,| - |g")"
+  LCL_LoginWindowText=$(echo "${LCL_LoginWindowText}" | tr ":" "\n")
+  /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${LCL_LoginWindowText}"
+
+  # Update the RemoteDesktop Computer Info Fields #1-3
+  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "$(echo "${LCL_ADpath}" | cut -d"," -f1)" -set2 -2 "$(echo "${LCL_ADpath}" | cut -d"," -f2)" -set3 -3 "$(echo "${LCL_ADpath}" | cut -d"," -f3-)"
+fi
+
+# Flush any cached group policy info
+f_logmessage "ATTENTION, flushing group policies (via gpupdate)."
+/usr/local/LabWarden/util/gpupdate "FLUSHCACHE"
+ 
+# Do a workstation group policy update
+f_logmessage "ATTENTION, updating workstation group policies (via gpupdate)."
+/usr/local/LabWarden/util/gpupdate
+ 
+# Do a user group policy update
+f_logmessage "ATTENTION, updating user group policies for all users (via gpupdate)."
+/usr/local/LabWarden/util/gpupdate "USERS"
+ 
+f_logmessage "NOTE, we should reboot now"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"

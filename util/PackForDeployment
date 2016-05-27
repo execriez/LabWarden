@@ -1,0 +1,131 @@
+#!/bin/bash
+#
+# Short:    Utility Script - Pack a payload file for AD deployment
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   PackForDeployment <somefile>
+#
+# Outputs the path to the packed file.
+#
+# This script packs a payload file (via gzip & base64). 
+# The resultant text should be copied into an AD groups 'Notes' field.
+# Any member of the group (user or workstation) will receive the payload
+# at the next gpupdate.
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# Filename without extension
+LCL_MyName="$(basename ${LCL_MySource} | sed 's|\.[^.]*$||')"
+
+cd "${LCL_MyPath}"
+
+LCL_PayloadFile="${1}"
+
+if test -z "${LCL_PayloadFile}"
+then
+  echo "This script packs (via gzip & base64) a payload file/folder for AD deployment"
+  echo "  Usage: ${LCL_MyScript} SomePayloadFileOrFolder"
+  exit 0
+fi
+
+if ! test -e "${LCL_PayloadFile}"
+then
+  echo "File/folder not found - ${LCL_PayloadFile}"
+  exit 0
+fi
+
+# Filename of the payload
+LCL_DocFileName="$(basename ${LCL_PayloadFile})"
+
+# Path to the payload
+LCL_DocPath="$(dirname ${LCL_PayloadFile})"
+
+# Filename without extension
+LCL_DocName=$(echo ${LCL_DocFileName} | sed "s|\.[^.]*$||")
+
+# A place to store the packed payloads
+LCL_PackedFolder="${LCL_DocPath}/Packed"
+mkdir -p "${LCL_PackedFolder}"
+
+# Filename for the gzip, base64 payload
+LCL_base64tgzFile=${LCL_PackedFolder}/${LCL_DocName}.txt
+
+# Create a temporary folder
+LCL_TempFolder=$(mktemp -d /tmp/XXXXXXXX)
+
+# Copy the payload to a temporary folder
+if test -d "${LCL_PayloadFile}"
+then
+  cp -pR "${LCL_PayloadFile}/" "${LCL_TempFolder}/"
+
+else
+  cp "${LCL_PayloadFile}" "${LCL_TempFolder}/"
+
+fi
+
+# Shrink the payload if possible
+ls -1 "${LCL_TempFolder}" | while read LCL_PayloadName
+do
+  LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|')
+  if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-shrink
+  then
+    LCL_ShrunkPayloadName="$(/usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-shrink "${LCL_TempFolder}/${LCL_PayloadName}")"
+    if test -n "${LCL_ShrunkPayloadName}"
+    then
+      rm -f "${LCL_TempFolder}/${LCL_PayloadName}"
+      cp "${LCL_ShrunkPayloadName}" "${LCL_TempFolder}/${LCL_PayloadName}"
+    fi
+  fi
+done
+
+# tar gzip & base64 the payload
+cd "${LCL_TempFolder}"
+tar -c * | gzip -9 | base64 -b 30 | tr -s "\n" | awk '{ sub(/$/,"\r"); print }' > ${LCL_base64tgzFile}
+cd "${LCL_PackedFolder}"
+
+
+# Delete the temporary folder
+rm -fR "${LCL_TempFolder}"
+
+#
+LCL_base64tgzFileSize=$(stat -f "%z" ${LCL_base64tgzFile})
+if [ ${LCL_base64tgzFileSize} -le 1024 ]
+then
+  echo "Unpack the payload file into SomeDirectory as follows"
+  echo "  cd SomeDirectory"
+  echo "  cat ${LCL_base64tgzFile} | base64 -D | tar -xvzf -"
+
+else
+  if [ ${LCL_base64tgzFileSize} -le 10240 ]
+  then
+    split -a 1 -b 1k ${LCL_base64tgzFile} ${LCL_DocName}-
+    rm -f "${LCL_base64tgzFile}"
+    ls -1 "${LCL_PackedFolder}" | grep -E "${LCL_DocName}-[a-j]{1}$" | while read LCL_PartFile
+    do
+      LCL_PartNo=$(echo ${LCL_PartFile} | sed -E "s|(.*)(-[a-j]{1}$)|\2|" | tr [a-j] [0-9])
+      mv ${LCL_PartFile} ${LCL_DocName}${LCL_PartNo}.txt
+    done
+
+    echo "Note, the payload is too big to fit into a single AD Notes field"
+    echo "Unpack the payload file into SomeDirectory as follows"
+    echo "  cd SomeDirectory"
+    printf "  cat "
+    ls -1 "${LCL_PackedFolder}" | sort | grep -E "${LCL_DocName}-[0-9]{1}\.txt$" | while read LCL_PartFile
+    do
+      printf "${LCL_PartFile} "
+    done
+    echo "| base64 -D | tar -xvzf -"
+
+  else
+    echo "Sorry, the payload is realistically just too big."
+
+  fi
+fi
+
