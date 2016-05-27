@@ -1,0 +1,197 @@
+#!/bin/bash
+#
+# Short:    Policy script - Show Application hints
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   AppDidLaunch (as user)
+#
+# Called as follows:    
+#   AppShowHints <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
+# Note, older applications may return "(null)"
+GLB_ApplicationBundleIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f3)"
+
+# Get notification e.g. WillLaunch, DidLaunch or DidTerminate
+GLB_ApplicationNotification="$(echo ${LCL_OptionalParam} | cut -d":" -f1)"
+
+# Get Date/Time Epoch of the notification
+GLB_NotificationEpoch="$(echo ${LCL_OptionalParam} | cut -d":" -f2)"
+
+# Get ApplicationName e.g. TextEdit
+GLB_ApplicationName="$(echo ${LCL_OptionalParam} | cut -d":" -f4)"
+
+# Get ApplicationPath e.g. /Applications/TextEdit.app
+GLB_ApplicationPath="$(echo ${LCL_OptionalParam} | cut -d":" -f5)"
+
+# Get ApplicationProcessIdentifier - i.e. the process ID
+GLB_ApplicationProcessIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f6)"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+case ${LCL_EventName} in
+    
+AppDidLaunch)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  GLB_PolicyExecuted="false"
+  LCL_HintCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint")"
+  for (( LCL_i=0; LCL_i<${LCL_HintCount}; LCL_i++ ))
+  do
+    LCL_ApplicationBundleIdentifier="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:ApplicationBundleIdentifier:${LCL_j}")"
+    if [ "${LCL_ApplicationBundleIdentifier}" = "${GLB_ApplicationBundleIdentifier}" ]
+    then
+      # Get message title
+      LCL_MessageTitle="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:MessageTitle")"
+      if test -z "${LCL_MessageTitle}"
+      then
+        LCL_MessageTitle="HINT"
+      fi
+
+      # Get message content
+      LCL_MessageContent="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:MessageContent")"
+
+      if test -n "${LCL_MessageContent}"
+      then
+        # Substitute APPNAME in the title and content with the actual Application name
+        LCL_MessageTitle="$(echo "${LCL_MessageTitle}" | sed "s|APPNAME|${GLB_ApplicationName}|")"
+        LCL_MessageContent="$(echo "${LCL_MessageContent}" | sed "s|APPNAME|${GLB_ApplicationName}|")"
+
+        LCL_ShowHint="true"
+
+        # Optional IsAdmin
+        if [ "${LCL_ShowHint}" = "true" ]
+        then
+          GLB_LoggingStatus="off";LCL_IsAdmin="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:IsAdmin")";GLB_LoggingStatus=${GLB_LoggingDefault}
+          if test -n "${LCL_IsAdmin}"
+          then
+            if [ "${LCL_IsAdmin}" != "${GLB_LoggedInUserIsAdmin}" ]
+            then
+              LCL_ShowHint="false"
+            fi
+          fi
+        fi
+
+        # Optional IsLocalAccount
+        if [ "${LCL_ShowHint}" = "true" ]
+        then
+          GLB_LoggingStatus="off";LCL_IsLocalAccount="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:IsLocalAccount")";GLB_LoggingStatus=${GLB_LoggingDefault}
+          if test -n "${LCL_IsLocalAccount}"
+          then
+            if [ "${LCL_IsLocalAccount}" != "${GLB_LoggedInUserIsLocal}" ]
+            then
+              LCL_ShowHint="false"
+            fi
+          fi
+        fi
+
+        # Optional IsLocalHome
+        if [ "${LCL_ShowHint}" = "true" ]
+        then
+          GLB_LoggingStatus="off";LCL_IsLocalHome="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppHint:${LCL_i}:IsLocalHome")";GLB_LoggingStatus=${GLB_LoggingDefault}
+          if test -n "${LCL_IsLocalHome}"
+          then
+            if [ "${LCL_IsLocalHome}" != "${GLB_LoggedInUserHomeIsLocal}" ]
+            then
+              LCL_ShowHint="false"
+            fi
+          fi
+        fi
+
+        # Display the Message
+        if [ "${LCL_ShowHint}" = "true" ]
+        then
+          f_logmessage "ATTENTION, showing hint to user for application '${GLB_ApplicationBundleIdentifier}'"
+          f_ShowNotification "${LCL_MessageTitle}" "${LCL_MessageContent}"
+        
+          GLB_PolicyExecuted="true"
+        fi
+      fi
+    fi
+    
+  done
+  
+  if [ "${GLB_PolicyExecuted}" = "false" ]
+  then
+    f_QuickExit "NOTE, policy aborted: there are no hints for the application '${GLB_ApplicationBundleIdentifier}'"
+  fi
+
+  ;;
+
+*)
+  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  ;;
+
+esac
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

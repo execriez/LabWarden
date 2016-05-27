@@ -1,0 +1,502 @@
+#!/bin/bash
+#
+# Short:    Policy script - Run a system Maintenance
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   LoginWindow     (as root)
+#   LoginWindowIdle (as root)
+#   UserAtDesktop   (as user)
+#   UserPoll        (as user)
+#
+# Called as follows:    
+#   Maintenance <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+# 
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+f_GetOpeningHours()   # messagetxt
+{
+  local LCL_i
+  local LCL_ThisDayEpoch
+  local LCL_ThisDayNum
+  local LCL_ThisOpenTime
+  local LCL_ThisOpenEpoch
+  local LCL_ThisCloseTime
+  local LCL_ThisCloseEpoch
+  local LCL_SafeEndEpoch
+  local LCL_OpenTime
+  local LCL_CloseTime
+  local LCL_NextCloseEpoch
+  local LCL_FutureOpenEpoch
+  local LCL_SafetyNetMinutes
+  
+  # Calculate the following globals
+  #  GLB_CurrOpenEpoch
+  #  GLB_CurrCloseEpoch
+  #  GLB_NextOpenEpoch
+  #  GLB_NextMaintenanceEpoch
+  # ...and schudule a poweron for the next update
+
+  # Get the config settings
+  for (( LCL_i=0; LCL_i<=6; LCL_i++ ))
+  do
+    LCL_OpenTime[${LCL_i}]=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:OpeningHours:${LCL_i}:OpenTime")
+    LCL_CloseTime[${LCL_i}]=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:OpeningHours:${LCL_i}:CloseTime")
+  done
+
+  # Find current open time (before now)
+  LCL_ThisZerohourEpoch=$(date -r ${LCL_MyStartEpoch} -v0H -v0M -v0S "+%s")
+  while [ $((${LCL_MyStartEpoch} - ${LCL_ThisZerohourEpoch})) -lt 604800 ]
+  do
+    LCL_ThisDayNum=$(date -r ${LCL_ThisZerohourEpoch} "+%w")
+    LCL_ThisOffsetTime=${LCL_OpenTime[${LCL_ThisDayNum}]}
+    if test -n "${LCL_ThisOffsetTime}"
+    then
+      LCL_ThisOffsetSecs=$(($(echo "${LCL_ThisOffsetTime}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+      LCL_ThisOffsetEpoch=$((${LCL_ThisZerohourEpoch}+${LCL_ThisOffsetSecs}))
+      if [ ${LCL_ThisOffsetEpoch} -lt ${LCL_MyStartEpoch} ]
+      then
+        GLB_CurrOpenEpoch=${LCL_ThisOffsetEpoch}
+        break;
+      fi
+    fi
+    LCL_ThisZerohourEpoch=$(date -r ${LCL_ThisZerohourEpoch} -v-1d "+%s")
+  done
+
+  if test -n "${GLB_CurrOpenEpoch}"
+  then
+    # find current close time (after current open)
+    LCL_ThisZerohourEpoch=$(date -r ${GLB_CurrOpenEpoch} -v0H -v0M -v0S "+%s")
+    while [ $((${LCL_ThisZerohourEpoch} - ${GLB_CurrOpenEpoch})) -lt 604800 ]
+    do
+      LCL_ThisDayNum=$(date -r ${LCL_ThisZerohourEpoch} "+%w")
+      LCL_ThisOffsetTime=${LCL_CloseTime[${LCL_ThisDayNum}]}
+      if test -n "${LCL_ThisOffsetTime}"
+      then
+        LCL_ThisOffsetSecs=$(($(echo "${LCL_ThisOffsetTime}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+        LCL_ThisOffsetEpoch=$((${LCL_ThisZerohourEpoch}+${LCL_ThisOffsetSecs}))
+        if [ ${LCL_ThisOffsetEpoch} -gt ${GLB_CurrOpenEpoch} ]
+        then
+          GLB_CurrCloseEpoch=${LCL_ThisOffsetEpoch}
+          break;
+        fi
+      fi
+      LCL_ThisZerohourEpoch=$(date -r ${LCL_ThisZerohourEpoch} -v+1d "+%s")
+    done
+  
+    if test -n "${GLB_CurrCloseEpoch}"
+    then
+      # Find the next open time
+      LCL_ThisZerohourEpoch=$(date -r ${GLB_CurrCloseEpoch} -v0H -v0M -v0S "+%s")
+      while [ $((${LCL_ThisZerohourEpoch} - ${GLB_CurrCloseEpoch})) -lt 604800 ]
+      do
+        LCL_ThisDayNum=$(date -r ${LCL_ThisZerohourEpoch} "+%w")
+        LCL_ThisOffsetTime=${LCL_OpenTime[${LCL_ThisDayNum}]}
+        if test -n "${LCL_ThisOffsetTime}"
+        then
+          LCL_ThisOffsetSecs=$(($(echo "${LCL_ThisOffsetTime}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+          LCL_ThisOffsetEpoch=$((${LCL_ThisZerohourEpoch}+${LCL_ThisOffsetSecs}))
+          if [ ${LCL_ThisOffsetEpoch} -gt ${GLB_CurrCloseEpoch} ]
+          then
+            GLB_NextOpenEpoch=${LCL_ThisOffsetEpoch}
+            break;
+          fi
+        fi
+        LCL_ThisZerohourEpoch=$(date -r ${LCL_ThisZerohourEpoch} -v+1d "+%s")
+      done
+    fi  
+  
+  fi
+
+  if test -z "${GLB_NextOpenEpoch}"
+  then
+    GLB_CurrOpenEpoch=""
+    GLB_CurrCloseEpoch=""
+    GLB_NextMaintenanceEpoch=""
+    f_logmessage "ATTENTION, opening times undefined"
+  
+  else
+    # Take a note of results
+    f_logmessage "NOTE, CurrOpen $(date -r ${GLB_CurrOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+    f_logmessage "NOTE, CurrClose $(date -r ${GLB_CurrCloseEpoch} "+%Y%m%d-%H:%M.%S")"
+    f_logmessage "NOTE, NextOpen $(date -r ${GLB_NextOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+  
+    # Now we have to schedule a power on to allow for future Maintenance
+    if [ ${LCL_MyStartEpoch} -lt ${GLB_CurrCloseEpoch} ]
+    then
+      # we are somewhere between opening time and closing time
+      LCL_MaintenanceStartEpoch=${GLB_CurrCloseEpoch}
+      LCL_MaintenanceEndEpoch=${GLB_NextOpenEpoch}
+    
+    else
+      # we are somewhere between closing time and the next opening time
+
+      # find the next close time (after the next open)
+      LCL_ThisZerohourEpoch=$(date -r ${GLB_NextOpenEpoch} -v0H -v0M -v0S "+%s")
+      while [ $((${LCL_ThisZerohourEpoch} - ${GLB_NextOpenEpoch})) -lt 604800 ]
+      do
+        LCL_ThisDayNum=$(date -r ${LCL_ThisZerohourEpoch} "+%w")
+        LCL_ThisOffsetTime=${LCL_CloseTime[${LCL_ThisDayNum}]}
+        if test -n "${LCL_ThisOffsetTime}"
+        then
+          LCL_ThisOffsetSecs=$(($(echo "${LCL_ThisOffsetTime}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+          LCL_ThisOffsetEpoch=$((${LCL_ThisZerohourEpoch}+${LCL_ThisOffsetSecs}))
+          if [ ${LCL_ThisOffsetEpoch} -gt ${GLB_NextOpenEpoch} ]
+          then
+            LCL_NextCloseEpoch=${LCL_ThisOffsetEpoch}
+            break;
+          fi
+        fi
+        LCL_ThisZerohourEpoch=$(date -r ${LCL_ThisZerohourEpoch} -v+1d "+%s")
+      done
+
+      if test -n "${LCL_NextCloseEpoch}"
+      then
+        # Find the open time after the next close time
+        LCL_ThisZerohourEpoch=$(date -r ${LCL_NextCloseEpoch} -v0H -v0M -v0S "+%s")
+        while [ $((${LCL_ThisZerohourEpoch} - ${LCL_NextCloseEpoch})) -lt 604800 ]
+        do
+          LCL_ThisDayNum=$(date -r ${LCL_ThisZerohourEpoch} "+%w")
+          LCL_ThisOffsetTime=${LCL_OpenTime[${LCL_ThisDayNum}]}
+          if test -n "${LCL_ThisOffsetTime}"
+          then
+            LCL_ThisOffsetSecs=$(($(echo "${LCL_ThisOffsetTime}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+            LCL_ThisOffsetEpoch=$((${LCL_ThisZerohourEpoch}+${LCL_ThisOffsetSecs}))
+            if [ ${LCL_ThisOffsetEpoch} -gt ${LCL_NextCloseEpoch} ]
+            then
+              LCL_FutureOpenEpoch=${LCL_ThisOffsetEpoch}
+              break;
+            fi
+          fi
+          LCL_ThisZerohourEpoch=$(date -r ${LCL_ThisZerohourEpoch} -v+1d "+%s")
+        done
+ 
+        if test -n "${LCL_FutureOpenEpoch}"
+        then
+          LCL_MaintenanceStartEpoch=${LCL_NextCloseEpoch}
+          LCL_MaintenanceEndEpoch=${LCL_FutureOpenEpoch}
+        fi
+      fi  
+
+    fi
+    
+    if test -z "${LCL_MaintenanceEndEpoch}"
+    then
+      f_logmessage "ATTENTION, I cannot calculate when is the best time to do the next Maintenance."
+      
+    else
+      # do not poweron for an update within SafetyNetMinutes of the next opening time
+      LCL_SafeEndEpoch=${LCL_MaintenanceEndEpoch}
+
+      LCL_SafetyNetMinutes=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SafetyNetMinutes")
+      if test -n "${LCL_SafetyNetMinutes}"
+      then
+        LCL_SafeEndEpoch=$((${LCL_SafeEndEpoch}-(${LCL_SafetyNetMinutes}*60)))
+        if [ ${LCL_MaintenanceStartEpoch} -gt ${LCL_SafeEndEpoch} ]
+        then
+          LCL_SafeEndEpoch=${LCL_MaintenanceStartEpoch}
+        fi
+      fi
+
+      # -- work out a good random-ish time to power on for the next Maintenance check.
+      GLB_NextMaintenanceEpoch=$(jot -r 1 ${LCL_MaintenanceStartEpoch} ${LCL_SafeEndEpoch})
+
+      f_logmessage "NOTE, Next Scheduled Maintenance $(date -r ${GLB_NextMaintenanceEpoch} "+%Y%m%d-%H:%M.%S")"
+      f_schedule4epoch "${GLB_MyFilename}" "poweron" ${GLB_NextMaintenanceEpoch}
+    
+    fi
+  fi
+
+  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:CurrOpenEpoch" "${GLB_CurrOpenEpoch}"
+  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:CurrCloseEpoch" "${GLB_CurrCloseEpoch}"
+  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:NextOpenEpoch" "${GLB_NextOpenEpoch}"
+}
+
+f_CheckWorkingHoursUserAccess()
+{
+  local LCL_StrictWorkingHours
+  local LCL_LogoutWarningSecs
+  local LCL_CurrCloseEpoch
+  local LCL_RemainingSecs
+  local LCL_jobid
+  
+  # Log Users off out of hours. Note, we dont ever log the admin users off
+  if [ "${GLB_LoggedInUserIsAdmin}" = "false" ]
+  then
+    LCL_CurrCloseEpoch=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:CurrCloseEpoch")
+    if test -n "${LCL_CurrCloseEpoch}"
+    then
+      LCL_StrictWorkingHours=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:StrictWorkingHours")
+      if [ "${LCL_StrictWorkingHours}" = "true" ]
+      then
+        LCL_LogoutWarningSecs=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:LogoutWarningSecs")
+        if test -z "${LCL_LogoutWarningSecs}"
+        then
+          LCL_LogoutWarningSecs=600
+        fi
+    
+        LCL_RemainingSecs=$((${LCL_CurrCloseEpoch}-${LCL_MyStartEpoch}))
+    
+        if [ ${LCL_RemainingSecs} -gt ${LCL_LogoutWarningSecs} ] 
+        then
+          f_logmessage "NOTE, User will not be logged off for a while."
+        else
+          if [ ${LCL_RemainingSecs} -gt 0 ] 
+          then
+            f_logmessage "NOTE, User warned about impending out of hours force logout with ${LCL_RemainingSecs} seconds remaining."
+            f_ShowNotification "WARNING" "Closing time approaches. The system will log you off in about ${LCL_RemainingSecs} seconds."
+        
+          else
+            f_logmessage "NOTE, User out of hours force logout by system."
+            f_ShowNotification "WARNING" "No out of hours access. The system is logging you off."
+  
+            # cycle through usual apps and kill them dead (unsaved changes will be lost)
+            ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read LCL_jobid
+            do
+              kill ${LCL_jobid}
+            done
+
+            # applescript to log out gracefully
+            /usr/bin/osascript -e 'tell application "loginwindow" to «event aevtrlgo»'
+          fi
+        fi
+      fi
+    fi
+  fi
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+case ${LCL_EventName} in
+    
+LoginWindow)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  # Setup Maintenance options
+  f_logmessage "ATTENTION, calculating out of hours restrictions and next update time."
+  f_GetOpeningHours
+
+  f_QuickExit "NOTE, policy aborted: ${LCL_PolicyName} is not ready to run at this time."
+  ;;
+  
+LoginWindowIdle)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  LCL_PolicyExecuted="false"
+  GLB_WithinWorkingHours="true"
+  
+  GLB_CurrCloseEpoch=$(f_GetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:CurrCloseEpoch")
+  if test -z "${GLB_CurrCloseEpoch}"
+  then
+    f_logmessage "ATTENTION, working Hours Closing time not set"
+    f_logmessage "ATTENTION, recalculating Working Hours"
+    f_GetOpeningHours
+  fi
+  
+  GLB_LastMaintenanceEpoch=$(f_GetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:LastMaintenanceEpoch" 1136073660)
+  GLB_MaintenanceAgeMaxDays=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:MaintenanceAgeMaxDays")
+  if test -n "${GLB_MaintenanceAgeMaxDays}"
+  then
+    LCL_MaintenanceAgeSecs=$((${LCL_MyStartEpoch}-${GLB_LastMaintenanceEpoch}))
+    LCL_MaintenanceAgeDays=$((${LCL_MaintenanceAgeSecs}/60/60/24))
+    f_logmessage "NOTE, last Maintenance completed approximately ${LCL_MaintenanceAgeDays} days ago."
+
+    if [ ${LCL_MaintenanceAgeDays} -gt ${GLB_MaintenanceAgeMaxDays} ]
+    then
+      f_logmessage "ATTENTION, forcing Maintenance (maximum time has elapsed)."
+      LCL_PolicyExecuted="true"
+    fi
+  fi
+
+  if [ "${LCL_PolicyExecuted}" != "true" ]
+  then
+    if test -z "${GLB_CurrCloseEpoch}"
+    then
+      f_logmessage "ATTENTION, working Hours Closing time not set"
+
+    else
+      if [ ${LCL_MyStartEpoch} -lt ${GLB_CurrCloseEpoch} ]
+      then
+        f_logmessage "NOTE, within Working Hours"
+        
+      else
+        GLB_WithinWorkingHours="false"
+        GLB_NextOpenEpoch=$(f_GetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:NextOpenEpoch")
+        if test -z "${GLB_CurrCloseEpoch}"
+        then
+          f_logmessage "ATTENTION, working Hours Next Open time not set"
+    
+        else
+          if [ ${LCL_MyStartEpoch} -gt ${GLB_NextOpenEpoch} ]
+          then
+            f_logmessage "NOTE, recalculating Working Hours"
+            f_GetOpeningHours
+  
+          else
+            f_logmessage "NOTE, outside Working Hours"
+        
+            if [ ${GLB_LastMaintenanceEpoch} -gt ${GLB_CurrCloseEpoch} ]
+            then
+              f_logmessage "NOTE, ${LCL_PolicyName} policy has recently completed"
+    
+            else
+              # We haven't done an update recently
+              LCL_PolicyExecuted="true"
+
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+  
+  if [ "${LCL_PolicyExecuted}" = "true" ]
+  then
+    # Take a note of when we ran the policy
+    f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LCL_MyStartEpoch}"
+          
+    # Perform the Maintenance
+    /usr/local/LabWarden/util/Maintenance
+
+    # Restart after a successful update
+    f_RestartNow "ATTENTION, policies auto-updated - we should reboot."
+
+  else
+    # Check if we should shutdown
+    
+    LCL_IdleSecs=$(f_SystemIdleSecs)
+    f_logmessage "NOTE, workstation Idle for ${LCL_IdleSecs} secs"
+
+    GLB_IdleShutdownSecs=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:IdleShutdownSecs")
+    if test -z "${GLB_IdleShutdownSecs}"
+    then
+      f_logmessage "ATTENTION, idle Shutdown value not set"
+    
+    else
+      if [ ${LCL_IdleSecs} -gt ${GLB_IdleShutdownSecs} ]
+      then
+        GLB_DoShutdown="true"
+  
+        if [ "${GLB_WithinWorkingHours}" = "true" ]
+        then
+          GLB_DoShutdown="false"
+          IdleShutdownInWorkingHours=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:IdleShutdownInWorkingHours")
+          if [ "${IdleShutdownInWorkingHours}" = "true" ]
+          then
+            GLB_DoShutdown="true"
+          fi
+        fi
+
+        if [ "${GLB_DoShutdown}" = "true" ]
+        then
+          # Shutdown if the workstation has been idle
+          f_ShutdownNow "ATTENTION, workstation has been idle too long - we should shutdown."
+        fi
+      fi
+    fi
+
+    f_QuickExit "NOTE, policy aborted: ${LCL_PolicyName} is not ready to run at this time."
+  fi
+  ;;
+  
+UserAtDesktop)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  # Log Users off out of hours. Note, we dont ever log the admin users off
+  f_logmessage "ATTENTION, checking time restrictions as user '${GLB_ThisUserName}'"
+  f_CheckWorkingHoursUserAccess
+
+  f_QuickExit "NOTE, policy aborted: ${LCL_PolicyName} is not ready to run at this time."
+  ;;
+  
+UserPoll)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  # Log Users off out of hours. Note, we dont ever log the admin users off
+  f_logmessage "ATTENTION, checking time restrictions as user '${GLB_ThisUserName}'"
+  f_CheckWorkingHoursUserAccess
+
+  f_QuickExit "NOTE, policy aborted: ${LCL_PolicyName} is not ready to run at this time."
+  ;;
+
+*)
+  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  ;;
+
+esac
+  
+if [ "${LCL_PolicyExecuted}" = "true" ]
+then
+  # Trigger an event
+  f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+fi
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

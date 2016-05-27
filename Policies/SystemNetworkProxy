@@ -1,0 +1,249 @@
+#!/bin/bash
+#
+# Short:    Policy script - Set system Network Proxy options
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   Boot            (as root)
+#   LoginWindow     (as root)
+#   LoginWindowIdle (as root)
+#
+# Called as follows:    
+#   SystemNetworkProxy <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else    
+  if test -z "${GLB_NetworkServiceInterfaceName}"
+  then
+    # we need a network
+    f_QuickExit "NOTE, policy aborted: no network"
+    exit 0
+  fi
+
+  f_logmessage "NOTE, switching all proxy settings off for ${GLB_NetworkServiceInterfaceName}"
+  /usr/sbin/networksetup -setproxyautodiscovery "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setautoproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setwebproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setsecurewebproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setftpproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setstreamingproxystate "${GLB_NetworkServiceInterfaceName}" off
+  /usr/sbin/networksetup -setgopherproxystate "${GLB_NetworkServiceInterfaceName}" off
+
+  if [ "${GLB_ADDomainNameDNS}" != "${GLB_NetworkServiceDHCPOption15}" ]
+  then
+    f_QuickExit "NOTE, policy aborted: not on ${GLB_ADDomainNameFlat} network"
+    exit 0
+  fi
+
+  LCL_ProxyAutoDiscoveryEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:ProxyAutoDiscovery:Enabled")"
+  if [ "${LCL_ProxyAutoDiscoveryEnabled}" == "true" ]
+  then
+    f_logmessage "NOTE, switching on 'Auto Proxy Discovery'"
+    /usr/sbin/networksetup -setproxyautodiscovery "${GLB_NetworkServiceInterfaceName}" on
+  fi
+
+  LCL_AutoProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AutoProxy:Enabled")"
+  if [ "${LCL_AutoProxyEnabled}" == "true" ]
+  then
+    LCL_AutoProxyURL="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AutoProxy:URL")"
+    if test -n "${LCL_AutoProxyURL}"
+    then
+      f_logmessage "NOTE, setting 'Automatic Proxy Configuration' to ${LCL_AutoProxyURL}"
+      /usr/sbin/networksetup -setautoproxyurl "${GLB_NetworkServiceInterfaceName}" "${LCL_AutoProxyURL}"
+      /usr/sbin/networksetup -setautoproxystate "${GLB_NetworkServiceInterfaceName}" on
+    fi
+  fi
+
+  LCL_WebProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:WebProxy:Enabled")"
+  if [ "${LCL_WebProxyEnabled}" == "true" ]
+  then
+    LCL_WebProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:WebProxy:Address")"
+    if test -n "${LCL_WebProxyAddress}"
+    then
+      LCL_WebProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:WebProxy:Port")"
+      if test -n "${LCL_WebProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'Web Proxy' to ${LCL_WebProxyAddress}:${LCL_WebProxyPort}"
+        /usr/sbin/networksetup -setwebproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_WebProxyAddress}" "${LCL_WebProxyPort}" off
+        /usr/sbin/networksetup -setwebproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_SecureWebProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SecureWebProxy:Enabled")"
+  if [ "${LCL_SecureWebProxyEnabled}" == "true" ]
+  then
+    LCL_SecureWebProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SecureWebProxy:Address")"
+    if test -n "${LCL_SecureWebProxyAddress}"
+    then
+      LCL_SecureWebProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SecureWebProxy:Port")"
+      if test -n "${LCL_SecureWebProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'Secure Web Proxy' to ${LCL_SecureWebProxyAddress}:${LCL_SecureWebProxyPort}"
+        /usr/sbin/networksetup -setsecurewebproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_SecureWebProxyAddress}" "${LCL_SecureWebProxyPort}" off
+        /usr/sbin/networksetup -setsecurewebproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_StreamingProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:StreamingProxy:Enabled")"
+  if [ "${LCL_StreamingProxyEnabled}" == "true" ]
+  then
+    LCL_StreamingProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:StreamingProxy:Address")"
+    if test -n "${LCL_StreamingProxyAddress}"
+    then
+      LCL_StreamingProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:StreamingProxy:Port")"
+      if test -n "${LCL_StreamingProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'Secure Streaming Proxy' to ${LCL_StreamingProxyAddress}:${LCL_StreamingProxyPort}"
+        /usr/sbin/networksetup -setstreamingproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_StreamingProxyAddress}" "${LCL_StreamingProxyPort}" off
+        /usr/sbin/networksetup -setstreamingproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_FTPProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:FTPProxy:Enabled")"
+  if [ "${LCL_FTPProxyEnabled}" == "true" ]
+  then
+    LCL_FTPProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:FTPProxy:Address")"
+    if test -n "${LCL_FTPProxyAddress}"
+    then
+      LCL_FTPProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:FTPProxy:Port")"
+      if test -n "${LCL_FTPProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'FTP Proxy' to ${LCL_FTPProxyAddress}:${LCL_FTPProxyPort}"
+        /usr/sbin/networksetup -setftpproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_FTPProxyAddress}" "${LCL_FTPProxyPort}" off
+        /usr/sbin/networksetup -setftpproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_SOCKSProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SOCKSProxy:Enabled")"
+  if [ "${LCL_SOCKSProxyEnabled}" == "true" ]
+  then
+    LCL_SOCKSProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SOCKSProxy:Address")"
+    if test -n "${LCL_SOCKSProxyAddress}"
+    then
+      LCL_SOCKSProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SOCKSProxy:Port")"
+      if test -n "${LCL_SOCKSProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'SOCKS Proxy' to ${LCL_SOCKSProxyAddress}:${LCL_SOCKSProxyPort}"
+        /usr/sbin/networksetup -setsocksfirewallproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_SOCKSProxyAddress}" "${LCL_SOCKSProxyPort}" off
+        /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_GopherProxyEnabled="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:GopherProxy:Enabled")"
+  if [ "${LCL_GopherProxyEnabled}" == "true" ]
+  then
+    LCL_GopherProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:GopherProxy:Address")"
+    if test -n "${LCL_GopherProxyAddress}"
+    then
+      LCL_GopherProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:GopherProxy:Port")"
+      if test -n "${LCL_GopherProxyPort}"
+      then
+        f_logmessage "NOTE, setting 'Gopher Proxy' to ${LCL_GopherProxyAddress}:${LCL_GopherProxyPort}"
+        /usr/sbin/networksetup -setgopherproxy "${GLB_NetworkServiceInterfaceName}" "${LCL_GopherProxyAddress}" "${LCL_GopherProxyPort}" off
+        /usr/sbin/networksetup -setgopherproxystate "${GLB_NetworkServiceInterfaceName}" on
+      fi
+    fi
+  fi
+
+  LCL_ProxyBypassDomains="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:ProxyBypassDomains" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
+  if test -n "${LCL_ProxyBypassDomains}"
+  then
+    f_logmessage "NOTE, setting Proxy Bypass Domains"
+    /usr/sbin/networksetup -setproxybypassdomains "${GLB_NetworkServiceInterfaceName}" ${LCL_ProxyBypassDomains}
+  fi
+
+  if test -n "${LCL_ProxyAutoDiscovery}${LCL_AutoProxyURL}${LCL_WebProxyPort}${LCL_SecureWebProxyPort}${LCL_StreamingProxyPort}${LCL_FTPProxyPort}${LCL_SOCKSProxyPort}${LCL_GopherProxyPort}${LCL_ProxyBypassDomains}"
+  then
+    f_logmessage "ATTENTION, proxy settings configured"
+    
+  else
+  
+    f_QuickExit "NOTE, policy aborted: No Proxy options found"
+  fi
+
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---
+
+# Notes to self
+# -display internet traffic
+#  tcpdump -i en0 -n port 80
+# -display traffic to a particular host (which you could pick out of the above output)
+#  tcpdump -i en0 -n host 95.140.226.15

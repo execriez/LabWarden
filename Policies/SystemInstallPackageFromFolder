@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+# Short:    Policy script - Install package(s) from folder
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   Boot (as root)
+#
+# Called as follows:    
+#   SystemInstallPackageFromFolder <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else    
+  LCL_PolicyExecuted="false"
+
+  LCL_PathCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
+  for (( LCL_i=0; LCL_i<${LCL_PathCount}; LCL_i++ ))
+  do
+    LCL_PackagePath="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+    if test -n "${LCL_PackagePath}"
+    then
+      while read LCL_pkg
+      do
+        LCL_shasum="$(shasum -a 256 "${LCL_pkg}")"
+        if ! test -n "$(f_GetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${LCL_shasum}$")"
+        then
+          LCL_PolicyExecuted="true"
+          LCL_InstalledCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed")"
+          f_logmessage "NOTE, Installing ${LCL_pkg}"
+          installer -pkg "${LCL_pkg}" -target /
+          f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed:${LCL_InstalledCount}" "${LCL_shasum}"
+        fi
+      done < <(find "${LCL_PackagePath}" -iname "*.pkg")
+    fi
+  done
+  
+  if [ "${LCL_PolicyExecuted}" = "true" ]
+  then
+    # Restart if there are any packages installed
+    f_RestartNow "ATTENTION, packages installed - we need to reboot."
+  
+  else
+    f_QuickExit "NOTE, policy aborted: No packages to install"
+    
+  fi
+
+fi
+  
+# We might never get here, but I don't suppose that matters
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

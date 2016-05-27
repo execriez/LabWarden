@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+# Short:    Policy script - Move any OLD-style folder backups into the backup folder
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   UserLogin (as user)
+#
+# Called as follows:    
+#   UserRemoveOldStyleBackups <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+f_tidyoldfolders() #userfolder
+{
+  local LCL_userfolder
+  local LCL_oldfolder
+  local LCL_BackupDir
+  local LCL_StartEpoch
+
+  LCL_userfolder="${1}"
+
+  LCL_StartEpoch=$(date -u "+%s")
+  if test -n "${LCL_userfolder}"
+  then
+    if [ -e "${LCL_userfolder}" ]
+    then
+      LCL_BackupDir="${LCL_userfolder}/Backup/"$(date -r ${LCL_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
+      ls -1 "${LCL_userfolder}" | grep -E "^201[56]-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$" | while read LCL_oldfolder
+      do
+        f_logmessage "NOTE, moving '${LCL_oldfolder}' to ${LCL_BackupDir}/"
+        mkdir -p "${LCL_BackupDir}"
+        mv "${LCL_userfolder}/${LCL_oldfolder}/" "${LCL_BackupDir}/"
+        GLB_PolicyExecuted="true"
+      done
+    fi
+  fi
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if test -z "${GLB_LoggedInUserName}"
+then
+  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  
+else    
+  GLB_PolicyExecuted="false"
+  f_tidyoldfolders "${GLB_LoggedInUserLocalHomeDir}"
+  f_tidyoldfolders "${GLB_LoggedInUserHomeNetworkDir}"
+  if [ "${GLB_PolicyExecuted}" = "true" ]
+  then
+    f_logmessage "ATTENTION, OLD-style backup files tidied"
+    
+  else
+    f_QuickExit "NOTE, policy aborted: No old style backup files to tidy up"
+    
+  fi
+
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

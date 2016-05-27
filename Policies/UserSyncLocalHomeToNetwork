@@ -1,0 +1,253 @@
+#!/bin/bash
+#
+# Short:    Policy script - Sync user files between local and network homes on network accounts with forced local homes enabled
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   UserAtDesktop (as user)
+#   UserLogout    (as user)
+#
+# Called as follows:    
+#   UserSyncLocalHomeToNetwork <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+f_SyncFiles() # Src Dst
+{
+  local LCL_Src
+  local LCL_Dst
+
+  LCL_Src="${1}"
+  LCL_Dst="${2}"
+      
+  if [ -e "${LCL_Src}" ]
+  then
+    # Source exists
+    if [ -d "${LCL_Src}" ]
+    then
+      # Sync directory
+      if [ -n "$(ls -A1 "${LCL_Src}" | grep -Ev "^.DS_Store$|^.localized$")" ]
+      then
+        # Only sync if the source dir is not empty
+        mkdir -p "${LCL_Dst}"
+        # f_logmessage "DEBUG: ${GLB_BinDir}/rsync -rltDxXv '${LCL_Src}/' '${LCL_Dst}' --delete"
+        ${GLB_BinDir}/rsync -rltDxXv "${LCL_Src}/" "${LCL_Dst}" --delete
+      fi
+    else
+      # Sync File
+      mkdir -p "$(dirname "${LCL_Src}")"
+      # f_logmessage "DEBUG: ${GLB_BinDir}/rsync -rltDxXv '${LCL_Src}' '${LCL_Dst}'"
+      ${GLB_BinDir}/rsync -rltDxXv "${LCL_Src}" "${LCL_Dst}"
+    fi
+  fi
+      
+}
+  
+# ---
+
+# Execute the Policy
+
+case ${LCL_EventName} in
+    
+UserAtDesktop)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  if [ "${GLB_LoggedInUserIsLocal}" = "true" ]
+  then
+    # We are a local account
+    f_QuickExit "NOTE, policy aborted: User account is local."
+
+  else
+    # We are a network account
+    
+    if [ ! -e "${GLB_LoggedInUserHomeDir}" ]
+    then
+      f_QuickExit "NOTE, policy aborted: Home folder doesn't exist."
+    
+    else
+      # The user home dir exists, so far so good
+
+      if [ "${GLB_LoggedInUserHomeIsLocal}" = "false" ]
+      then
+        # The user home is on the network
+        f_QuickExit "NOTE, policy aborted: Home folder is on the network."
+      
+      else
+        # The user home is local
+
+        if [ -z "${GLB_LoggedInUserHomeNetworkDir}" ]
+        then
+          # The original home network share is unavailable
+          f_QuickExit "NOTE, policy aborted: Network share is unavailable."
+       
+        else
+          # The original home network share is mounted and available
+
+          if [ ! -e "${GLB_LoggedInUserHomeNetworkDir}" ]
+          then
+            f_QuickExit "NOTE, policy aborted: Network home unavailable."
+        
+          else
+            # The original home network folder exists and is available
+
+            f_logmessage "ATTENTION, syncing files down [ LOCAL <-- NET ] "
+          
+            LCL_ObjectCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
+            for (( LCL_i=0; LCL_i<${LCL_ObjectCount}; LCL_i++ ))
+            do
+              LCL_ReqdObject="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+
+              # Sanitise the Entry
+              LCL_ReqdObject=$(echo "/${LCL_ReqdObject}" | sed "s|^/[/]*|/|;s|/$||")
+            
+              if test -n "${LCL_ReqdObject}"
+              then
+                # Sync the prefs down
+                f_logmessage "NOTE, syncing down '${LCL_ReqdObject}'"
+                f_SyncFiles "${GLB_LoggedInUserHomeNetworkDir}${LCL_ReqdObject}" "${GLB_LoggedInUserHomeDir}${LCL_ReqdObject}"
+              fi
+            done
+          
+          fi
+        fi
+      fi
+    fi
+  fi
+  ;;
+
+UserLogout)
+  # Take a note of the Policy call
+  f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+  if [ "${GLB_LoggedInUserIsLocal}" = "true" ]
+  then
+    # We are a local account
+    f_QuickExit "NOTE, policy aborted: User account is local."
+
+  else
+    # We are a network account
+    
+    if [ ! -e "${GLB_LoggedInUserHomeDir}" ]
+    then
+      f_QuickExit "NOTE, policy aborted: Home folder doesn't exist."
+    
+    else
+      # The user home dir exists, so far so good
+
+      if [ "${GLB_LoggedInUserHomeIsLocal}" = "false" ]
+      then
+        # The user home is on the network
+        f_QuickExit "NOTE, policy aborted: Home folder is on the network."
+      
+      else
+        # The user home is local
+
+        if [ -z "${GLB_LoggedInUserHomeNetworkDir}" ]
+        then
+          # The original home network share is unavailable
+          f_QuickExit "NOTE, policy aborted: Network share is unavailable."
+       
+        else
+          # The original home network share is mounted and available
+
+          if [ ! -e "${GLB_LoggedInUserHomeNetworkDir}" ]
+          then
+            f_QuickExit "NOTE, policy aborted: Network home unavailable."
+        
+          else
+            # The original home network folder exists and is available
+
+            f_logmessage "ATTENTION, syncing files up [ LOCAL --> NET ] "
+
+            LCL_ObjectCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
+            for (( LCL_i=0; LCL_i<${LCL_ObjectCount}; LCL_i++ ))
+            do
+              LCL_ReqdObject="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+
+              # Sanitise the Entry
+              LCL_ReqdObject=$(echo "/${LCL_ReqdObject}" | sed "s|^/[/]*|/|;s|/$||")
+            
+              if test -n "${LCL_ReqdObject}"
+              then
+                # Sync the prefs back up
+                f_logmessage "NOTE, syncing up '${LCL_ReqdObject}'"
+                f_SyncFiles "${GLB_LoggedInUserHomeDir}${LCL_ReqdObject}" "${GLB_LoggedInUserHomeNetworkDir}${LCL_ReqdObject}"
+              fi
+            done
+          
+          fi
+        fi
+      fi
+    fi
+  fi
+  ;;
+
+*)
+  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  ;;
+
+esac
+
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

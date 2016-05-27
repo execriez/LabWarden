@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# Short:    Policy script - Set User Experience
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   Boot (as root)
+#
+# Called as follows:    
+#   SystemUserExperience <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# REF: Remove network home question mark from dock - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else    
+  f_logmessage "ATTENTION, setting user experience (how we handle home folders for network users)"
+
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:mobile")"
+  LCL_mobile="disable";[ "${LCL_property}" = "true" ] && LCL_mobile="enable"
+  
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:mobileconfirm")"
+  LCL_mobileconfirm="disable";[ "${LCL_property}" = "true" ] && LCL_mobileconfirm="enable"
+  
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:localhome")"
+  LCL_localhome="disable";[ "${LCL_property}" = "true" ] && LCL_localhome="enable"
+  
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:sharepoint")"
+  LCL_sharepoint="disable";[ "${LCL_property}" = "true" ] && LCL_sharepoint="enable"
+
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:useuncpath")"
+  LCL_useuncpath="disable";[ "${LCL_property}" = "true" ] && LCL_useuncpath="enable"
+
+  LCL_protocol="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:protocol")"
+
+  LCL_property="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:alldomains")"
+  LCL_alldomains="disable";[ "${LCL_property}" = "true" ] && LCL_alldomains="enable"
+
+  LCL_preferredserver="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:preferredserver")"
+
+  dsconfigad -mobile ${LCL_mobile}
+  dsconfigad -mobileconfirm ${LCL_mobileconfirm}
+  dsconfigad -localhome ${LCL_localhome}
+  dsconfigad -sharepoint ${LCL_sharepoint}
+  dsconfigad -useuncpath ${LCL_useuncpath}
+  dsconfigad -protocol ${LCL_protocol}
+  
+  if test -n "${LCL_preferredserver}"
+  then
+    dsconfigad -preferred ${LCL_preferredserver}
+  fi
+
+  dsconfigad -alldomains ${LCL_alldomains}
+
+  # Remove network home question mark from dock - thanks to - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
+  /usr/libexec/PlistBuddy 2>/dev/null -c "Delete :module\ options:ActiveDirectory:managed\ client\ template:mcx_application_data:com.apple.dock:Forced:0:mcx_preference_settings:MCXDockSpecialFolders-Raw:0" "/Library/Preferences/OpenDirectory/Configurations/Active Directory/${GLB_ADDomainNameFlat}.plist"
+
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

@@ -1,0 +1,183 @@
+#!/bin/bash
+#
+# Short:    Policy script - Delete old user profiles
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   LoginWindowIdle (as root)
+#
+# Called as follows:    
+#   SystemDeleteOldUserProfiles <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else    
+  LCL_PolicyExecuted="false"
+
+  # Get the days allowable between logins before profiles are deleted
+  LCL_LoginMaxAgeDays="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:LoginMaxAgeDays")"
+  
+  # Get the earliest creation date/time allowable - cache files (in /private/var/folders) created earlier than this are deleted
+  LCL_UserCacheEarliestEpoch="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:UserCacheEarliestEpoch")"
+
+  if test -z "${LCL_LoginMaxAgeDays}"
+  then
+    LCL_LoginMaxAgeDays=62
+  fi
+
+  while read LCL_UserFolder
+  do
+    if test -d "${LCL_UserFolder}"
+    then
+      LCL_User="$(stat -f "%Su" "${LCL_UserFolder}")"
+      
+      # Check if user is a local account (returns "true" or "false")
+      if [ "$(dseditgroup -o checkmember -m "${LCL_User}" -n . localaccounts | cut -d" " -f1)" = "yes" ]
+      then
+        LCL_UserIsLocal="true"
+      else
+        LCL_UserIsLocal="false"
+      fi
+    
+      # Only Delete user folders for network users
+      if [ "${LCL_UserIsLocal}" = "false" ]
+      then
+      
+        if test -n "$(dscl 2>/dev/null localhost -read /Local/Default/Users/${LCL_User} OriginalHomeDirectory)"
+        then
+          LCL_UserIsMobile="true"
+        else
+          LCL_UserIsMobile="false"
+        fi
+
+        # Only delete user folders for non-mobile accounts
+        if [ "${LCL_UserIsMobile}" = "false" ]
+        then
+        
+          LCL_DeleteProfile="false"
+          if test -e "${LCL_UserFolder}/Library/Preferences/com.apple.finder.plist"
+          then
+            LCL_LastUseEpoch=$(stat -f "%m" "${LCL_UserFolder}/Library/Preferences/com.apple.finder.plist")
+            if [ $((${LCL_MyStartEpoch}-${LCL_LastUseEpoch})) -gt $((${LCL_LoginMaxAgeDays}*24*60*60)) ]
+            then
+              LCL_DeleteProfile="true"
+              f_logmessage "NOTE, user '${LCL_User}' hasn't logged on for more than ${LCL_LoginMaxAgeDays} days"
+            fi
+        
+          else
+            LCL_DeleteProfile="true"
+            f_logmessage "NOTE, user '${LCL_User}' has never logged on"
+          fi
+        
+        fi
+        
+        if [ "${LCL_DeleteProfile}" = "true" ]
+        then
+          LCL_PolicyExecuted="true"
+          f_logmessage "ATTENTION, deleting profle for user '${LCL_User}'"
+          
+          # Delete the user folder
+          rm -fR "${LCL_UserFolder}"
+          
+          # Delete the user cache folders
+          find /private/var/folders \( -depth 2 -prune \) -and -user "${LCL_User}" -exec rm -fR "{}" \; 
+        fi
+      fi
+      
+      if test -n "${LCL_UserCacheEarliestEpoch}"
+      then
+        while read LCL_Path
+        do
+          LCL_CreatedEpoch=$(stat -f "%c" "${LCL_Path}")
+          if [ ${LCL_CreatedEpoch} -lt ${LCL_UserCacheEarliestEpoch} ]
+          then
+            LCL_PolicyExecuted="true"
+            f_logmessage "ATTENTION, deleting outdated cache folder for user '${LCL_User}'"
+            rm -fR "${LCL_Path}"
+          fi
+
+        done < <(find /private/var/folders \( -depth 2 -prune \) -and \( -user "${LCL_User}" \))
+      fi
+    
+      if [ "${LCL_PolicyExecuted}" = "false" ]
+      then
+        f_QuickExit "NOTE, policy aborted: there are no old user profiles to delete"
+    
+      fi
+      
+    fi
+  done < <(find /Users \( -depth 1 -prune \) -and \( -type d \) -and \( ! -user root \))
+
+fi
+
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

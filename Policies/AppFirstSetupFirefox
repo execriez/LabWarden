@@ -1,0 +1,162 @@
+#!/bin/bash
+#
+# Short:    Policy script - Setup Firefox if it has never been run
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   AppWillLaunch (as user)
+#
+# Called as follows:    
+#   AppFirstSetupFirefox <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
+# Note, older applications may return "(null)"
+GLB_ApplicationBundleIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f3)"
+
+# Note, we are only interested in "org.mozilla.firefox"
+if [ "${GLB_ApplicationBundleIdentifier}" != "org.mozilla.firefox" ]
+then
+  exit 0
+fi
+
+# Get notification e.g. WillLaunch, DidLaunch or DidTerminate
+GLB_ApplicationNotification="$(echo ${LCL_OptionalParam} | cut -d":" -f1)"
+
+# Get Date/Time Epoch of the notification
+GLB_NotificationEpoch="$(echo ${LCL_OptionalParam} | cut -d":" -f2)"
+
+# Get ApplicationName e.g. TextEdit
+GLB_ApplicationName="$(echo ${LCL_OptionalParam} | cut -d":" -f4)"
+
+# Get ApplicationPath e.g. /Applications/TextEdit.app
+GLB_ApplicationPath="$(echo ${LCL_OptionalParam} | cut -d":" -f5)"
+
+# Get ApplicationProcessIdentifier - i.e. the process ID
+GLB_ApplicationProcessIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f6)"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+case ${LCL_EventName} in
+    
+AppWillLaunch)  
+  # Create Firefox folder if necessary
+  LCL_ffoxdir="${GLB_LoggedInUserHomeDir}/Library/Application Support/Firefox"
+  mkdir -p "${LCL_ffoxdir}"
+
+  # Get the current profile folder (if any)
+  LCL_pflname=""
+  if test -f "${LCL_ffoxdir}/profiles.ini"
+  then
+    LCL_pflname=$(cat "${LCL_ffoxdir}/profiles.ini" | grep "Path=" | cut -d"=" -f2)
+  fi
+
+  # If profile doesnt exist, kill the app, set up a new profile, then relaunch the app
+  # This stops you from being asked to create a profile.
+  if [ -n "${LCL_pflname}" ] && [ -f "${LCL_ffoxdir}/${LCL_pflname}/prefs.js" ]
+  then
+    f_QuickExit "NOTE, policy aborted: Firefox has already been set up."
+
+  else
+    f_logmessage "ATTENTION, setting up Firefox for the first time."
+
+    # Quit Firefox
+    kill ${GLB_ApplicationProcessIdentifier}
+
+    LCL_pflname="Profiles/mozilla.default"
+    mkdir -p "${LCL_ffoxdir}/${LCL_pflname}"
+
+    cat << ENDFFOXPFL > "${LCL_ffoxdir}/profiles.ini"
+[General]
+StartWithLastProfile=1
+
+[Profile0]
+Name=default
+IsRelative=1
+Path=${LCL_pflname}
+ENDFFOXPFL
+
+    cat << ENDFFOXPRF > "${LCL_ffoxdir}/${LCL_pflname}/prefs.js"
+# Mozilla User Preferences
+user_pref("browser.shell.checkDefaultBrowser", false);
+ENDFFOXPRF
+
+    # Re-launch Firefox
+    /usr/bin/open -b "org.mozilla.firefox"
+  fi
+  ;;
+
+*)
+  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  ;;
+
+esac
+
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

@@ -1,0 +1,356 @@
+#!/bin/bash
+#
+# Short:    Policy script - Create symbolic links in users network home pointing to files/folders in the local home
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   UserLogin (as user)
+#
+# Called as follows:    
+#   UserRedirNetworkHomeToLocal <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+f_UndoFolderRedir() # FileRedirectList TargetHomeDir - Undo any existing home folder redirections
+{
+  local LCL_TargetHomeDir
+  local LCL_FileRedirectList
+  local LCL_ReqdLinkEntry
+  local LCL_ReqdLinkFile
+
+  LCL_FileRedirectList="${1}"
+  LCL_TargetHomeDir="${2}"
+    
+  if test -f "${LCL_FileRedirectList}"
+  then
+    # We may have symbolic links that need to be removed
+
+    while read LCL_ReqdLinkEntry
+    do
+      # Sanitise the Entry
+      LCL_ReqdLinkEntry=$(echo "/${LCL_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+  
+      LCL_ReqdLinkFile=$(echo "${LCL_ReqdLinkEntry}" | sed "s|/$||")
+      if test -n "${LCL_ReqdLinkFile}"
+      then
+        if test -L "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+        then
+          # There is a symbolic link where our file/folder should be
+        
+          if [ "${LCL_ReqdLinkEntry}" != "${LCL_ReqdLinkFile}" ]
+          then
+            # If the link was on a directory, re-create directory
+            /bin/rm -f "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+            mkdir -p "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+          else
+            /bin/rm -f "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+          fi
+        fi
+      fi
+      
+    done < "${LCL_FileRedirectList}"
+    
+  fi
+}
+
+f_DoFolderRedir() # FileRedirectList TargetHomeDir SourceHomeDir
+{
+  local LCL_TargetHomeDir
+  local LCL_SourceHomeDir
+  local LCL_FileRedirectList
+  local LCL_BackupDir
+  local LCL_ReqdLinkEntry
+  local LCL_ReqdLinkFile
+  local LCL_EnclosingDir
+  local LCL_TargetIsLocal
+  local LCL_StartEpoch
+
+  LCL_FileRedirectList="${1}"
+  LCL_TargetHomeDir="${2}"    # Where the link files will be created
+  LCL_SourceHomeDir="${3}"    # Where the files/folders are that the links will be pointing to to
+
+  # Take a note when this function started
+  LCL_StartEpoch=$(date -u "+%s")
+
+  if test -f "${LCL_FileRedirectList}"
+  then
+  
+    # Decide whether the target is on the local drive
+    if test -n "$(stat -f "%Sd" "${LCL_TargetHomeDir}" | grep "^disk")"
+    then
+      LCL_TargetIsLocal="true"
+    else
+      LCL_TargetIsLocal="false"
+    fi
+
+    # Backup location for existing files/folders that might be replaced by a link
+    LCL_BackupDir="${LCL_TargetHomeDir}/Backup/"$(date -r ${LCL_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
+
+    # Read entries from file
+    while read LCL_ReqdLinkEntry
+    do
+      # Sanitise the Entry
+      LCL_ReqdLinkEntry=$(echo "/${LCL_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+      
+      LCL_ReqdLinkFile=$(echo "${LCL_ReqdLinkEntry}" | sed "s|/$||")
+      if test -n "${LCL_ReqdLinkFile}"
+      then
+        if test -e "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+        then
+          if test -d "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+          then
+            # If the existing folder at the target is local, remove any ACLs that might stop us doing our stuff
+            if [ "${LCL_TargetIsLocal}" = "true" ]
+            then
+              /bin/chmod -RN "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+            fi
+            # Check if existing folder is empty - and backup if necessary
+            if test -z "$(ls -A1 "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}" | grep -Ev "^.DS_Store$|^.localized$")"
+            then
+              /bin/rm -fR "${LCL_TargetHomeDir}/${LCL_ReqdLinkFile}"
+            else
+              # Make sure there is a target enclosing folder to backup the folder
+              LCL_EnclosingDir="$(dirname "${LCL_BackupDir}${LCL_ReqdLinkFile}")"
+              /bin/mkdir -p "${LCL_EnclosingDir}"
+              # Move (back up) existing folder at target
+              /bin/mv -f "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}" "${LCL_EnclosingDir}/"
+            fi
+          else
+            # If the existing file at the target is local, remove any ACLs that might stop us doing our stuff
+            if [ "${LCL_TargetIsLocal}" = "true" ]
+            then
+              /bin/chmod -N "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+            fi
+            # Make sure there is a target enclosing folder to backup the file
+            LCL_EnclosingDir="$(dirname "${LCL_BackupDir}${LCL_ReqdLinkFile}")"
+            /bin/mkdir -p "${LCL_EnclosingDir}"
+            # Move (back up) existing file at target
+            /bin/mv -f "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}" "${LCL_EnclosingDir}/"
+          fi
+        fi
+      
+        # Make sure there is a target enclosing folder to store the symbolic link
+        LCL_EnclosingDir="$(dirname "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}")"
+        /bin/mkdir -p "${LCL_EnclosingDir}"
+      
+        # Make sure we have a source folder or source file parent folder
+        if [ "${LCL_ReqdLinkEntry}" != "${LCL_ReqdLinkFile}" ]
+        then
+          # We are linking to a directory - so make sure it exists
+          /bin/mkdir -p "${LCL_SourceHomeDir}${LCL_ReqdLinkFile}"
+        else
+          # We are linking to a file - so make sure the parent folder exists
+          LCL_EnclosingDir="$(dirname "${LCL_SourceHomeDir}${LCL_ReqdLinkFile}")"
+          /bin/mkdir -p "${LCL_EnclosingDir}"
+        fi
+      
+        # Create link - source file/folder -to- target link
+        /bin/ln -sf "${LCL_SourceHomeDir}${LCL_ReqdLinkFile}" "${LCL_TargetHomeDir}${LCL_ReqdLinkFile}"
+      fi
+    done < "${LCL_FileRedirectList}"
+    
+  fi
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if test -z "${GLB_LoggedInUserName}"
+then
+  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  
+else    
+  if [ "${GLB_LoggedInUserIsLocal}" = "true" ]
+  then
+    # We are a local account
+    f_QuickExit "NOTE, policy aborted: User account is local."
+
+  else
+    # We are a network account
+    
+    if [ ! -e "${GLB_LoggedInUserHomeDir}" ]
+    then
+      f_QuickExit "NOTE, policy aborted: Home folder doesn't exist."
+
+    else
+      # The user home dir exists, so far so good
+
+      if [ "${GLB_LoggedInUserHomeIsLocal}" = "true" ]
+      then
+        # The user home is on the local drive
+        f_QuickExit "NOTE, policy aborted: Home folder is local."
+      
+      else
+        # The user home is on the network
+
+        if [ -z "${GLB_LoggedInUserHomeNetworkDir}" ]
+        then
+          # The original home network share is unavailable
+          f_QuickExit "NOTE, policy aborted: Network home is undefined or unavailable (that's odd)."
+       
+        else
+          f_logmessage "ATTENTION, redirecting folders from active network home to local home."
+
+          # The original home network share is mounted and available
+
+          # There shouldn't be any folder redirections on the local drive
+          # If there are, these may have been left when swapping between "Network Homes" and "Force local homes".
+          if test -s "${GLB_LoggedInUserLocalHomeDir}/.FolderRedir.txt"
+          then
+            f_UndoFolderRedir "${GLB_LoggedInUserLocalHomeDir}/.FolderRedir.txt" "${GLB_LoggedInUserLocalHomeDir}"
+          fi
+          rm -f "${GLB_LoggedInUserLocalHomeDir}/.FolderRedir.txt"
+
+          # Make sure the link list exists
+          touch "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+
+          # Check the existing link list
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt"
+          touch "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt"
+          while read LCL_ReqdLinkEntry
+          do
+            # Sanitise the Entry
+            LCL_ReqdLinkEntry=$(echo "/${LCL_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+            LCL_ReqdLinkFile=$(echo "${LCL_ReqdLinkEntry}" | sed "s|/$||")
+            if test -n "${LCL_ReqdLinkFile}"
+            then
+              if test -L "${GLB_LoggedInUserLocalHomeDir}${LCL_ReqdLinkFile}"
+              then
+                echo "${LCL_ReqdLinkEntry}" >>"${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt"
+              fi
+            fi
+          done < "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+            
+          # Create the required link list
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+          touch "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+          # If a local home exists, populate the empty link list
+          if test -n "${GLB_LoggedInUserLocalHomeDir}"
+          then
+            LCL_ObjectCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
+            for (( LCL_i=0; LCL_i<${LCL_ObjectCount}; LCL_i++ ))
+            do
+              LCL_ReqdLinkEntry="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+              LCL_ReqdLinkEntry=$(echo "/${LCL_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+              LCL_ReqdLinkFile=$(echo "${LCL_ReqdLinkEntry}" | sed "s|/$||")
+              if test -n "${LCL_ReqdLinkFile}"
+              then
+                echo "${LCL_ReqdLinkEntry}" >>"${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+              fi
+            done
+          fi
+     
+          # Find out which folders we need to check for links/unlinks
+          echo "$(cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt" ; cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt" )" | sort -u > "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Check.txt"
+
+          # Find out which folders we need to unlink (if we ever change the link list)
+          echo "$(cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt" ; cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Unlink.txt"
+
+          # Find out which folders we need to link
+          echo "$(cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt" ; cat "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Link.txt"
+
+          # Link files
+          if test -s "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Link.txt"
+          then
+            f_DoFolderRedir  "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Link.txt" "${GLB_LoggedInUserHomeNetworkDir}" "${GLB_LoggedInUserLocalHomeDir}"
+          fi
+
+          # Unlink files
+          if test -s "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Unlink.txt"
+          then
+            f_UndoFolderRedir "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Unlink.txt" "${GLB_LoggedInUserHomeNetworkDir}"
+          fi
+
+          # Delete temporary files
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Old.txt"
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Check.txt"
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Unlink.txt"
+          rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir-Link.txt"
+
+          # Delete the link file if it is empty
+          if ! test -s "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+          then
+            # Link list file is empty
+            rm -f "${GLB_LoggedInUserHomeNetworkDir}/.FolderRedir.txt"
+            rm -f "${GLB_LoggedInUserHomeNetworkDir}/_Local_Home"
+        
+          else
+            # Create a link to the user home root
+            rm -f "${GLB_LoggedInUserHomeNetworkDir}/_Local_Home"
+            /bin/ln -sf "${GLB_LoggedInUserLocalHomeDir}" "${GLB_LoggedInUserHomeNetworkDir}/_Local_Home"
+
+          fi
+    
+        fi
+      fi
+    fi
+  fi
+
+fi
+
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

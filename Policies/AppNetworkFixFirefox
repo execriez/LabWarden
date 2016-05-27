@@ -1,0 +1,226 @@
+#!/bin/bash
+#
+# Short:    Policy script - Fix Firefox to work when the user home is on the Network
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Triggered by the following events:
+#   AppWillLaunch   (as user)
+#   AppDidTerminate (as user)
+#
+# Called as follows:    
+#   AppNetworkFixFirefox <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.82"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
+# Note, older applications may return "(null)"
+GLB_ApplicationBundleIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f3)"
+
+# Note, we are only interested in "org.mozilla.firefox"
+if [ "${GLB_ApplicationBundleIdentifier}" != "org.mozilla.firefox" ]
+then
+  exit 0
+fi
+
+# Get notification e.g. WillLaunch, DidLaunch or DidTerminate
+GLB_ApplicationNotification="$(echo ${LCL_OptionalParam} | cut -d":" -f1)"
+
+# Get Date/Time Epoch of the notification
+GLB_NotificationEpoch="$(echo ${LCL_OptionalParam} | cut -d":" -f2)"
+
+# Get ApplicationName e.g. TextEdit
+GLB_ApplicationName="$(echo ${LCL_OptionalParam} | cut -d":" -f4)"
+
+# Get ApplicationPath e.g. /Applications/TextEdit.app
+GLB_ApplicationPath="$(echo ${LCL_OptionalParam} | cut -d":" -f5)"
+
+# Get ApplicationProcessIdentifier - i.e. the process ID
+GLB_ApplicationProcessIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f6)"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+case ${LCL_EventName} in
+    
+AppWillLaunch)  
+  if [ "${GLB_LoggedInUserHomeIsLocal}" = "true" ]
+  then
+    # The user home is on the local drive
+    f_QuickExit "NOTE, policy aborted: Home folder is on the local drive."
+    
+  else
+    LCL_ffoxTmpDir="${GLB_ThisUserTempDir}/${GLB_ApplicationBundleIdentifier}/Links"
+    if test -d "${LCL_ffoxTmpDir}"
+    then
+      f_QuickExit "NOTE, policy aborted: No need to fix, as fix is already in place."
+
+    else
+      f_logmessage "ATTENTION, implementing Fix for Firefox network profiles."
+
+      # Quit Firefox
+      kill ${GLB_ApplicationProcessIdentifier}
+
+      # Create Firefox folder if necessary
+      LCL_ffoxdir="${GLB_LoggedInUserHomeDir}/Library/Application Support/Firefox"
+      mkdir -p "${LCL_ffoxdir}"
+
+      # Get the current profile folder (if any)
+      LCL_pflname=""
+      if test -f "${LCL_ffoxdir}/profiles.ini"
+      then
+        LCL_pflname=$(cat "${LCL_ffoxdir}/profiles.ini" | grep "Path=" | cut -d"=" -f2)
+      fi
+
+      # If profile doesnt exist, then Firefox has never been set up
+      if [ -z "${LCL_pflname}" ] || [ -f "${LCL_ffoxdir}/${LCL_pflname}/prefs.js" ]
+      then
+        # Set up Firefox for the first time
+        LCL_pflname="Profiles/mozilla.default"
+        mkdir -p "${LCL_ffoxdir}/${LCL_pflname}"
+
+        cat << ENDFFOXPFL > "${LCL_ffoxdir}/profiles.ini"
+[General]
+StartWithLastProfile=1
+
+[Profile0]
+Name=default
+IsRelative=1
+Path=${LCL_pflname}
+ENDFFOXPFL
+
+        cat << ENDFFOXPRF > "${LCL_ffoxdir}/${LCL_pflname}/prefs.js"
+# Mozilla User Preferences
+user_pref("browser.shell.checkDefaultBrowser", false);
+ENDFFOXPRF
+
+      fi
+
+      mkdir -p "${LCL_ffoxTmpDir}"
+      ln -sf "${LCL_ffoxTmpDir}/places.sqlite-shm" "${LCL_ffoxdir}/${LCL_pflname}/places.sqlite-shm"
+      ln -sf "${LCL_ffoxTmpDir}/webappsstore.sqlite-shm" "${LCL_ffoxdir}/${LCL_pflname}/webappsstore.sqlite-shm"
+      ln -sf "${LCL_ffoxTmpDir}/cookies.sqlite-shm" "${LCL_ffoxdir}/${LCL_pflname}/cookies.sqlite-shm"
+    
+      # Re-launch Firefox
+      /usr/bin/open -b "org.mozilla.firefox"
+    fi
+  fi
+  ;;
+
+AppDidTerminate)
+  if [ "${GLB_LoggedInUserHomeIsLocal}" = "true" ]
+  then
+    # The user home is on the local drive
+    f_QuickExit "NOTE, policy aborted: Home folder is on the local drive."
+          
+  else
+    LCL_ffoxTmpDir="${GLB_ThisUserTempDir}/${GLB_ApplicationBundleIdentifier}/Links"
+    if ! test -d "${LCL_ffoxTmpDir}"
+    then
+      f_QuickExit "NOTE, policy aborted: No need to remove fix, as fix is not in place."
+
+    else
+      f_logmessage "ATTENTION, removing Fix for Firefox network profiles."
+
+      # If user home is on a network drive, undo any links we might have created
+      LCL_ffoxdir="${GLB_LoggedInUserHomeDir}/Library/Application Support/Firefox"
+      
+      # Get the current profile folder (if any)
+      LCL_pflname=""
+      if test -f "${LCL_ffoxdir}/profiles.ini"
+      then
+        LCL_pflname=$(cat "${LCL_ffoxdir}/profiles.ini" | grep "Path=" | cut -d"=" -f2)
+      fi
+
+      # Check the profile exists
+      if test -n "${LCL_pflname}"
+      then
+        # If these files are links, then delete
+        if test -L "${LCL_ffoxdir}/${LCL_pflname}/places.sqlite-shm"
+        then
+          rm -f "${LCL_ffoxdir}/${LCL_pflname}/places.sqlite-shm"
+        fi
+        if test -L "${LCL_ffoxdir}/${LCL_pflname}/webappsstore.sqlite-shm"
+        then
+          rm -f "${LCL_ffoxdir}/${LCL_pflname}/webappsstore.sqlite-shm"
+        fi
+        if test -L "${LCL_ffoxdir}/${LCL_pflname}/cookies.sqlite-shm"
+        then
+          rm -f "${LCL_ffoxdir}/${LCL_pflname}/cookies.sqlite-shm"
+        fi
+      fi
+    fi
+  fi
+  ;;
+
+*)
+  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  ;;
+
+esac
+
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+# ---
