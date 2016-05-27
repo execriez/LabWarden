@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - shrink a .mobileconfig payload down to its bare minimum content
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   mobileconfig-install <somefile.mobileconfig>
+#
+# Outputs the path to the shrunken mobileconfig.
+
+# Full souce of this script
+GLB_MySource="${0}"
+
+# Filename of this script
+GLB_MyScript="$(basename ${GLB_MySource})"
+
+# Get the name of the mobileconfig
+GLB_MobileConfigFile="${1}"
+
+if test -z "${GLB_MobileConfigFile}"
+then
+  echo "Usage ${GLB_MyScript} SomeManagedClient.mobileconfig"
+  exit 0
+fi
+
+# Filename of the mobileconfig
+GLB_DocFileName="$(basename ${GLB_MobileConfigFile})"
+
+# Filename without extension
+GLB_DocName=$(echo ${GLB_DocFileName} | sed "s|\.[^.]*$||")
+
+# A place to store the shrunken mobileconfigs
+GLB_ShrunkFolder="$(mktemp -dq /tmp/XXXXXXXX)"
+cd "${GLB_ShrunkFolder}"
+
+GLB_TempMobileConfigFile="${GLB_ShrunkFolder}"/Temp.mobileconfig
+
+cp "${GLB_MobileConfigFile}" "${GLB_TempMobileConfigFile}"
+
+GLB_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${GLB_TempMobileConfigFile}")
+
+# Set the PayloadIdentifier to be the PayLoad UUID
+/usr/libexec/PlistBuddy -c "Set ':PayloadIdentifier' ${GLB_PayloadUUID}" "${GLB_TempMobileConfigFile}"
+
+# Set the PayloadDisplayName to be the DocName
+GLB_PayloadDisplayName="${GLB_DocName}"
+/usr/libexec/PlistBuddy -c "Set ':PayloadDisplayName' ${GLB_PayloadDisplayName}" "${GLB_TempMobileConfigFile}"
+
+GLB_Count=0
+while [ 1 ]
+do
+  GLB_PayloadContentPayloadType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadContent:${GLB_Count}:PayloadType'" "${GLB_TempMobileConfigFile}")
+  if test -z "${GLB_PayloadContentPayloadType}"
+  then
+    break
+
+  else
+    case "${GLB_PayloadContentPayloadType}" in
+    'com.apple.ManagedClient.preferences')
+      GLB_PayloadContentName=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadContent:${GLB_Count}:PayloadContent'" "${GLB_TempMobileConfigFile}" | head -n2 | grep "= Dict {" | tr -d " " | cut -d"=" -f1)
+
+      # Delete mcx [optional] timestamp
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:0:PayloadContent:${GLB_PayloadContentName}:Set-Once:0:mcx_data_timestamp'" "${GLB_TempMobileConfigFile}"
+
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:0:PayloadContent:${GLB_PayloadContentName}:Forced:0:mcx_data_timestamp'" "${GLB_TempMobileConfigFile}"
+      ;;
+    
+    esac
+    
+    GLB_PayloadContentPayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadContent:${GLB_Count}:PayloadUUID'" "${GLB_TempMobileConfigFile}")
+
+    # Set the Sub-Payload Content PayloadIdentifier to the Sub-Payload UUID
+    /usr/libexec/PlistBuddy -c "Set ':PayloadContent:${GLB_Count}:PayloadIdentifier' ${GLB_PayloadContentPayloadUUID}" "${GLB_TempMobileConfigFile}"
+
+    # Delete the PayloadDisplayName
+    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:${GLB_Count}:PayloadDisplayName'" "${GLB_TempMobileConfigFile}"
+
+    # Delete the PayloadOrganization
+    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:${GLB_Count}:PayloadOrganization'" "${GLB_TempMobileConfigFile}"
+
+    # Delete the PayloadDescription
+    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:${GLB_Count}:PayloadDescription'" "${GLB_TempMobileConfigFile}"
+
+    # Delete the PayloadVersion (assumes 1)
+    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:${GLB_Count}:PayloadVersion'" "${GLB_TempMobileConfigFile}"
+
+    # Delete the PayloadEnabled (assumes true)
+    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadContent:${GLB_Count}:PayloadEnabled'" "${GLB_TempMobileConfigFile}"
+
+  fi
+  GLB_Count=$((${GLB_Count}+1))
+done
+
+# Delete the [optional] PayloadOrganization
+/usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadOrganization'" "${GLB_TempMobileConfigFile}"
+
+# Delete the [optional] PayloadDescription
+/usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadDescription'" "${GLB_TempMobileConfigFile}"
+
+# Delete the PayloadVersion (assumes 1)
+/usr/libexec/PlistBuddy -c "Delete ':PayloadVersion'" "${GLB_TempMobileConfigFile}"
+
+# Delete the PayloadScope (User/System is determined by how its installed)
+/usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':PayloadScope'" "${GLB_TempMobileConfigFile}"
+
+## Delete the PayloadType (assumes configuration)
+#/usr/libexec/PlistBuddy -c "Delete ':PayloadType'" "${GLB_TempMobileConfigFile}"
+
+GLB_ShrunkMobileConfigFile="${GLB_ShrunkFolder}/${GLB_DocFileName}"
+cat "${GLB_TempMobileConfigFile}" | sed 's|<!DOCTYPE[^>]*>||;s|<?xml[^>]*>||;s|<plist[^>]*>|<plist>|' | tr -d "\t" | tr -d "\n" > "${GLB_ShrunkMobileConfigFile}"
+rm -f "${GLB_TempMobileConfigFile}"
+
+echo "${GLB_ShrunkMobileConfigFile}"

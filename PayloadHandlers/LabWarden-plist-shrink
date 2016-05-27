@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - shrink a .LabWarden.plist payload down to its bare minimum content
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   mobileconfig-install <somefile.mobileconfig>
+#
+# Outputs the path to the shrunken mobileconfig.
+
+# Full souce of this script
+GLB_MySource="${0}"
+
+# Filename of this script
+GLB_MyScript="$(basename ${GLB_MySource})"
+
+# Get the name of the mobileconfig
+GLB_ConfigFile="${1}"
+
+if test -z "${GLB_ConfigFile}"
+then
+  echo "Usage ${GLB_MyScript} SomeFile.LabWarden.plist"
+  exit 0
+fi
+
+# Filename of the mobileconfig
+GLB_DocFileName="$(basename ${GLB_ConfigFile})"
+
+# Filename without extension
+GLB_DocName=$(echo ${GLB_DocFileName} | sed "s|\.[^.]*$||")
+
+# A place to store the shrunken mobileconfigs
+GLB_ShrunkFolder="$(mktemp -dq /tmp/XXXXXXXX)"
+cd "${GLB_ShrunkFolder}"
+
+cat "${GLB_ConfigFile}" | tr -d "\t" | tr -d "\n" > "${GLB_ShrunkFolder}/${GLB_DocFileName}"
+
+echo "${GLB_ShrunkFolder}/${GLB_DocFileName}"

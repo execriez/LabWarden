@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - verify that a .rtf payload is installed OK
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+LCL_Payload="${1}"
+
+if test -z "${LCL_Payload}"
+then
+  f_QuickExit "Usage ${LCL_MyScript} somefile.rtf"
+fi
+
+if ! test -e "${LCL_Payload}"
+then
+  f_QuickExit "File not found - ${LCL_Payload}"
+fi
+
+# ---
+
+LCL_GPOuser="${2}"
+
+if test -n "${LCL_GPOuser}"
+then
+  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  
+else
+  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  
+fi
+mkdir -p "${LCL_ConfigDir}"
+
+# ---
+
+# Verify the RTF
+LCL_PayloadName="$(basename ${LCL_Payload})"
+case ${LCL_PayloadName} in
+PolicyBanner.rtf)
+  if test -n "${LCL_GPOuser}"
+  then
+    f_QuickExit "This is not a user pyload - ${LCL_PayloadName}"
+
+  else
+    if test -f "/Library/Security/${LCL_PayloadName}"
+    then
+      # Remove temporary files
+      rm -fR "${GLB_ThisScriptTempDir}"
+      
+      exit 0
+      
+    else
+      f_QuickExit "Profile ${LCL_PayloadName} is not installed"
+
+    fi
+  fi
+  ;;
+
+  *)
+  f_QuickExit "I dont know what to do with this payload - ${LCL_PayloadName}"
+
+  ;;
+
+esac	    
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"

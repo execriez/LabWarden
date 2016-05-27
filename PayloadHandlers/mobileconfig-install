@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - install a .mobileconfig payload
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+#
+# Called as follows:    
+#   mobileconfig-install <somefile.mobileconfig> [user]
+#
+# Without a user specified, installs for the workstation.
+# With a user, installs for the specified user.
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+LCL_Payload="${1}"
+
+if test -z "${LCL_Payload}"
+then
+  f_QuickExit "Usage ${LCL_MyScript} somefile.mobileconfig"
+fi
+
+if ! test -e "${LCL_Payload}"
+then
+  f_QuickExit "File not found - ${LCL_Payload}"
+fi
+
+# ---
+
+LCL_GPOuser="${2}"
+
+# ---
+
+# Install the mobileconfig
+if test -n "${LCL_GPOuser}"
+then
+  f_logmessage "ATTENTION, installing config "$(basename ${LCL_Payload})
+  f_logmessage "DEBUG: /usr/bin/profiles -I -F '${LCL_Payload}' -U '${LCL_GPOuser}'"
+  /usr/bin/profiles -I -F "${LCL_Payload}" -U "${LCL_GPOuser}"
+  LCL_ErrCode="$?"
+
+else
+  f_logmessage "ATTENTION, installing config "$(basename ${LCL_Payload})
+  f_logmessage "DEBUG: /usr/bin/profiles -I -F '${LCL_Payload}'"
+  /usr/bin/profiles -I -F "${LCL_Payload}"
+  LCL_ErrCode="$?"
+  
+fi
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+exit ${LCL_ErrCode}

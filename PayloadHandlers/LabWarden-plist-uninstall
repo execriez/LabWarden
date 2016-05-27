@@ -1,0 +1,158 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - uninstall a .LabWarden.plist payload
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+LCL_Payload="${1}"
+
+if test -z "${LCL_Payload}"
+then
+  f_QuickExit "Usage ${LCL_MyScript} somefile.LabWarden.plist"
+fi
+
+if ! test -e "${LCL_Payload}"
+then
+  f_QuickExit "File not found - ${LCL_Payload}"
+fi
+
+# ---
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "${LCL_Payload} can only be uninstalled as root"
+fi
+
+# ---
+
+LCL_GPOuser="${2}"
+
+if test -n "${LCL_GPOuser}"
+then
+  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  
+else
+  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  
+fi
+
+# ---
+
+# Uninstall the LabWarden.plist config
+
+mkdir -p "${LCL_ConfigDir}"
+
+LCL_ObjectName=$(f_GetPlistProperty "${LCL_Payload}" ":Name")
+LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
+
+  if test -n "${LCL_ObjectName}"
+  then
+    if test -n "${LCL_ObjectType}"
+    then
+  
+      f_logmessage "ATTENTION, uninstalling config for ${LCL_ObjectType} '${LCL_ObjectName}'"
+      
+      case "${LCL_ObjectType}" in
+      Printer)
+        # Delete the printer
+        LCL_PrinterName=$(f_GetPlistProperty "${LCL_Payload}" ":Name")
+        LCL_PrinterDesc=$(echo $LCL_PrinterName | tr " " "_")
+        LCL_PrinterName=$(echo $LCL_PrinterDesc | tr "-" "_")
+        if test -n "${LCL_PrinterName}"
+        then
+          f_logmessage "ATTENTION, uninstalling printer ${LCL_PrinterName}"
+          /usr/sbin/lpadmin 2>/dev/null -x "${LCL_PrinterName}"
+        fi
+        ;;
+
+      Policy)
+        LCL_TriggeredByCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_ObjectName}:TriggeredBy")"
+        for (( LCL_TriggeredByIndex=0; LCL_TriggeredByIndex<${LCL_TriggeredByCount}; LCL_TriggeredByIndex++ ))
+        do
+          LCL_TriggeredByEventName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_ObjectName}:TriggeredBy:${LCL_TriggeredByIndex}")
+          if test -n "${LCL_TriggeredByEventName}"
+          then
+
+            # Check EventName object exists
+            /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_TriggeredByEventName}'" "${LCL_ConfigDir}/LabWarden.plist"
+            if [ $? -eq 0 ]
+            then
+              # Check EventName:DoesTrigger array exists
+              /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_TriggeredByEventName}:DoesTrigger'" "${LCL_ConfigDir}/LabWarden.plist"
+              if [ $? -eq 0 ]
+              then
+                LCL_DoesTriggerCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_TriggeredByEventName}:DoesTrigger")"
+                LCL_DoesTriggerIndex=0
+                while [ ${LCL_DoesTriggerIndex} -lt ${LCL_DoesTriggerCount} ]
+                do
+                  LCL_EventDoesTriggerName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_TriggeredByEventName}:DoesTrigger:${LCL_DoesTriggerIndex}")
+                  if [ "${LCL_EventDoesTriggerName}" = "${LCL_ObjectName}" ]
+                  then
+                    # Remove object from Events DoesTrigger array
+                    /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_TriggeredByEventName}:DoesTrigger:${LCL_DoesTriggerIndex}'" "${LCL_ConfigDir}/LabWarden.plist"
+                    LCL_DoesTriggerCount=$((${LCL_DoesTriggerCount}-1))
+                  else
+                    LCL_DoesTriggerIndex=$((${LCL_DoesTriggerIndex}+1))
+                  fi
+                
+                done
+                
+              fi
+
+            fi
+
+          fi
+        done
+        ;;
+        
+      esac
+
+      # Delete the config
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_ObjectName}:Config'" "${LCL_ConfigDir}/LabWarden.plist"
+
+      # Delete the triggers
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_ObjectName}:TriggeredBy'" "${LCL_ConfigDir}/LabWarden.plist"
+
+      # ---
+      # STOP-GAP until I can get my configs consistant
+      
+      # Delete the trigger
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_ObjectName}:Trigger'" "${LCL_ConfigDir}/LabWarden.plist"
+
+      case "${LCL_ObjectName}" in
+      Maintenance|SystemInstallPackageFromFolder)
+        # Do nothing more
+        ;;
+        
+      *)
+        # Delete named object
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_ObjectName}'" "${LCL_ConfigDir}/LabWarden.plist"
+        ;;
+        
+      esac
+      # ---
+
+    fi
+  fi
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"

@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+LCL_Payload="${1}"
+
+if test -z "${LCL_Payload}"
+then
+  f_QuickExit "Usage ${LCL_MyScript} somefile.mobileconfig"
+fi
+
+if ! test -e "${LCL_Payload}"
+then
+  f_QuickExit "File not found - ${LCL_Payload}"
+fi
+
+# ---
+
+LCL_GPOuser="${2}"
+
+if test -n "${LCL_GPOuser}"
+then
+  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  
+else
+  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  
+fi
+mkdir -p "${LCL_ConfigDir}"
+
+# ---
+
+# Verify the mobileconfig
+LCL_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${LCL_Payload}")
+if test -n "${LCL_GPOuser}"
+then
+  if test -n "$(/usr/bin/profiles -U "${LCL_GPOuser}" -Lv | grep -E "profileUUID: ${LCL_PayloadUUID}$")"
+  then
+    # Remove temporary files
+    rm -fR "${GLB_ThisScriptTempDir}"
+    
+    # Everything is OK
+    exit 0
+    
+  else
+    f_QuickExit "Profile "$(basename ${LCL_Payload})" is not installed"
+    
+  fi  
+  
+else
+  if test -n "$(/usr/bin/profiles -Pv | grep -E "profileUUID: ${LCL_PayloadUUID}$")"
+  then
+    # Remove temporary files
+    rm -fR "${GLB_ThisScriptTempDir}"
+    
+    exit 0
+    
+  else
+    f_QuickExit "Profile "$(basename ${LCL_Payload})" is not installed"
+    
+  fi  
+fi
+

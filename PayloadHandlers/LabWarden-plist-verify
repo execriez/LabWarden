@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
+# Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Full souce of this script
+LCL_MySource="${0}"
+
+# Filename of this script
+LCL_MyScript="$(basename ${LCL_MySource})"
+
+# ---
+
+LCL_Payload="${1}"
+
+if test -z "${LCL_Payload}"
+then
+  f_QuickExit "Usage ${LCL_MyScript} somefile.LabWarden.plist"
+fi
+
+if ! test -e "${LCL_Payload}"
+then
+  f_QuickExit "File not found - ${LCL_Payload}"
+fi
+
+# ---
+
+LCL_GPOuser="${2}"
+
+if test -n "${LCL_GPOuser}"
+then
+  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  
+else
+  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  
+fi
+mkdir -p "${LCL_ConfigDir}"
+
+# ---
+
+# Verify the LabWarden.plist config
+LCL_ObjectName=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Name'" "${LCL_Payload}")
+LCL_ObjectType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Type'" "${LCL_Payload}")
+
+case "${LCL_ObjectType}" in
+Printer)
+  # Verify the printer
+  LCL_PrinterDesc=$(echo $LCL_ObjectName | tr " " "_")
+  LCL_PrinterName=$(echo $LCL_PrinterDesc | tr "-" "_")
+  if test -z "$(lpstat 2>/dev/null -a | cut -d" " -f1 | grep -E "^${LCL_PrinterName}$")"
+  then
+    f_QuickExit "Config "$(basename ${LCL_Payload})" is not correctly installed"
+
+  fi
+  ;;
+
+Policy)
+  if test -e "/usr/local/LabWarden/Policies/${LCL_ObjectName}"
+  then
+    LCL_PolicyScriptVersion="$(/usr/local/LabWarden/Policies/${LCL_ObjectName})"
+  else
+    f_QuickExit "Policy script ${LCL_ObjectName} is no longer installed"
+  fi
+  LCL_ObjectPolicyVersion=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${LCL_ObjectName}:LocalPrefs:Version'" "${LCL_ConfigDir}/LabWarden.plist")
+  if [ "${LCL_ObjectPolicyVersion}" != "${LCL_PolicyScriptVersion}" ]
+  then
+    f_QuickExit "Policy ${LCL_ObjectName} version has changed from '${LCL_ObjectPolicyVersion}' to '${LCL_PolicyScriptVersion}'"
+  fi
+
+  ;;
+  
+esac
+
+# Remove temporary files
+rm -fR "${GLB_ThisScriptTempDir}"
+
+exit 0
