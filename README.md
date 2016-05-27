@@ -72,7 +72,9 @@ This example shows how to deploy a PolicyBanner to a group of workstations.
 
 Download, then install LabWarden as per the installation instructions.
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyBanner" directory for the file "PolicyBanner.rtf". Open the file.
+Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyBanner" directory for the file "PolicyBanner.rtf".
+
+Open the file in a text editor.
 
 >![AD Group Members Tab, Members](images/PolicyBannerRTF.jpg "PolicyBanner Text")
 	
@@ -130,7 +132,9 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 This example shows how to deploy the SetSafariHomepage mobileconfig to a user or group of users.
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/mobileconfig" directory for the file "SetSafariHomepage.mobileconfig". Open the file.
+Look in the "/SupportFiles/LabWardenConfigs/Examples/mobileconfig" directory for the file "SetSafariHomepage.mobileconfig".
+
+Open the file in a text editor.
 
 Edit the file to change the "HomePage", then save as a new file called "SetSafariHomepage-Student.mobileconfig".
 
@@ -201,7 +205,9 @@ This example shows how to deploy the "AppRestrict" script as a policy in order t
 
 AppRestrict is one of a number of example policy scripts that are included with LabWarden. 
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyConfig" directory for the file "AppRestrict.LabWarden.plist". Open the file.
+Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyConfig" directory for the file "AppRestrict.LabWarden.plist".
+
+Open the file in a text editor.
 
 Edit the file as necessary. 
 
