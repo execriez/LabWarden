@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>UserNoSpotlightOnNetHome</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>UserAtDesktop</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>0A272D97-2B08-4787-9DC4-F4B7C0DE9052</string>
+</dict>
+</plist>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>AppData</key>
+		<array>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.apple.finder</string>
+				<key>Path</key>
+				<array>
+					<string>/.Trash/</string>
+				</array>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.adobe.AdobePremierePro</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Adobe/Common/Media Cache Files/</string>
+					<string>/Library/Application Support/Adobe/Common/Media Cache/</string>
+				</array>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>org.chromium.Chromium</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Chromium/Default/Pepper Data/</string>
+				</array>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.google.Chrome</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Google/Chrome/Default/Pepper Data/</string>
+				</array>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>AppDeleteDataOnQuit</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>AppDidTerminate</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>01E1A2BB-67C1-4841-B20B-6FBB2BE28113</string>
+</dict>
+</plist>

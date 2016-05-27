@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>AppFirstSetupFirefox</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>AppWillLaunch</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>5D9FE658-7B29-48E4-879D-C90709FEE584</string>
+</dict>
+</plist>

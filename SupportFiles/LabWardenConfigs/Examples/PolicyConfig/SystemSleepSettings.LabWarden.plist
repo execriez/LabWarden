@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>LoginBegin</key>
+		<dict>
+			<key>Battery</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>2</integer>
+				<key>DisplaySleep</key>
+				<integer>1</integer>
+				<key>SystemSleep</key>
+				<integer>12</integer>
+			</dict>
+			<key>Power</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>15</integer>
+				<key>DisplaySleep</key>
+				<integer>10</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
+			</dict>
+		</dict>
+		<key>LoginWindow</key>
+		<dict>
+			<key>Battery</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>2</integer>
+				<key>DisplaySleep</key>
+				<integer>1</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
+			</dict>
+			<key>Power</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>15</integer>
+				<key>DisplaySleep</key>
+				<integer>10</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
+			</dict>
+		</dict>
+	</dict>
+	<key>Name</key>
+	<string>SystemSleepSettings</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>LoginWindow</string>
+		<string>LoginBegin</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>27B77579-89FC-41EC-B22A-04680E89150D</string>
+</dict>
+</plist>

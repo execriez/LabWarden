@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>Location</key>
+		<string>Marketing</string>
+		<key>Options</key>
+		<string>-o printer-is-shared=false -o printer-error-policy=abort-job -o PageSize=A4 -o HPBookletPageSize=A4</string>
+		<key>PPDURI</key>
+		<string>file://localhost/Library/Printers/PPDs/Contents/Resources/HP Color LaserJet CP2020 Series.gz</string>
+		<key>PrinterURI</key>
+		<string>lpd://192.168.0.5/</string>
+	</dict>
+	<key>Name</key>
+	<string>Debug</string>
+	<key>Type</key>
+	<string>Printer</string>
+	<key>UUID</key>
+	<string>1A926D13-4A31-420F-8F88-07F6BE63B4DC</string>
+</dict>
+</plist>

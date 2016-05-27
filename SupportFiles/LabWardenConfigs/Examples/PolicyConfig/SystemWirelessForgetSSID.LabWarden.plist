@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>SSID</key>
+		<array>
+			<string>College</string>
+			<string>virginmedia1234567</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>SystemWirelessForgetSSID</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Boot</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>8095F48C-F11C-4B21-9D27-E47DA6C0F4EC</string>
+</dict>
+</plist>

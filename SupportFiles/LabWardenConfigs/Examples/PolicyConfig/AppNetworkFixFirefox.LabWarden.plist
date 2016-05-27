@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>AppNetworkFixFirefox</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>AppWillLaunch</string>
+		<string>AppDidTerminate</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>A6DC322C-AD9D-48C7-83CE-31A2B84FD0AE</string>
+</dict>
+</plist>

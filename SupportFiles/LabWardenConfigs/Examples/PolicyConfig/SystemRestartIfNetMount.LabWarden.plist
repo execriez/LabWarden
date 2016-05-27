@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>SystemRestartIfNetMount</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>LoginWindow</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>4215D564-0FED-47BB-88A5-598ED24020BB</string>
+</dict>
+</plist>

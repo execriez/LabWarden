@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>WirelessState</key>
+		<string>off</string>
+	</dict>
+	<key>Name</key>
+	<string>SystemWirelessSetState</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Boot</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>954292A2-F885-4E61-9172-EF825836C89F</string>
+</dict>
+</plist>

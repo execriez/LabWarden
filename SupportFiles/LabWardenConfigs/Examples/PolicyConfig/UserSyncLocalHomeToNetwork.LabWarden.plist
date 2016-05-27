@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>Path</key>
+		<array>
+			<string>/Library/Fonts/</string>
+			<string>/Library/Application Support/Firefox/</string>
+			<string>/Library/Application Support/Google/Chrome/</string>
+			<string>/Library/Application Support/Chromium/</string>
+			<string>/Library/Safari/</string>
+			<string>/Library/Application Support/Microsoft/</string>
+			<string>/Library/Application Support/Spotify/</string>
+			<string>/Library/Caches/com.apple.helpd/</string>
+			<string>/Library/Group Containers/</string>
+			<string>/Library/Preferences/com.microsoft.autoupdate2.plist</string>
+			<string>/Library/Preferences/com.microsoft.error_reporting.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.outlook.databasedaemon.plist</string>
+			<string>/Library/Preferences/com.microsoft.Word.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.Powerpoint.plist</string>
+			<string>/Library/Preferences/com.microsoft.Excel.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.outlook.office_reminders.plist</string>
+			<string>/Library/Preferences/com.microsoft.Outlook.plist</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>UserSyncLocalHomeToNetwork</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>UserAtDesktop</string>
+		<string>UserLogout</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>43C784FC-17FE-4B50-ABB7-16AEAB504DB4</string>
+</dict>
+</plist>

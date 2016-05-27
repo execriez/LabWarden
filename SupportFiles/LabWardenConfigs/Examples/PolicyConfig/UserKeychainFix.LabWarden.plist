@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>UserKeychainFix</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>UserAtDesktop</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>C58149CD-7DB8-45C5-B3CF-71881168BE12</string>
+</dict>
+</plist>

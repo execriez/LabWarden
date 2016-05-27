@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>Unload</key>
+		<array>
+			<string>/System/Library/LaunchDaemons/com.apple.UserNotificationCenter.plist</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>SystemUnloadAgentsAndDaemons</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Boot</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>3C9E96ED-ABB8-4C2A-AB6D-904D0A21B930</string>
+</dict>
+</plist>
