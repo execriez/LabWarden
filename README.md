@@ -283,7 +283,7 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 >Because you chose to apply the policy to a workstation or group of workstations - the policy will affect every user who logs in.
 
->![AD Group Members Tab, Members](images/AppRestrictPopupPC.JPG "Policy Scope")
+>![AD Group Members Tab, Members](images/AppRestrictPopupMac.jpg "Policy Scope")
 
 ## Quick Demo 4
 The Notes field in AD is limited to 1024 characters - so what do you do when you have a config that is too big to fit within this limit?
