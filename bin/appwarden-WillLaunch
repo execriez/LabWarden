@@ -1,8 +1,9 @@
 #!/bin/bash
 #
 # Short:    Do something before an app is Launched
-# Version:  1.33.0, 29-March-2016
 # Author:   Mark J Swift
+# Version:  1.0.82
+# Modified: 27-May-2016
 #
 # Called by appwarden as follows:    
 #   appwarden-WillLaunch "WillLaunch:Epoch:ApplicationBundleIdentifier:ApplicationName:ApplicationPath:ApplicationProcessIdentifier"

@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.84
+# Modified: 06-Jun-2016
 #
 
 # ---
@@ -456,9 +456,7 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Na
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
 
-f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
-f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:1" "LoginWindow"
-f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:2" "LoginWindowIdle"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "NetworkUp"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ProxyAutoDiscovery:Enabled" "true"
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:AutoProxy:Enabled" "false"

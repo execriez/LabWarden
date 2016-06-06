@@ -451,6 +451,8 @@ Policy Scripts can be triggered by the following System events:
 
 * Boot
 * LoginWindow
+* NetworkUp
+* NetworkDown
 * LoginBegin
 * LogoutEnd
 * LoginWindowIdle
@@ -1027,9 +1029,7 @@ The config consists of a **Path** array, containing a list of folders that conta
 The example policy config should be configured to your own needs.
 
 ###SystemNetworkProxy
-This policy sets the web proxy. It is called as root and triggered by the **Boot, LoginWindow,** and **LoginWindowIdle** events.
-
-The policy is not guaranteed to work at the Boot or LoginWindow events, since the network adaptor driver may not have loaded.
+This policy sets the web proxy. It is called as root and triggered by the **NetworkUp** and **NetworkDown** events.
 
 The config contains the usual proxy options.
 
@@ -1117,9 +1117,8 @@ The config contains the usual proxy options.
 		<string>SystemNetworkProxy</string>
 		<key>TriggeredBy</key>
 		<array>
-			<string>Boot</string>
-			<string>LoginWindow</string>
-			<string>LoginWindowIdle</string>
+			<string>NetworkUp</string>
+			<string>NetworkDown</string>
 		</array>
 		<key>Type</key>
 		<string>Policy</string>
@@ -1734,9 +1733,15 @@ LabWarden makes use of the following tools:
 * [duti](https://github.com/moretension/duti "duti")
 * [iHook](https://sourceforge.net/projects/ihook/ "iHook")
 * [mysides](https://github.com/mosen/mysides "mysides")
+* [NetworkStateWarden](https://github.com/execriez/NetworkStateWarden/ "NetworkStateWarden")
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.84 - 06 JUN 2016
+
+* Added NetworkUp and NetworkDown triggers.
+* Changed TriggeredBy property on SystemNetworkProxy policy script to be 'NetworkUp'.
 
 1.0.82 - 27 MAY 2016
 

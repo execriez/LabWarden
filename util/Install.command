@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.84
+# Modified: 01-Jun-2016
 #
 #
 #
@@ -154,6 +154,31 @@ EOF
       chmod 644 /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
 
     fi
+
+    if test -f "${GLB_PayloadDir}/bin/NetworkStateWarden"
+    then
+      cat << EOF > /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>${GLB_LabWardenSignature}.NetworkStateWarden</string>
+	<key>Program</key>
+	<string>/usr/local/LabWarden/bin/NetworkStateWarden</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<false/>
+</dict>
+</plist>
+EOF
+      chown root:wheel /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
+      chmod 644 /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
+
+    fi
+
+
   fi
     
   if test -d "${GLB_PayloadDir}/util"
@@ -351,7 +376,6 @@ EOF
       cp /tmp/${GLB_LabWardenSignature}.Escalated.plist /library/LaunchDaemons/
       chown root:wheel /library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
       chmod 644 /library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
-
 
 
     fi

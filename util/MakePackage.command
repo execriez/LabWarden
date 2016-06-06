@@ -2,8 +2,8 @@
 #
 # Short:    Utility script - Build LabWarden installation package
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.84
+# Modified: 06-Jun-2016
 #
 # Called as follows:    
 #   MakePackage.command
@@ -12,7 +12,7 @@
 
 GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
-GLB_LabWardenVersion="1.0.82"
+GLB_LabWardenVersion="1.0.84"
 
 # ---
 
