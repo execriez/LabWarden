@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .rtf payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 
 # ---
 
@@ -71,7 +71,7 @@ PolicyBanner.rtf)
     if test -f "/Library/Security/${LCL_PayloadName}"
     then
       # Remove temporary files
-      rm -fR "${GLB_ThisScriptTempDir}"
+      srm -fR "${GLB_ThisScriptTempDir}"
       
       exit 0
       
@@ -90,4 +90,4 @@ PolicyBanner.rtf)
 esac	    
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"

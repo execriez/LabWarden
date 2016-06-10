@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Turn wireless on or off
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.82"
+LCL_ScriptVersion="1.0.86"
 
 if [ $# -eq 0 ]
 then
@@ -92,8 +92,32 @@ else
       # Turn Wi-Fi port on or off
       networksetup -setairportpower ${LCL_WirelessHardwarePort} ${LCL_WirelessState}
 
-      # Only allow admins to change the Wi-Fi settings
-      /usr/libexec/airportd prefs RequireAdminIBSS=YES RequireAdminNetworkChange=YES RequireAdminPowerToggle=YES
+      LCL_RequireAdminIBSS="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminIBSS")"
+      if [ "${LCL_RequireAdminIBSS}" = "true" ]
+      then
+        LCL_RequireAdminIBSS="YES"
+      else
+        LCL_RequireAdminIBSS="NO"
+      fi
+      
+      LCL_RequireAdminNetworkChange="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminNetworkChange")"
+      if [ "${LCL_RequireAdminNetworkChange}" = "true" ]
+      then
+        LCL_RequireAdminNetworkChange="YES"
+      else
+        LCL_RequireAdminNetworkChange="NO"
+      fi
+      
+      LCL_RequireAdminPowerToggle="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminPowerToggle")"
+      if [ "${LCL_RequireAdminPowerToggle}" = "true" ]
+      then
+        LCL_RequireAdminPowerToggle="YES"
+      else
+        LCL_RequireAdminPowerToggle="NO"
+      fi
+      
+      # Set the Wi-Fi options
+      /usr/libexec/airportd prefs RequireAdminIBSS="${LCL_RequireAdminIBSS}" RequireAdminNetworkChange="${LCL_RequireAdminNetworkChange}" RequireAdminPowerToggle="${LCL_RequireAdminPowerToggle}"
     fi
 
     if [ "${LCL_PolicyExecuted}" = "true" ]
@@ -113,6 +137,6 @@ fi
 f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"
 
 # ---

@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 
 # ---
 
@@ -58,7 +58,7 @@ then
   if test -n "$(/usr/bin/profiles -U "${LCL_GPOuser}" -Lv | grep -E "profileUUID: ${LCL_PayloadUUID}$")"
   then
     # Remove temporary files
-    rm -fR "${GLB_ThisScriptTempDir}"
+    srm -fR "${GLB_ThisScriptTempDir}"
     
     # Everything is OK
     exit 0
@@ -72,7 +72,7 @@ else
   if test -n "$(/usr/bin/profiles -Pv | grep -E "profileUUID: ${LCL_PayloadUUID}$")"
   then
     # Remove temporary files
-    rm -fR "${GLB_ThisScriptTempDir}"
+    srm -fR "${GLB_ThisScriptTempDir}"
     
     exit 0
     

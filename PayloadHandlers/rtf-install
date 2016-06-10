@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .rtf payload
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 # Called as follows:    
 #   rtf-install <somefile.rtf> [user]
@@ -79,4 +79,4 @@ PolicyBanner.rtf)
 esac	    
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"

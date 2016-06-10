@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a maintenance action (workstation update)
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 # Called as follows:    
 #   /usr/local/LabWarden/util/Maintenance
@@ -15,7 +15,7 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.82"
+LCL_ScriptVersion="1.0.86"
 
 # ---
 
@@ -157,4 +157,4 @@ f_logmessage "ATTENTION, updating user group policies for all users (via gpupdat
 f_logmessage "NOTE, we should reboot now"
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"

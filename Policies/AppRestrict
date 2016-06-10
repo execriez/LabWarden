@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Restrict certain Application from launching
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 # Triggered by the following events:
 #   AppWillLaunch (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.82"
+LCL_ScriptVersion="1.0.86"
 
 if [ $# -eq 0 ]
 then
@@ -303,6 +303,6 @@ esac
 f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"
 
 # ---

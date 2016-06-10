@@ -2,8 +2,8 @@
 #
 # Short:    Utility script - Build LabWarden installation package
 # Author:   Mark J Swift
-# Version:  1.0.84
-# Modified: 06-Jun-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 # Called as follows:    
 #   MakePackage.command
@@ -12,7 +12,7 @@
 
 GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
-GLB_LabWardenVersion="1.0.84"
+GLB_LabWardenVersion="1.0.86"
 
 # ---
 
@@ -38,9 +38,9 @@ mkdir -p "${GLB_ScriptDir}"
 
 cp -pR "${GLB_PayloadDir}/" "${GLB_ScriptDir}/"
 
-rm -fR "${GLB_ScriptDir}"/SupportFiles
-
 # Remove any unwanted files
+rm -fR "${GLB_ScriptDir}"/SupportFiles
+rm -fR "${GLB_ScriptDir}"/.git
 find "${GLB_ThisScriptTempDir}" -iname .DS_Store -exec rm -f {} \;
 
 # populate the package resource directory
@@ -171,4 +171,4 @@ productbuild --distribution "${GLB_ThisScriptTempDir}"/distribution.plist --reso
 
 cd "${GLB_ThisScriptPath}"
 
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"

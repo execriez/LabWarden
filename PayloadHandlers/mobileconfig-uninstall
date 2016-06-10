@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .mobileconfig payload
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 
 # ---
 
@@ -58,6 +58,6 @@ else
 fi
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"
 
 exit ${LCL_ErrCode}
