@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.84
-# Modified: 06-Jun-2016
+# Version:  1.0.86
+# Modified: 09-Jun-2016
 #
 
 # ---
@@ -489,6 +489,35 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
 # ---
+LCL_PolicyName="SystemEstablish8021XWiFi"
+LCL_Tag=""
+
+if test -z "${LCL_Tag}"
+then
+  LCL_PayloadName="${LCL_PolicyName}"
+else
+  LCL_PayloadName="${LCL_PolicyName}-${LCL_Tag}"
+fi
+
+LCL_PayloadUUID=$(uuidgen)
+rm -f "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Name" "${LCL_PolicyName}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "NetworkUp"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RenewCertBeforeDays" "28"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RevokeCertBeforeEpoch" "0"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:CertTemplate" "Mac-Computer"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:CertAuthURL" "https://yourcaserer.yourdomain/certsrv"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:SSIDSTR" "YourSSID"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ProxyType" "Auto"
+
+/usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+# ---
 LCL_PolicyName="SystemRestartIfNetMount"
 LCL_Tag=""
 
@@ -735,6 +764,9 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Ty
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:WirelessState" "off"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminIBSS" "false"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminNetworkChange" "false"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminPowerToggle" "true"
 
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
@@ -759,6 +791,9 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Ty
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:WirelessState" "on"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminIBSS" "false"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminNetworkChange" "false"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:RequireAdminPowerToggle" "true"
 
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
@@ -1122,5 +1157,5 @@ f_SetPlistProperty "${GLB_ConfigPtrDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 # ---
 
 # Remove temporary files
-rm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${GLB_ThisScriptTempDir}"
 

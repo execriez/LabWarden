@@ -945,6 +945,56 @@ The **UserCacheEarliestEpoch** key sets a value for the earliest profile creatio
 
 The example policy config should be configured to your own needs.
 
+###SystemEstablish8021XWiFi
+
+This policy requests then installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X. It is called as root and triggered by the **NetworkUp** event.
+
+To successfully acquire a computer certificate from your certificate server, you need to configure the **CertAuthURL**, **CertTemplate** keys.
+
+The **SSIDSTR** key is the SSID of the Wi-Fi network to be used. The **ProxyType** key value should be set to either 'None' or 'Auto'.
+
+The **RenewCertBeforeDays** key allows the certificate to auto-renew when it is about to expire.
+
+The **RevokeCertBeforeEpoch** key allows the certificate to be revoked and renewed if it was issued before a particular date.
+
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>Config</key>
+		<dict>
+			<key>CertAuthURL</key>
+			<string>https://yourcaserer.yourdomain/certsrv</string>
+			<key>CertTemplate</key>
+			<string>Mac-Computer</string>
+			<key>ProxyType</key>
+			<string>Auto</string>
+			<key>RenewCertBeforeDays</key>
+			<integer>28</integer>
+			<key>RevokeCertBeforeEpoch</key>
+			<integer>0</integer>
+			<key>SSIDSTR</key>
+			<string>YourSSID</string>
+		</dict>
+		<key>Name</key>
+		<string>SystemEstablish8021XWiFi</string>
+		<key>TriggeredBy</key>
+		<array>
+			<string>NetworkUp</string>
+		</array>
+		<key>Type</key>
+		<string>Policy</string>
+	</dict>
+	</plist>
+
+When the policy successfully completes, a device profile that is installed named after your Wi-Fi SSID. This profile contains the Wi-Fi settings and a Computer Certificate.
+
+If there are issues getting a computer certificate, examine the labwarden log. The log can be found here: 
+
+	/Library/Logs/com.github.execriez.LabWarden/LabWarden.log
+
+
 ###SystemGiveSystemProxyAccess
 
 This policy gives specific processes access to the internet through a proxy using the Active Directory workstation credentials. It is called as root and triggered by the **Boot** event.
@@ -1029,7 +1079,7 @@ The config consists of a **Path** array, containing a list of folders that conta
 The example policy config should be configured to your own needs.
 
 ###SystemNetworkProxy
-This policy sets the web proxy. It is called as root and triggered by the **NetworkUp** and **NetworkDown** events.
+This policy sets the web proxy. It is called as root and triggered by the **NetworkUp** event.
 
 The config contains the usual proxy options.
 
@@ -1118,12 +1168,12 @@ The config contains the usual proxy options.
 		<key>TriggeredBy</key>
 		<array>
 			<string>NetworkUp</string>
-			<string>NetworkDown</string>
 		</array>
 		<key>Type</key>
 		<string>Policy</string>
 	</dict>
 	</plist>
+
 
 ###SystemRestartIfNetMount
 This policy reboots if the workstation is at the LoginWindow and the system detects that there is a network drive mounted. This could indicate that a user has not been logged out properly - or that a screen is locked and someone has clicked "Switch User". It is called as root and triggered by the **LoginWindow** event.
@@ -1737,6 +1787,15 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.86 - 10 JUN 2016
+
+* Added SystemEstablish8021XWiFi policy. This policy requests and installs a computer certificate from a CA server, then sets up Wi-Fi for 802.1X.
+
+1.0.85 - 08 JUN 2016
+
+* Added RequireAdminIBSS (computer-to-computer networks), RequireAdminNetworkChange and RequireAdminPowerToggle options to SystemWirelessSetState policy
+
 
 1.0.84 - 06 JUN 2016
 

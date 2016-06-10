@@ -1,0 +1,270 @@
+#!/bin/bash
+#
+# Short:    Policy script - Request/renew computer certificate from certificate authority
+# Author:   Mark J Swift
+# Version:  1.0.86
+# Modified: 10-Jun-2016
+#
+# Required for 802.1X authentication
+#
+# Triggered by the following events:
+#   Boot (as root)
+#
+# Called as follows:    
+#   SystemEstablishComputerCertificate <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.86"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else
+  LCL_RenewComputerCert="true"
+
+  LCL_ComputerCertPemFile="${GLB_ThisScriptTempDir}/ComputerCert.pem"
+  /usr/bin/security find-certificate -a -c "${GLB_ADComputerName}" -p /Library/Keychains/System.keychain > "${LCL_ComputerCertPemFile}"
+  if test -s "${LCL_ComputerCertPemFile}"
+  then
+    LCL_CertStartEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${LCL_ComputerCertPemFile}" | /usr/bin/openssl x509 -noout -startdate | cut -f2 -d=)" "+%s")
+    LCL_CertEndEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${LCL_ComputerCertPemFile}" | /usr/bin/openssl x509 -noout -enddate | cut -f2 -d=)" "+%s")
+
+    LCL_RenewCertBeforeDays="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RenewCertBeforeDays")"
+
+    if [ $((${LCL_CertEndEpoch}-(${LCL_RenewCertBeforeDays}*24*60*60))) -gt ${LCL_MyStartEpoch} ]
+    then
+      # Cert hasn't expired yet
+      LCL_RevokeCertBeforeEpoch="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RevokeCertBeforeEpoch")"
+
+      if [ ${LCL_CertStartEpoch} -ge ${LCL_RevokeCertBeforeEpoch} ]
+      then
+        # Cert hasn't been revoked
+        LCL_RenewComputerCert="false"
+        f_logmessage "NOTE, computer certificate is still valid"
+       fi
+    fi
+  fi
+  
+  if [ "${LCL_RenewComputerCert}" = "true" ]
+  then
+  
+    LCL_CertTemplate="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:CertTemplate")"
+    LCL_CertAuthURL="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:CertAuthURL")"
+
+    # Define a browser user agent
+    LCL_BrowserAgent="Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.5) Gecko/2008120122 Firefox/3.0.5"
+
+    # Define (temporary) file names
+    LCL_CertKeyFile="${GLB_ThisScriptTempDir}/${GLB_ADComputerName}.key"
+    LCL_CertCsrFile="${GLB_ThisScriptTempDir}/${GLB_ADComputerName}.csr"
+    LCL_CertPemFile="${GLB_ThisScriptTempDir}/${GLB_ADComputerName}.pem"
+    LCL_CertPk12File="${GLB_ThisScriptTempDir}/${GLB_ADComputerName}.p12"
+    LCL_CertMobileConfigFile="${GLB_ThisScriptTempDir}/${GLB_ADComputerName}.mobileconfig"
+
+    # Generate a CSR file
+    /usr/bin/openssl req -new -batch -newkey rsa:2048 -nodes -outform PEM -keyout "${LCL_CertKeyFile}" -out "${LCL_CertCsrFile}"
+
+    # URL encode the CSR
+    LCL_EncodedCsr="$(f_urlencode "$(cat "${LCL_CertCsrFile}")")"
+
+    # Post the Certificate request to the Web Enrollment page 
+    LCL_ReqReply="$(curl --connect-timeout 10 -k --ntlm -u ${GLB_ADTrustAccount}:${GLB_ADTrustPassword} -d CertRequest=${LCL_EncodedCsr} -d SaveCert=yes -d Mode=newreq -d CertAttrib=CertificateTemplate:"${LCL_CertTemplate}" ${LCL_CertAuthURL}/certfnsh.asp)"
+
+    if test -z "${LCL_ReqReply}"
+    then
+      # Display an error status
+      f_QuickExit "NOTE, policy aborted - CERTIFICATE REQUEST FAILED (it probably timed out)"
+    fi
+
+    # We need the ReqID from the server response
+    LCL_ReqID=$(echo "${LCL_ReqReply}" | grep "ReqID=" | grep -v "Renewal" | sed "s|\(.*ReqID=\)\(.*\)|\2|;s|\(^[0-9]*\)\(.*\)|\1|" | head -n 1)
+
+    if test -z "${LCL_ReqID}"
+    then
+      # Display an error status
+      f_QuickExit "NOTE, policy aborted - CERTIFICATE REQUEST FAILED (read the server response below) ${LCL_ReqReply}"
+  
+    else
+      # Pull the computer cert down in PEM format
+      curl --connect-timeout 10 -k -o "${LCL_CertPemFile}" -A "${LCL_BrowserAgent}" --ntlm -u ${GLB_ADTrustAccount}:${GLB_ADTrustPassword} "${LCL_CertAuthURL}/certnew.cer?ReqID=${LCL_ReqID}&Enc=b64"
+
+    fi
+
+    # Pack the computer cert and private key into a PKCS12 file
+    openssl pkcs12 -export -in "${LCL_CertPemFile}" -inkey "${LCL_CertKeyFile}" -out "${LCL_CertPk12File}" -name "${GLB_ADTrustAccount}" -passout "pass:pass"
+
+    # Get the Wi-Fi options
+    LCL_SSIDSTR="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:SSIDSTR")"
+    LCL_ProxyType="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:ProxyType")"
+
+    # Generate some unique uuids for the payloads within the mobileconfig
+    LCL_ConfigPayloadUUID=$(uuidgen)
+    LCL_CertPayloadUUID=$(uuidgen)
+    LCL_WiFiPayloadUUID=$(uuidgen)
+
+    # Create the mobile config
+    cat << HEREDOC > "${LCL_CertMobileConfigFile}"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>Password</key>
+      <string>pass</string>
+      <key>PayloadCertificateFileName</key>
+      <string>${GLB_ADComputerName}.p12</string>
+      <key>PayloadContent</key>
+      <data>
+      </data>
+      <key>PayloadDescription</key>
+      <string>Configures certificate settings.</string>
+      <key>PayloadDisplayName</key>
+      <string>${GLB_ADComputerName}.p12</string>
+      <key>PayloadIdentifier</key>
+      <string>ComputerCertificate.${GLB_ADComputerName}</string>
+      <key>PayloadType</key>
+      <string>com.apple.security.pkcs12</string>
+      <key>PayloadUUID</key>
+      <string>${LCL_CertPayloadUUID}</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+    </dict>
+    <dict>
+      <key>AutoJoin</key>
+      <true/>
+      <key>EAPClientConfiguration</key>
+      <dict>
+        <key>AcceptEAPTypes</key>
+        <array>
+          <integer>13</integer>
+        </array>
+      </dict>
+      <key>EncryptionType</key>
+      <string>WPA</string>
+      <key>HIDDEN_NETWORK</key>
+      <true/>
+      <key>IsHotspot</key>
+      <false/>
+      <key>PayloadCertificateUUID</key>
+      <string>${LCL_CertPayloadUUID}</string>
+      <key>PayloadDescription</key>
+      <string>Configure Wi-Fi</string>
+      <key>PayloadDisplayName</key>
+      <string>WiFi</string>
+      <key>PayloadIdentifier</key>
+      <string>${LCL_WiFiPayloadUUID}</string>
+      <key>PayloadType</key>
+      <string>com.apple.wifi.managed</string>
+      <key>PayloadUUID</key>
+      <string>${LCL_WiFiPayloadUUID}</string>
+      <key>PayloadVersion</key>
+      <real>1</real>
+      <key>ProxyType</key>
+      <string>${LCL_ProxyType}</string>
+      <key>SSID_STR</key>
+      <string>${LCL_SSIDSTR}</string>
+            <key>SetupModes</key>
+      <array>
+        <string>System</string>
+      </array>
+    </dict>
+  </array>
+  <key>PayloadDisplayName</key>
+  <string>${LCL_SSIDSTR}</string>
+  <key>PayloadIdentifier</key>
+  <string>${LCL_SSIDSTR}-8021XWiFi</string>
+  <key>PayloadRemovalDisallowed</key>
+  <true/>
+  <key>PayloadScope</key>
+  <string>System</string>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>${LCL_ConfigPayloadUUID}</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
+HEREDOC
+
+    # Insert the pkcs12 file into the mobileconfig
+    /usr/libexec/PlistBuddy -c "Import PayloadContent:0:PayloadContent ${LCL_CertPk12File}" "${LCL_CertMobileConfigFile}"
+
+    # Remove any previous payload
+    profiles >/dev/null 2>&1 -R -p "${LCL_SSIDSTR}-8021XWiFi"
+
+    # Install the mobileconfig
+    profiles -I -F "${LCL_CertMobileConfigFile}"
+
+    f_logmessage "ATTENTION, machine certificate installed/renewed."
+  fi
+
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+srm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

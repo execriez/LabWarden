@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>CertAuthURL</key>
+		<string>https://yourcaserer.yourdomain/certsrv</string>
+		<key>CertTemplate</key>
+		<string>Mac-Computer</string>
+		<key>ProxyType</key>
+		<string>Auto</string>
+		<key>RenewCertBeforeDays</key>
+		<integer>28</integer>
+		<key>RevokeCertBeforeEpoch</key>
+		<integer>0</integer>
+		<key>SSIDSTR</key>
+		<string>YourSSID</string>
+	</dict>
+	<key>Name</key>
+	<string>SystemEstablish8021XWiFi</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>NetworkUp</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>D171BA49-F1FD-465F-9CF3-4FD229C9056B</string>
+</dict>
+</plist>
