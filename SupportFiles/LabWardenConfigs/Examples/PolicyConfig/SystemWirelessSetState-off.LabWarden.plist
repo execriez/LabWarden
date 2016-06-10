@@ -4,6 +4,12 @@
 <dict>
 	<key>Config</key>
 	<dict>
+		<key>RequireAdminIBSS</key>
+		<false/>
+		<key>RequireAdminNetworkChange</key>
+		<false/>
+		<key>RequireAdminPowerToggle</key>
+		<true/>
 		<key>WirelessState</key>
 		<string>off</string>
 	</dict>
@@ -16,6 +22,6 @@
 	<key>Type</key>
 	<string>Policy</string>
 	<key>UUID</key>
-	<string>954292A2-F885-4E61-9172-EF825836C89F</string>
+	<string>7BB106D9-10A9-4FE0-9BDD-D69050B16F07</string>
 </dict>
 </plist>
