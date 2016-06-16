@@ -468,7 +468,7 @@ Policy Scripts can be triggered by the following System events:
 * UserIdle
 * UserLogout
 
-Policy scripts are controlled via an associated configuration file of type .LabWarden.plist that holds script options (As seen in "Quick Demo 2").
+Policy scripts are controlled via an associated configuration file of type .LabWarden.plist that holds script options (As seen in "Quick Demo 3").
 
 Following is a list of policy scripts and associated example configs...
 
@@ -878,6 +878,8 @@ The example policy config should be configured to your own needs.
 
 ###SystemDeleteFiles
 
+**USE WITH CAUTION**
+
 This policy deletes files from /. It will reboot after the files have been successfully deleted. It is called as root and triggered by the **Boot** event.
 
 The config consists of a **Path** array, containing a list of files and directories that should be deleted. Useful if you want to quickly delete a bunch of files from a number of workstations.
@@ -912,6 +914,8 @@ The config consists of a **Path** array, containing a list of files and director
 The example policy config should be configured to your own needs.
 
 ###SystemDeleteOldUserProfiles
+
+**USE WITH CAUTION**
 
 This policy deletes outdated user profiles. It is called as root and triggered by the  **LoginWindowIdle** event.
 
@@ -1389,9 +1393,15 @@ The config contains a single array called **SSID** containing the networks that 
 	</plist>
 
 ###SystemWirelessSetState
-This policy script turns wireless on or off, and prevents non-admins from changing the wireless state. It is called as root and triggered by an **Boot** event.
+This policy script turns wireless on or off, and defines whether non-admins can change the wireless state. It is called as root and triggered by an **Boot** event.
 
-The config contains a single key called **WirelessState**, whose value should be set to either **on** or **off**.
+The **RequireAdminIBSS** key defines whether you need to be an admin to create computer-to-computer networks.
+
+The **RequireAdminNetworkChange** key defines whether you need to be an admin to choose a different wireless SSID networks.
+
+The **RequireAdminPowerToggle** key defines whether you need to be an admin to turn wireless on or off.
+
+The **WirelessState** key should be set to either **on** or **off**.
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1399,6 +1409,12 @@ The config contains a single key called **WirelessState**, whose value should be
 	<dict>
 		<key>Config</key>
 		<dict>
+			<key>RequireAdminIBSS</key>
+			<false/>
+			<key>RequireAdminNetworkChange</key>
+			<false/>
+			<key>RequireAdminPowerToggle</key>
+			<true/>
 			<key>WirelessState</key>
 			<string>on</string>
 		</dict>
@@ -1410,6 +1426,8 @@ The config contains a single key called **WirelessState**, whose value should be
 		</array>
 		<key>Type</key>
 		<string>Policy</string>
+		<key>UUID</key>
+		<string>9C237A22-0C84-4F9A-BB86-ED0C3E6D1EE6</string>
 	</dict>
 	</plist>
 
@@ -1788,13 +1806,17 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.86 - 15 JUN 2016
+
+* Corrections to the ReadMe file.
+
 1.0.86 - 10 JUN 2016
 
 * Added SystemEstablish8021XWiFi policy. This policy requests and installs a computer certificate from a CA server, then sets up Wi-Fi for 802.1X.
 
 1.0.85 - 08 JUN 2016
 
-* Added RequireAdminIBSS (computer-to-computer networks), RequireAdminNetworkChange and RequireAdminPowerToggle options to SystemWirelessSetState policy
+* Added RequireAdminIBSS (computer-to-computer networks), RequireAdminNetworkChange and RequireAdminPowerToggle options to SystemWirelessSetState policy.
 
 
 1.0.84 - 06 JUN 2016
