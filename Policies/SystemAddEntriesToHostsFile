@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# Short:    Policy script - Add entries to the hosts file
+# Author:   Mark J Swift
+# Version:  1.0.87
+# Modified: 22-Jun-2016
+#
+# Triggered by the following events:
+#   Boot (as root)
+#
+# Called as follows:    
+#   SystemAddEntriesToHostsFile <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.87"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get event that triggered this policy
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get optional user
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if [ "${GLB_ThisUserName}" != "root" ]
+then
+  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  
+else    
+  LCL_PolicyExecuted="false"
+  cat /etc/hosts | sed -e '/SystemAddToHosts-BEGIN/,/SystemAddToHosts-END/d' > "${GLB_ThisScriptTempDir}/hosts"
+  
+  echo "# SystemAddToHosts-BEGIN" >> "${GLB_ThisScriptTempDir}/hosts"
+  
+  # Build a file of entries to add to /etc/hosts
+  LCL_EntryCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry")"
+  for (( LCL_i=0; LCL_i<${LCL_EntryCount}; LCL_i++ ))
+  do
+    LCL_EntryIP4="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:IP4")"
+    if test -n "${LCL_EntryIP4}"
+    then
+      LCL_HostList=""
+      
+      LCL_HostCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:Host")"
+      for (( LCL_j=0; LCL_j<${LCL_HostCount}; LCL_j++ ))
+      do
+        LCL_Host="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:Host:${LCL_j}")"
+        if test -n "${LCL_Host}"
+        then
+          if test -n "${LCL_HostList}"
+          then
+            LCL_HostList="${LCL_HostList} "
+          fi
+          LCL_HostList="${LCL_HostList}${LCL_Host}"
+        fi
+      done
+
+      if test -n "${LCL_HostList}"
+      then
+        LCL_PolicyExecuted="true"
+        printf "${LCL_EntryIP4}\t${LCL_HostList}\n" >> "${GLB_ThisScriptTempDir}/hosts"
+      fi
+      
+    fi
+  done
+
+  echo "# SystemAddToHosts-END" >> "${GLB_ThisScriptTempDir}/hosts"
+
+  if [ "${LCL_PolicyExecuted}" = "true" ]
+  then
+    cat "${GLB_ThisScriptTempDir}/hosts" > /etc/hosts
+    f_logmessage "ATTENTION, entries added to hosts file."
+  
+  else
+    f_QuickExit "NOTE, policy aborted - no config "
+    
+  fi
+
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+srm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

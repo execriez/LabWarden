@@ -326,6 +326,34 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
 # ---
+LCL_PolicyName="SystemAddEntriesToHostsFile"
+LCL_Tag=""
+
+if test -z "${LCL_Tag}"
+then
+  LCL_PayloadName="${LCL_PolicyName}"
+else
+  LCL_PayloadName="${LCL_PolicyName}-${LCL_Tag}"
+fi
+
+LCL_PayloadUUID=$(uuidgen)
+rm -f "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Name" "${LCL_PolicyName}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:Entry:0:IP4" "127.0.0.1"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:Entry:0:Host:0" "prod-w.nexus.live.com.akadns.net"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:Entry:0:Host:1" "odc.officeapps.live.com"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:Entry:0:Host:2" "omextemplates.content.office.net"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:Entry:0:Host:3" "officeclient.microsoft.com"
+
+/usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+# ---
 LCL_PolicyName="SystemDeleteFiles"
 LCL_Tag="FlashPlayer"
 

@@ -876,6 +876,48 @@ This policy was explained earlier in the section "Maintenance Sequence"
 
 The example policy config should be configured to your own needs.
 
+###SystemAddEntriesToHostsFile
+
+This policy adds entries to /etc/hosts. The policy is called as root and triggered by the **Boot** event.
+
+The config consists of a **Entry** array, containing an **IP4** key (IP address) and a **Host** array. 
+
+The specified hosts will resolve to the specified IP address.
+
+The example config may be of help to prevent user being nagged by a log in window when using Office 2016 behind a proxy.
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>Config</key>
+		<dict>
+			<key>Entry</key>
+			<array>
+				<dict>
+					<key>Host</key>
+					<array>
+						<string>prod-w.nexus.live.com.akadns.net</string>
+						<string>odc.officeapps.live.com</string>
+						<string>omextemplates.content.office.net</string>
+						<string>officeclient.microsoft.com</string>
+					</array>
+					<key>IP4</key>
+					<string>127.0.0.1</string>
+				</dict>
+			</array>
+		</dict>
+		<key>Name</key>
+		<string>SystemAddEntriesToHostsFile</string>
+		<key>TriggeredBy</key>
+		<array>
+			<string>Boot</string>
+		</array>
+		<key>Type</key>
+		<string>Policy</string>
+	</dict>
+	</plist>
+
 ###SystemDeleteFiles
 
 **USE WITH CAUTION**
@@ -1805,6 +1847,11 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.87 - 22 JUN 2016
+
+* Fix to 'SystemGiveSystemProxyAccess' policy to allow spaces in process names.
+* Added policy 'SystemAddEntriesToHostsFile' that adds entries to the hosts file.
 
 1.0.86 - 15 JUN 2016
 

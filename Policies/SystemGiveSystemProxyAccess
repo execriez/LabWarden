@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Give certain processes access through proxy using workstation credentials
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.87
+# Modified: 21-Jun-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+LCL_ScriptVersion="1.0.87"
 
 if [ $# -eq 0 ]
 then
@@ -81,7 +81,7 @@ f_SystemProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg bisproxy1.l
   
   f_logmessage "NOTE, allowing ${LCL_AppPaths} through ${LCL_Protocol}://${LCL_Server}:${LCL_Port}."
 
-  LCL_AppOpt="$(echo ${LCL_AppPaths} | sed "s|,| -T |g")"
+  LCL_AppOpt="$(echo "${LCL_AppPaths}" | sed "s|^|-T '|;s|$|'|;s|,|' -T '|g")"
   
   LCL_Label="${LCL_Protocol}_${LCL_Server}_${LCL_Port}"
 
@@ -89,7 +89,8 @@ f_SystemProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg bisproxy1.l
   /usr/bin/su root <<HEREDOC
 
   security delete-internet-password -l "${LCL_Label}" /Library/Keychains/System.keychain
-  security add-internet-password -U -a "${GLB_ADTrustAccount}" -w "${GLB_ADTrustPassword}" -l "${LCL_Label}" -P "${LCL_Port}" -r "${LCL_Protocol}" -s "${LCL_Server}" -T ${LCL_AppOpt} /Library/Keychains/System.keychain
+
+  security add-internet-password -U -a "${GLB_ADTrustAccount}" -w "${GLB_ADTrustPassword}" -l "${LCL_Label}" -P "${LCL_Port}" -r "${LCL_Protocol}" -s "${LCL_Server}" ${LCL_AppOpt} /Library/Keychains/System.keychain
 
 HEREDOC
 }

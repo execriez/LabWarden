@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>Entry</key>
+		<array>
+			<dict>
+				<key>Host</key>
+				<array>
+					<string>prod-w.nexus.live.com.akadns.net</string>
+					<string>odc.officeapps.live.com</string>
+					<string>omextemplates.content.office.net</string>
+					<string>officeclient.microsoft.com</string>
+				</array>
+				<key>IP4</key>
+				<string>127.0.0.1</string>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>SystemAddEntriesToHostsFile</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Boot</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>6C55B9FF-F8F7-47DB-96D9-6F454E45A622</string>
+</dict>
+</plist>
