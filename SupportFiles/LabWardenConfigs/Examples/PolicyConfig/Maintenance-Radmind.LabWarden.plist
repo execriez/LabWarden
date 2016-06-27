@@ -64,7 +64,7 @@
 		<key>UpdateMethodArguments</key>
 		<array>
 			<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
-			<string>192.168.0.3,sha1,0,-I,30000</string>
+			<string>192.168.0.3,sha1,0,-I,42000</string>
 		</array>
 	</dict>
 	<key>Name</key>
@@ -79,6 +79,6 @@
 	<key>Type</key>
 	<string>Policy</string>
 	<key>UUID</key>
-	<string>7F36A54A-0E5F-4ED5-8723-DC38C29042FD</string>
+	<string>58A0FD51-A047-48AB-A3F3-52981D2D55ED</string>
 </dict>
 </plist>

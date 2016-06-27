@@ -70,6 +70,37 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
 # ---
+LCL_PolicyName="AppExamplePolicy"
+LCL_Tag=""
+
+if test -z "${LCL_Tag}"
+then
+  LCL_PayloadName="${LCL_PolicyName}"
+else
+  LCL_PayloadName="${LCL_PolicyName}-${LCL_Tag}"
+fi
+
+LCL_PayloadUUID=$(uuidgen)
+rm -f "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Name" "${LCL_PolicyName}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "AppWillLaunch"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:1" "AppDidLaunch"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:2" "AppDidTerminate"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleBool" "true"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleNum" "42"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleString" "Example"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:0" "First"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:1" "Second"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:2" "Third"
+
+/usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+# ---
 LCL_PolicyName="AppFirstSetupFirefox"
 LCL_Tag=""
 
@@ -313,7 +344,7 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:OpeningHours:6:CloseTime" "21:30"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:UpdateMethodArguments:0" "file://localhost/usr/local/LabWarden/lib/RadmindUpdate"
-f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:UpdateMethodArguments:1" "192.168.0.3,sha1,0,-I,30000"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:UpdateMethodArguments:1" "192.168.0.3,sha1,0,-I,42000"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:MaintenanceAgeMaxDays" "10"
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:SafetyNetMinutes" "150"
@@ -542,6 +573,35 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Co
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:CertAuthURL" "https://yourcaserer.yourdomain/certsrv"
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:SSIDSTR" "YourSSID"
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ProxyType" "Auto"
+
+/usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+# ---
+LCL_PolicyName="SystemExamplePolicy"
+LCL_Tag=""
+
+if test -z "${LCL_Tag}"
+then
+  LCL_PayloadName="${LCL_PolicyName}"
+else
+  LCL_PayloadName="${LCL_PolicyName}-${LCL_Tag}"
+fi
+
+LCL_PayloadUUID=$(uuidgen)
+rm -f "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Name" "${LCL_PolicyName}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleBool" "true"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleNum" "42"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleString" "Example"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:0" "First"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:1" "Second"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:2" "Third"
 
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 
@@ -935,6 +995,35 @@ f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Ty
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "UserAtDesktop"
 
 f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:DesktopWallpaperURI" "smb://YOURSERVER/YOURSHARE/YOURFOLDER/desktop.bmp"
+
+/usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+# ---
+LCL_PolicyName="UserExamplePolicy"
+LCL_Tag=""
+
+if test -z "${LCL_Tag}"
+then
+  LCL_PayloadName="${LCL_PolicyName}"
+else
+  LCL_PayloadName="${LCL_PolicyName}-${LCL_Tag}"
+fi
+
+LCL_PayloadUUID=$(uuidgen)
+rm -f "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Name" "${LCL_PolicyName}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":UUID" "${LCL_PayloadUUID}"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Type" "Policy"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":TriggeredBy:0" "UserAtDesktop"
+
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleBool" "true"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleNum" "42"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleString" "Example"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:0" "First"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:1" "Second"
+f_SetPlistProperty "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist" ":Config:ExampleArray:2" "Third"
 
 /usr/local/LabWarden/util/PackForDeployment "${GLB_ConfigLabDir}/${LCL_PayloadName}.LabWarden.plist"
 

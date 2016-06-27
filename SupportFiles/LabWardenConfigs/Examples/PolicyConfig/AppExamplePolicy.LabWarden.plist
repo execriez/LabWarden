@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>ExampleArray</key>
+		<array>
+			<string>First</string>
+			<string>Second</string>
+			<string>Third</string>
+		</array>
+		<key>ExampleBool</key>
+		<true/>
+		<key>ExampleNum</key>
+		<integer>42</integer>
+		<key>ExampleString</key>
+		<string>Example</string>
+	</dict>
+	<key>Name</key>
+	<string>AppExamplePolicy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>AppWillLaunch</string>
+		<string>AppDidLaunch</string>
+		<string>AppDidTerminate</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>3457EA2E-B2A3-4F75-A47F-CA2AF27B5BD2</string>
+</dict>
+</plist>

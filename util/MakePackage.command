@@ -2,17 +2,19 @@
 #
 # Short:    Utility script - Build LabWarden installation package
 # Author:   Mark J Swift
-# Version:  1.0.87
-# Modified: 22-Jun-2016
+# Version:  1.0.88
+# Modified: 27-Jun-2016
 #
 # Called as follows:    
 #   MakePackage.command
+#
+# Note, the contents of any directory called "custom" is not included in the package
 
 # ---
 
 GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
-GLB_LabWardenVersion="1.0.87"
+GLB_LabWardenVersion="1.0.88"
 
 # ---
 
@@ -32,24 +34,73 @@ GLB_ThisScriptTempDir="$(mktemp -dq /tmp/${GLB_ThisScriptName}-XXXXXXXX)"
 
 # ---
 
-# Copy the main payload
 GLB_ScriptDir="${GLB_ThisScriptTempDir}"/PKG-Scripts
 mkdir -p "${GLB_ScriptDir}"
 
-cp -pR "${GLB_PayloadDir}/" "${GLB_ScriptDir}/"
-
-# Remove any unwanted files
-rm -fR "${GLB_ScriptDir}"/SupportFiles
-rm -fR "${GLB_ScriptDir}"/.git
-find "${GLB_ThisScriptTempDir}" -iname .DS_Store -exec rm -f {} \;
-
-# populate the package resource directory
 GLB_ResourceDir="${GLB_ThisScriptTempDir}"/PKG-Resources
 mkdir -p "${GLB_ResourceDir}"
 
+# ---
+
+# populate the package resource directory
 cp -p "${GLB_PayloadDir}/images/background.jpg" "${GLB_ResourceDir}/"
 
-cp -p "${GLB_PayloadDir}/LICENSE" "${GLB_ResourceDir}"/License.txt
+# ---
+
+# Create the uninstall package
+
+GLB_PkgName="LabWarden-Uninstaller"
+GLB_PKGTITLE="Uninstall LabWarden"
+
+# -- Copy the main payload
+mkdir -p "${GLB_ScriptDir}/util"
+cp -pR "${GLB_PayloadDir}/util/Uninstall.command" "${GLB_ScriptDir}/util"
+
+# -- create the Welcome text
+cat << EOF > "${GLB_ResourceDir}"/Welcome.txt
+This package uninstalls LabWarden and any related LabWarden resources.
+
+You will be guided through the steps necessary to uninstall this software.
+EOF
+
+# -- create the ReadMe text
+cat << EOF > "${GLB_ResourceDir}"/ReadMe.txt
+This package deletes the following files an directories (if they exist):
+
+* /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
+* /Library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindow.plist
+* /Library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindowIdle.plist
+* /Library/LaunchAgents/${GLB_LabWardenSignature}.PostLogin.plist
+* /Library/LaunchAgents/${GLB_LabWardenSignature}.UserPoll.plist
+* /Library/LaunchDaemons/${GLB_LabWardenSignature}.Boot.plist
+* /Library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
+* /usr/LabWarden/
+
+Also, the Login and Logout hooks will be cleared if LabWarden has set them.
+
+A restart is required to complete the un-installation.
+
+EOF
+
+# -- build the postinstall script
+cat << 'EOF' > "${GLB_ScriptDir}"/postinstall
+#!/bin/bash
+"$(dirname "${0}")"/util/Uninstall.command
+EOF
+chmod o+x,g+x,u+x "${GLB_ScriptDir}"/postinstall
+
+# -- build an empty package
+pkgbuild --identifier "${GLB_LabWardenSignature}" --version "${GLB_LabWardenVersion}" --nopayload "${GLB_ThisScriptTempDir}"/${GLB_PkgName}.pkg --scripts ${GLB_ScriptDir}
+      
+# -- Synthesise a temporary distribution.plist file --
+productbuild --synthesize --package "${GLB_ThisScriptTempDir}"/${GLB_PkgName}.pkg "${GLB_ThisScriptTempDir}"/synthdist.plist
+
+# -- add options for title, background, licence & readme --
+awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${GLB_PKGTITLE}"'</title>\n<background file=\"background.jpg\" mime-type=\"image/jpg\" />\n<welcome file=\"Welcome.txt\"/>\n<readme file=\"ReadMe.txt\"/>"}; {print}' "${GLB_ThisScriptTempDir}"/synthdist.plist > "${GLB_ThisScriptTempDir}"/distribution.plist
+
+# -- build the final package --
+cd "${GLB_ThisScriptTempDir}"
+productbuild --distribution "${GLB_ThisScriptTempDir}"/distribution.plist --resources "${GLB_ResourceDir}" ~/Desktop/${GLB_PkgName}.pkg
 
 # ---
 
@@ -57,6 +108,23 @@ cp -p "${GLB_PayloadDir}/LICENSE" "${GLB_ResourceDir}"/License.txt
 
 GLB_PkgName="LabWarden"
 GLB_PKGTITLE="LabWarden"
+
+# -- Copy the main payload
+cp -pR "${GLB_PayloadDir}/" "${GLB_ScriptDir}/"
+
+# -- Remove any unwanted files
+rm -fR "${GLB_ScriptDir}"/SupportFiles
+rm -fR "${GLB_ScriptDir}"/.git
+find -d "${GLB_ScriptDir}" -ipath "*/custom/*" -exec rm -fd {} \;
+find "${GLB_ThisScriptTempDir}" -iname .DS_Store -exec rm -f {} \;
+
+# -- Copy the example custom policies
+find -d "${GLB_PayloadDir}/Policies/custom/" -iname "*ExamplePolicy" -exec cp "{}" ${GLB_ScriptDir}/Policies/custom/ \;
+
+# -- Copy the License text
+
+# populate the package resource directory
+cp -p "${GLB_PayloadDir}/LICENSE" "${GLB_ResourceDir}"/License.txt
 
 # -- create the Welcome text
 cat << EOF > "${GLB_ResourceDir}"/Welcome.txt
@@ -98,59 +166,6 @@ EOF
 cat << 'EOF' > "${GLB_ScriptDir}"/postinstall
 #!/bin/bash
 "$(dirname "${0}")"/util/Install.command
-EOF
-chmod o+x,g+x,u+x "${GLB_ScriptDir}"/postinstall
-
-# -- build an empty package
-pkgbuild --identifier "${GLB_LabWardenSignature}" --version "${GLB_LabWardenVersion}" --nopayload "${GLB_ThisScriptTempDir}"/${GLB_PkgName}.pkg --scripts ${GLB_ScriptDir}
-      
-# -- Synthesise a temporary distribution.plist file --
-productbuild --synthesize --package "${GLB_ThisScriptTempDir}"/${GLB_PkgName}.pkg "${GLB_ThisScriptTempDir}"/synthdist.plist
-
-# -- add options for title, background, licence & readme --
-awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${GLB_PKGTITLE}"'</title>\n<background file=\"background.jpg\" mime-type=\"image/jpg\" />\n<welcome file=\"Welcome.txt\"/>\n<license file=\"License.txt\"/>\n<readme file=\"ReadMe.txt\"/>"}; {print}' "${GLB_ThisScriptTempDir}"/synthdist.plist > "${GLB_ThisScriptTempDir}"/distribution.plist
-
-# -- build the final package --
-cd "${GLB_ThisScriptTempDir}"
-productbuild --distribution "${GLB_ThisScriptTempDir}"/distribution.plist --resources "${GLB_ResourceDir}" ~/Desktop/${GLB_PkgName}.pkg
-
-# ---
-
-# Create the uninstall package
-
-GLB_PkgName="LabWarden-Uninstaller"
-GLB_PKGTITLE="Uninstall LabWarden"
-
-# -- create the Welcome text
-cat << EOF > "${GLB_ResourceDir}"/Welcome.txt
-This package uninstalls LabWarden and any related LabWarden resources.
-
-You will be guided through the steps necessary to uninstall this software.
-EOF
-
-# -- create the ReadMe text
-cat << EOF > "${GLB_ResourceDir}"/ReadMe.txt
-This package deletes the following files an directories (if they exist):
-
-* /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
-* /Library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindow.plist
-* /Library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindowIdle.plist
-* /Library/LaunchAgents/${GLB_LabWardenSignature}.PostLogin.plist
-* /Library/LaunchAgents/${GLB_LabWardenSignature}.UserPoll.plist
-* /Library/LaunchDaemons/${GLB_LabWardenSignature}.Boot.plist
-* /Library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
-* /usr/LabWarden/
-
-Also, if LabWarden has control of the Login and Logout hooks - these will be cleared.
-
-A restart is required to complete the installation.
-
-EOF
-
-# -- build the postinstall script
-cat << 'EOF' > "${GLB_ScriptDir}"/postinstall
-#!/bin/bash
-"$(dirname "${0}")"/util/Uninstall.command
 EOF
 chmod o+x,g+x,u+x "${GLB_ScriptDir}"/postinstall
 

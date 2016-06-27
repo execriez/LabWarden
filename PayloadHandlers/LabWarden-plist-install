@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.88
+# Modified: 27-Jun-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -181,9 +181,18 @@ LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
         ;;
 
       Policy)
-        if test -e "/usr/local/LabWarden/Policies/${LCL_ObjectName}"
+        LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_PolicyName}"
+        if ! test -e "${LCL_PolicyPath}"
         then
-          LCL_PolicyScriptVersion="$(/usr/local/LabWarden/Policies/${LCL_ObjectName})"
+          LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_PolicyName}"
+          if ! test -e "${LCL_PolicyPath}"
+          then
+            LCL_PolicyPath=""
+          fi
+        fi
+        if test -n "${LCL_PolicyPath}"
+        then
+          LCL_PolicyScriptVersion="$(${LCL_PolicyPath})"
           f_SetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_ObjectName}:LocalPrefs:Version" "${LCL_PolicyScriptVersion}"
         fi
         

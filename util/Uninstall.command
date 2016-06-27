@@ -2,10 +2,14 @@
 #
 # Short:    Uninstall LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.88
+# Modified: 25-June-2016
 #
 #
+# Called as follows:    
+#   Uninstall.command
+#
+# Note, the contents of any directory called "custom" is not uninstalled
 #
 
 # ---
@@ -62,13 +66,13 @@ else
   GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
   # Remove old install
-  rm -fR /usr/local/LabWarden
+  find -d /usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
+  find -d /usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
   rm -f /Library/LaunchAgents/${GLB_LabWardenSignature}*
   rm -f /Library/LaunchDaemons/${GLB_LabWardenSignature}*
   
   if test -n "$(defaults read /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook | grep -i "LabWarden")"
   then
-  echo "hello"
     defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook ""
   fi
   

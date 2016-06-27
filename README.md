@@ -1834,6 +1834,54 @@ It is called as the user. Files are synced down from the network at a **UserAtDe
 
 The example policy config should be configured to your own needs.
 
+## Custom scripts and custom policies
+
+If you have a custom script that you need to run - you should turn it into a custom policy.
+
+A policy is just a script and an associated script config.
+
+The script config contains the script options and a list of event(s) that trigger the script. 
+
+Policy Scripts can be triggered by the following System events:
+
+* Boot
+* LoginWindow
+* NetworkUp
+* NetworkDown
+* LoginBegin
+* LogoutEnd
+* LoginWindowIdle
+* LoginWindowRestartOrShutdown
+
+...and by the following User events:
+
+* UserLogin
+* UserAtDesktop
+* AppWillLaunch
+* AppDidLaunch
+* AppDidTerminate
+* UserIdle
+* UserLogout
+
+If the script is triggered by a system event, it will be called as root.
+
+If the script is triggered by a user event, it will be called as that user.
+
+Custom Policies should be stored in the directory "/usr/local/LabWarden/Policies/custom/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
+
+For a policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Policies/custom/MyPolicy'.
+
+The accompanying config file (which is stored in AD) should be called 'MyPolicy.LabWarden.plist'.
+
+Use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups info field.
+
+Take a look at the example custom policies for inspiration ( AppExamplePolicy , SystemExamplePolicy and UserExamplePolicy ).
+
+Each policy has a line that includes the common library. This library (/usr/local/LabWarden/lib/CommonLib) sets up a number of useful global variables (documented in the CommonLib code).
+
+You should note that when an event happens, every script that is triggered by that event is run. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
+
+
 ## References
 
 LabWarden makes use of the following tools:
@@ -1847,6 +1895,13 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.88 - 27 JUN 2016
+
+* Added /Policies/custom/ directory to allow custom (non-standard) policies.
+* Altered installer/uninstaller scripts so that custom (non-standard) policies are not deleted during an update.
+* Added example custom policies 'AppExamplePolicy' , 'SystemExamplePolicy' and 'UserExamplePolicy'.
+* Updated documentation.
 
 1.0.87 - 22 JUN 2016
 

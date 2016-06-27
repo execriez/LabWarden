@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# Short:    Example User Policy script - A blank canvas
+# Author:   Mark J Swift
+# Version:  1.0.88
+# Modified: 27-Jun-2016
+#
+# Triggered by the following events:
+#   UserAtDesktop (as user)
+#
+#   ... see associated config 'UserExamplePolicy.LabWarden.plist'
+#
+# Called as follows:    
+#   UserExamplePolicy <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+LCL_ScriptVersion="1.0.88"
+
+if [ $# -eq 0 ]
+then
+  echo "${LCL_ScriptVersion}"
+  exit 0
+fi
+
+# ---
+
+# Take a note when this script started
+LCL_MyStartEpoch=$(date -u "+%s")
+
+# Get the config directory
+LCL_ConfigDir="${1}"
+if test -z "${LCL_ConfigDir}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+LCL_EventHistory="${2}"
+
+# Get the event that triggered this policy.
+# This can be one of the following system events:
+#   Boot, LoginWindow, NetworkUp, NetworkDown, LoginBegin, LogoutEnd, LoginWindowIdle, LoginWindowRestartOrShutdown
+# ...or one of the following User events:
+#   UserLogin, UserAtDesktop, AppWillLaunch, AppDidLaunch, AppDidTerminate, UserIdle, UserLogout
+
+LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${LCL_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
+GLB_LoggedInUserName="${3}"
+
+# Get optional parameter
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+LCL_OptionalParam="${4}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_LabWardenVersion}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Filename of this script)
+LCL_PolicyName="${GLB_ThisScriptName}"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+
+if test -z "${GLB_LoggedInUserName}"
+then
+  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  
+else
+  f_logmessage "ATTENTION, running Policy '${LCL_PolicyName}'"
+
+  # ------------------
+  # BEGIN YOUR CODE HERE
+  
+  LCL_ExampleBool="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:ExampleBool")"
+  if [ "${LCL_ExampleBool}" = "true" ]
+  then
+    say "${LCL_PolicyName}, ${LCL_EventName}"
+  fi
+  
+  # END YOUR CODE HERE
+  # ------------------
+  
+fi
+  
+# Trigger an event
+f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+
+# Remove temporary files
+srm -fR "${GLB_ThisScriptTempDir}"
+
+# ---

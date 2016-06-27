@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.87
-# Modified: 21-Jun-2016
+# Version:  1.0.88
+# Modified: 27-Jun-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -75,7 +75,7 @@
 
 GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
-GLB_LabWardenVersion="1.0.87"
+GLB_LabWardenVersion="1.0.88"
 
 # ---
 
@@ -605,10 +605,19 @@ f_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
         LCL_PolicyName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger:${LCL_DoesTriggerIndex}")
         if test -n "${LCL_PolicyName}"
         then
-          if test -e /usr/local/LabWarden/Policies/"${LCL_PolicyName}"
+          LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_PolicyName}"
+          if ! test -e "${LCL_PolicyPath}"
+          then
+            LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_PolicyName}"
+            if ! test -e "${LCL_PolicyPath}"
+            then
+              LCL_PolicyPath=""
+            fi
+          fi
+          if test -n "${LCL_PolicyPath}"
           then
             # Run script in background
-            /usr/local/LabWarden/Policies/"${LCL_PolicyName}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
+            "${LCL_PolicyPath}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
             LCL_EventHasPolicies="true"
           fi
         fi
@@ -623,13 +632,22 @@ f_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
       LCL_PolicyName=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_EventName}:DoesTrigger:${LCL_DoesTriggerIndex}")
       if test -n "${LCL_PolicyName}"
       then
-        if test -e /usr/local/LabWarden/Policies/"${LCL_PolicyName}"
+        LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_PolicyName}"
+        if ! test -e "${LCL_PolicyPath}"
+        then
+          LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_PolicyName}"
+          if ! test -e "${LCL_PolicyPath}"
+          then
+            LCL_PolicyPath=""
+          fi
+        fi
+        if test -n "${LCL_PolicyPath}"
         then
           # Run script in background
-          /usr/local/LabWarden/Policies/"${LCL_PolicyName}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
+          "${LCL_PolicyPath}" "${LCL_ConfigDir}" "${LCL_EventHistory}:${LCL_EventName}" "${GLB_LoggedInUserName}" "${LCL_OptionalParam}" &
           LCL_EventHasPolicies="true"
         fi
-      fi
+     fi
     done
     
     if [ "${LCL_EventHasPolicies}" = "false" ]

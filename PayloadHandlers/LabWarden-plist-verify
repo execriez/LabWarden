@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.88
+# Modified: 27-Jun-2016
 
 # ---
 
@@ -68,9 +68,18 @@ Printer)
   ;;
 
 Policy)
-  if test -e "/usr/local/LabWarden/Policies/${LCL_ObjectName}"
+  LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_ObjectName}"
+  if ! test -e "${LCL_PolicyPath}"
   then
-    LCL_PolicyScriptVersion="$(/usr/local/LabWarden/Policies/${LCL_ObjectName})"
+    LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_ObjectName}"
+    if ! test -e "${LCL_PolicyPath}"
+    then
+      LCL_PolicyPath=""
+    fi
+  fi
+  if test -n "${LCL_PolicyPath}"
+  then
+    LCL_PolicyScriptVersion="$(${LCL_PolicyPath})"
   else
     f_QuickExit "Policy script ${LCL_ObjectName} is no longer installed"
   fi
