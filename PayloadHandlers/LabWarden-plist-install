@@ -181,10 +181,10 @@ LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
         ;;
 
       Policy)
-        LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_PolicyName}"
+        LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_ObjectName}"
         if ! test -e "${LCL_PolicyPath}"
         then
-          LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_PolicyName}"
+          LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_ObjectName}"
           if ! test -e "${LCL_PolicyPath}"
           then
             LCL_PolicyPath=""
