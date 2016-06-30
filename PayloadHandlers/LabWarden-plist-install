@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.88
-# Modified: 27-Jun-2016
+# Version:  1.0.89
+# Modified: 30-Jun-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
