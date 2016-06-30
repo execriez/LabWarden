@@ -2,7 +2,7 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.88
+# Version:  1.0.89
 # Modified: 27-Jun-2016
 #
 # 'CommonLib' should be included into scripts as follows:
@@ -75,7 +75,7 @@
 
 GLB_LabWardenSignature="com.github.execriez.LabWarden"
 
-GLB_LabWardenVersion="1.0.88"
+GLB_LabWardenVersion="1.0.89"
 
 # ---
 
