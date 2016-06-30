@@ -1896,6 +1896,10 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.89 - 30 JUN 2016
+
+* Fixed bug in 'LabWarden-plist-install' script introduced in 1.0.88.
+
 1.0.88 - 27 JUN 2016
 
 * Added /Policies/custom/ directory to allow custom (non-standard) policies.
