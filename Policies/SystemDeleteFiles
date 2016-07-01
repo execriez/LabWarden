@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Delete system files
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,98 +13,95 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else
-  LCL_PolicyExecuted="false"
-  LCL_PathCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
-  for (( LCL_i=0; LCL_i<${LCL_PathCount}; LCL_i++ ))
+  bv_PolicyExecuted="false"
+  iv_PathCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_PathCount}; iv_LoopCount++ ))
   do
-    LCL_Path="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+    sv_DelPath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path:${iv_LoopCount}")"
 
     # Sanitise the file/folder Path
-    LCL_Path=$(echo "/${LCL_Path}" | sed "s|^/[/]*|/|;s|/$||")
+    sv_DelPath=$(echo "/${sv_DelPath}" | sed "s|^/[/]*|/|;s|/$||")
 
-    if test -n "${LCL_Path}"
+    if test -n "${sv_DelPath}"
     then
-      if test -e "${LCL_Path}"
+      if test -e "${sv_DelPath}"
       then
-        if test -d "${LCL_Path}"
+        if test -d "${sv_DelPath}"
         then
           # Delete folder
-          f_logmessage "NOTE, deleting folder '${LCL_Path}' "
-          rm -fR "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+          LW_nf_logmessage "NOTE, deleting folder '${sv_DelPath}' "
+          rm -fR "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
           if [ "$?" = "0" ]
           then
-            LCL_PolicyExecuted="true"
+            bv_PolicyExecuted="true"
           fi
         else
           # Delete file
-          f_logmessage "NOTE, deleting file '${LCL_Path}' "
-          rm -f "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+          LW_nf_logmessage "NOTE, deleting file '${sv_DelPath}' "
+          rm -f "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
           if [ "$?" = "0" ]
           then
-            LCL_PolicyExecuted="true"
+            bv_PolicyExecuted="true"
           fi
         fi
       fi
@@ -112,22 +109,22 @@ else
 
   done
   
-  if [ "${LCL_PolicyExecuted}" = "false" ]
+  if [ "${bv_PolicyExecuted}" = "false" ]
   then
-    f_QuickExit "NOTE, policy aborted: there are no system files to delete."
+    LW_nf_QuickExit "NOTE, policy aborted: there are no system files to delete."
     
   else
     # Restart if there are any system files removed
-    f_RestartNow "ATTENTION, system files have been removed - we need to reboot."
+    LW_nf_RestartNow "ATTENTION, system files have been removed - we need to reboot."
     
   fi
 
 fi
   
 # We might never get here, but I don't suppose that matters
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

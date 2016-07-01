@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Add entries to the hosts file
 # Author:   Mark J Swift
-# Version:  1.0.87
-# Modified: 22-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,124 +13,121 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.87"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else    
-  LCL_PolicyExecuted="false"
-  cat /etc/hosts | sed -e '/SystemAddToHosts-BEGIN/,/SystemAddToHosts-END/d' > "${GLB_ThisScriptTempDir}/hosts"
+  bv_PolicyExecuted="false"
+  cat /etc/hosts | sed -e '/SystemAddToHosts-BEGIN/,/SystemAddToHosts-END/d' > "${LW_sv_ThisScriptTempDirPath}/hosts"
   
-  echo "# SystemAddToHosts-BEGIN" >> "${GLB_ThisScriptTempDir}/hosts"
+  echo "# SystemAddToHosts-BEGIN" >> "${LW_sv_ThisScriptTempDirPath}/hosts"
   
   # Build a file of entries to add to /etc/hosts
-  LCL_EntryCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry")"
-  for (( LCL_i=0; LCL_i<${LCL_EntryCount}; LCL_i++ ))
+  iv_EntryCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Entry")"
+  for (( iv_LoopCount1=0; iv_LoopCount1<${iv_EntryCount}; iv_LoopCount1++ ))
   do
-    LCL_EntryIP4="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:IP4")"
-    if test -n "${LCL_EntryIP4}"
+    sv_EntryIP4="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Entry:${iv_LoopCount1}:IP4")"
+    if test -n "${sv_EntryIP4}"
     then
-      LCL_HostList=""
+      sv_HostList=""
       
-      LCL_HostCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:Host")"
-      for (( LCL_j=0; LCL_j<${LCL_HostCount}; LCL_j++ ))
+      sv_HostCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Entry:${iv_LoopCount1}:Host")"
+      for (( iv_LoopCount2=0; iv_LoopCount2<${sv_HostCount}; iv_LoopCount2++ ))
       do
-        LCL_Host="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Entry:${LCL_i}:Host:${LCL_j}")"
-        if test -n "${LCL_Host}"
+        sv_Host="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Entry:${iv_LoopCount1}:Host:${iv_LoopCount2}")"
+        if test -n "${sv_Host}"
         then
-          if test -n "${LCL_HostList}"
+          if test -n "${sv_HostList}"
           then
-            LCL_HostList="${LCL_HostList} "
+            sv_HostList="${sv_HostList} "
           fi
-          LCL_HostList="${LCL_HostList}${LCL_Host}"
+          sv_HostList="${sv_HostList}${sv_Host}"
         fi
       done
 
-      if test -n "${LCL_HostList}"
+      if test -n "${sv_HostList}"
       then
-        LCL_PolicyExecuted="true"
-        printf "${LCL_EntryIP4}\t${LCL_HostList}\n" >> "${GLB_ThisScriptTempDir}/hosts"
+        bv_PolicyExecuted="true"
+        printf "${sv_EntryIP4}\t${sv_HostList}\n" >> "${LW_sv_ThisScriptTempDirPath}/hosts"
       fi
       
     fi
   done
 
-  echo "# SystemAddToHosts-END" >> "${GLB_ThisScriptTempDir}/hosts"
+  echo "# SystemAddToHosts-END" >> "${LW_sv_ThisScriptTempDirPath}/hosts"
 
-  if [ "${LCL_PolicyExecuted}" = "true" ]
+  if [ "${bv_PolicyExecuted}" = "true" ]
   then
-    cat "${GLB_ThisScriptTempDir}/hosts" > /etc/hosts
-    f_logmessage "ATTENTION, entries added to hosts file."
+    cat "${LW_sv_ThisScriptTempDirPath}/hosts" > /etc/hosts
+    LW_nf_logmessage "ATTENTION, entries added to hosts file."
   
   else
-    f_QuickExit "NOTE, policy aborted - no config "
+    LW_nf_QuickExit "NOTE, policy aborted - no config "
     
   fi
 
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

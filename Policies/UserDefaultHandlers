@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Set default file type handlers for user
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
@@ -18,94 +18,91 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if test -z "${GLB_LoggedInUserName}"
+if test -z "${LW_sv_LoggedInUserName}"
 then
-  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  LW_nf_QuickExit "NOTE, policy aborted: No-one is logged in."
   
 else    
 
   # REF: http://duti.org - duti, set the default handlers
-  if test -e "${GLB_BinDir}"/duti
+  if test -e "${LW_sv_BinDirPath}"/duti
   then
-    f_logmessage "ATTENTION, setting default handlers."
+    LW_nf_logmessage "ATTENTION, setting default handlers."
   
     # Set default handlers
-    LCL_ObjectCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Handler")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler")"
 
-    for (( LCL_i=0; LCL_i<${LCL_ObjectCount}; LCL_i++ ))
+    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      LCL_ReqdBundleID="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Handler:${LCL_i}:BundleID")"
-      if test -n "${LCL_ReqdBundleID}"
+      sv_ReqdBundleID="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:BundleID")"
+      if test -n "${sv_ReqdBundleID}"
       then
-        LCL_ReqdUTI="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Handler:${LCL_i}:UTI")"
-        if test -n "${LCL_ReqdBundleID}"
+        sv_ReqdUTI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:UTI")"
+        if test -n "${sv_ReqdBundleID}"
         then
-          GLB_LoggingStatus="off"
-          LCL_ReqdRole="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Handler:${LCL_i}:Role")"
-          GLB_LoggingStatus=${GLB_LoggingDefault}
-          if test -n "${LCL_ReqdRole}"
+          LW_bv_LogIsActiveStatus="false"
+          sv_ReqdRole="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:Role")"
+          LW_bv_LogIsActiveStatus=${LW_bv_LogIsActiveDefault}
+          if test -n "${sv_ReqdRole}"
           then
-            "${GLB_BinDir}"/duti -s "${LCL_ReqdBundleID}" "${LCL_ReqdUTI}" "${LCL_ReqdRole}"
+            "${LW_sv_BinDirPath}"/duti -s "${sv_ReqdBundleID}" "${sv_ReqdUTI}" "${sv_ReqdRole}"
           else
-            "${GLB_BinDir}"/duti -s "${LCL_ReqdBundleID}" "${LCL_ReqdUTI}"
+            "${LW_sv_BinDirPath}"/duti -s "${sv_ReqdBundleID}" "${sv_ReqdUTI}"
           fi
         fi
       fi
@@ -115,9 +112,9 @@ else
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

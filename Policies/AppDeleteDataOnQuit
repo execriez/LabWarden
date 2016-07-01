@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Delete user application data when an App quits
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   AppDidTerminate (as user)
@@ -13,120 +13,117 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
 # Note, older applications may return "(null)"
-GLB_ApplicationBundleIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f3)"
+sv_ThisAppBundleIdentifier="$(echo ${sv_OptionalParam} | cut -d":" -f3)"
 
 # Get notification e.g. WillLaunch, DidLaunch or DidTerminate
-GLB_ApplicationNotification="$(echo ${LCL_OptionalParam} | cut -d":" -f1)"
+sv_ThisAppNotificationType="$(echo ${sv_OptionalParam} | cut -d":" -f1)"
 
 # Get Date/Time Epoch of the notification
-GLB_NotificationEpoch="$(echo ${LCL_OptionalParam} | cut -d":" -f2)"
+iv_ThisAppNotificationEpoch="$(echo ${sv_OptionalParam} | cut -d":" -f2)"
 
 # Get ApplicationName e.g. TextEdit
-GLB_ApplicationName="$(echo ${LCL_OptionalParam} | cut -d":" -f4)"
+sv_ThisAppName="$(echo ${sv_OptionalParam} | cut -d":" -f4)"
 
 # Get ApplicationPath e.g. /Applications/TextEdit.app
-GLB_ApplicationPath="$(echo ${LCL_OptionalParam} | cut -d":" -f5)"
+sv_ThisAppFilePath="$(echo ${sv_OptionalParam} | cut -d":" -f5)"
 
 # Get ApplicationProcessIdentifier - i.e. the process ID
-GLB_ApplicationProcessIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f6)"
+sv_ThisAppProcessID="$(echo ${sv_OptionalParam} | cut -d":" -f6)"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-case ${LCL_EventName} in
+case ${sv_EventName} in
     
 AppDidTerminate)
-  LCL_AppDataDeleted="false"
-  LCL_AppDataCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppData")"
-  for (( LCL_i=0; LCL_i<${LCL_AppDataCount}; LCL_i++ ))
+  bv_AppDataDeleted="false"
+  iv_AppDataCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AppData")"
+  for (( iv_LoopCount1=0; iv_LoopCount1<${iv_AppDataCount}; iv_LoopCount1++ ))
   do
     # Get app id
-    LCL_ApplicationBundleIdentifier="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppData:${LCL_i}:ApplicationBundleIdentifier")"
-    if test -n "${LCL_ApplicationBundleIdentifier}"
+    sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AppData:${iv_LoopCount1}:ApplicationBundleIdentifier")"
+    if test -n "${sv_ListedAppBundleIdentifier}"
     then
-      if [ "${LCL_ApplicationBundleIdentifier}" = "${GLB_ApplicationBundleIdentifier}" ]
+      if [ "${sv_ListedAppBundleIdentifier}" = "${sv_ThisAppBundleIdentifier}" ]
       then
-        LCL_PathCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppData:${LCL_i}:Path")"
-        for (( LCL_j=0; LCL_j<${LCL_PathCount}; LCL_j++ ))
+        iv_PathCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AppData:${iv_LoopCount1}:Path")"
+        for (( iv_LoopCount2=0; iv_LoopCount2<${iv_PathCount}; iv_LoopCount2++ ))
         do
-         LCL_Path="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:AppData:${LCL_i}:Path:${LCL_j}")"
+         sv_DelPath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AppData:${iv_LoopCount1}:Path:${iv_LoopCount2}")"
 
           # Sanitise the file/folder Path
-          LCL_Path=$(echo "/${LCL_Path}" | sed "s|^/[/]*|/|;s|/$||")
+          sv_DelPath=$(echo "/${sv_DelPath}" | sed "s|^/[/]*|/|;s|/$||")
 
-          if test -n "${LCL_Path}"
+          if test -n "${sv_DelPath}"
           then
-            LCL_AppDataDeleted="true"
-            if test -d "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+            bv_AppDataDeleted="true"
+            if test -d "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
             then
               # Delete folder
-              f_logmessage "NOTE, delete folder '${LCL_Path}' "
-              rm -fR "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+              LW_nf_logmessage "NOTE, delete folder '${sv_DelPath}' "
+              rm -fR "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
             else
-              if test -e "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+              if test -e "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
               then
                 # Delete file
-                f_logmessage "NOTE, delete file '${LCL_Path}' "
-                rm -f "${GLB_LoggedInUserHomeDir}${LCL_Path}"
+                LW_nf_logmessage "NOTE, delete file '${sv_DelPath}' "
+                rm -f "${LW_sv_LoggedInUserHomeDirPath}${sv_DelPath}"
               fi
             fi
           fi
@@ -137,27 +134,27 @@ AppDidTerminate)
     
   done
   
-  if [ "${LCL_AppDataDeleted}" = "false" ]
+  if [ "${bv_AppDataDeleted}" = "false" ]
   then
-    f_QuickExit "NOTE, policy aborted: there is no App Data to delete for the application '${GLB_ApplicationBundleIdentifier}'"
+    LW_nf_QuickExit "NOTE, policy aborted: there is no App Data to delete for the application '${sv_ThisAppBundleIdentifier}'"
     
   else
-    f_logmessage "ATTENTION, '${GLB_ApplicationBundleIdentifier}' App Data removed"
+    LW_nf_logmessage "ATTENTION, '${sv_ThisAppBundleIdentifier}' App Data removed"
     
   fi
 
   ;;
 
 *)
-  f_QuickExit "NOTE, policy aborted: Trigger '${LCL_EventName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
   ;;
 
 esac
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

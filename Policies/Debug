@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Short:    Policy script - Write Debug info to the LabWarden preferences
+# Short:    Policy script - Write Debug info to the LabWarden config
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   All events (as user or root)
@@ -13,113 +13,111 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-case ${LCL_EventName} in
+case ${sv_EventName} in
     
 *)
   # -- BEGIN POLICY --
 
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserName" "${GLB_LoggedInUserName}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:OptionalParam" "${LCL_OptionalParam}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:BinDir" "${GLB_BinDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LabConfigDir" "${GLB_LabConfigDir}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisScriptName" "${GLB_ThisScriptName}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisScriptPID" "${GLB_ThisScriptPID}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisUserTempDir" "${GLB_ThisUserTempDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisUserLogDir" "${GLB_ThisUserLogDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisUserPrefDir" "${GLB_ThisUserPrefDir}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisUserName" "${GLB_ThisUserName}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ThisUserID" "${GLB_ThisUserID}"
-  
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserID" "${GLB_LoggedInUserID}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserIsAdmin" "${GLB_LoggedInUserIsAdmin}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserIsLocal" "${GLB_LoggedInUserIsLocal}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserIsMobile" "${GLB_LoggedInUserIsMobile}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserHomeDir" "${GLB_LoggedInUserHomeDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserLocalHomeDir" "${GLB_LoggedInUserLocalHomeDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserHomeNetworkDir" "${GLB_LoggedInUserHomeNetworkDir}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserHomeNetworkURI" "${GLB_LoggedInUserHomeNetworkURI}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:LoggedInUserHomeIsLocal" "${GLB_LoggedInUserHomeIsLocal}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:BuildVersionStampAsNumber" "${GLB_BuildVersionStampAsNumber}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:BuildVersionStampAsString" "${GLB_BuildVersionStampAsString}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:SystemVersionStampAsNumber" "${GLB_SystemVersionStampAsNumber}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:SystemVersionStampAsString" "${GLB_SystemVersionStampAsString}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:IPv4PrimaryService" "${GLB_IPv4PrimaryService}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:NetworkServiceDHCPOption15" "${GLB_NetworkServiceDHCPOption15}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:NetworkServiceInterfaceName" "${GLB_NetworkServiceInterfaceName}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:NetworkServiceInterfaceDevice" "${GLB_NetworkServiceInterfaceDevice}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:NetworkServiceInterfaceHardware" "${GLB_NetworkServiceInterfaceHardware}"
-
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ADTrustAccount" "${GLB_ADTrustAccount}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ADDomainNameFlat" "${GLB_ADDomainNameFlat}"
-  f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:${LCL_EventName}:ADTrustPassword" "$(echo "${GLB_ADTrustPassword}" | sed "s|.|\*|g")"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptStartEpoch" "${LW_sv_ThisScriptStartEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LabWardenVersion" "${LW_sv_LabWardenVersion}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LabWardenSignature" "${LW_sv_LabWardenSignature}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_LogMaxLength" "${LW_iv_LogMaxLength}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LogIsActiveDefault" "${LW_bv_LogIsActiveDefault}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LogIsActiveStatus" "${LW_bv_LogIsActiveStatus}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_BinDirPath" "${LW_sv_BinDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ConfigDirPath" "${LW_sv_ConfigDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptFilePath" "${LW_sv_ThisScriptFilePath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptDirPath" "${LW_sv_ThisScriptDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptFileName" "${LW_sv_ThisScriptFileName}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptName" "${LW_sv_ThisScriptName}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_ThisScriptPID" "${LW_iv_ThisScriptPID}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisScriptTempDirPath" "${LW_sv_ThisScriptTempDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisUserTempDirPath" "${LW_sv_ThisUserTempDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisUserLogDirPath" "${LW_sv_ThisUserLogDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisUserPrefDirPath" "${LW_sv_ThisUserPrefDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ThisUserName" "${LW_sv_ThisUserName}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_ThisUserID" "${LW_iv_ThisUserID}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_LoggedInUserID" "${LW_iv_LoggedInUserID}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LoggedInUserIsAdmin" "${LW_bv_LoggedInUserIsAdmin}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LoggedInUserIsLocal" "${LW_bv_LoggedInUserIsLocal}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LoggedInUserIsMobile" "${LW_bv_LoggedInUserIsMobile}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LoggedInUserHomeDirPath" "${LW_sv_LoggedInUserHomeDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LoggedInUserLocalHomeDirPath" "${LW_sv_LoggedInUserLocalHomeDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LoggedInUserHomeNetworkDirPath" "${LW_sv_LoggedInUserHomeNetworkDirPath}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_LoggedInUserHomeNetworkURI" "${LW_sv_LoggedInUserHomeNetworkURI}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_bv_LoggedInUserHomeIsLocal" "${LW_bv_LoggedInUserHomeIsLocal}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_BuildVersionStampAsNumber" "${LW_iv_BuildVersionStampAsNumber}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_BuildVersionStampAsString" "${LW_sv_BuildVersionStampAsString}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_iv_SystemVersionStampAsNumber" "${LW_iv_SystemVersionStampAsNumber}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_SystemVersionStampAsString" "${LW_sv_SystemVersionStampAsString}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_IPv4PrimaryService" "${LW_sv_IPv4PrimaryService}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_NetworkServiceDHCPOption15" "${LW_sv_NetworkServiceDHCPOption15}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_NetworkServiceInterfaceName" "${LW_sv_NetworkServiceInterfaceName}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_NetworkServiceInterfaceDevice" "${LW_sv_NetworkServiceInterfaceDevice}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_NetworkServiceInterfaceHardware" "${LW_sv_NetworkServiceInterfaceHardware}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ADTrustAccount" "${LW_sv_ADTrustAccount}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ADComputerName" "${LW_sv_ADComputerName}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ADDomainNameFlat" "${LW_sv_ADDomainNameFlat}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ADDomainNameDNS" "${LW_sv_ADDomainNameDNS}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:${sv_EventName}:LW_sv_ADTrustPassword" "$(echo "${LW_sv_ADTrustPassword}" | sed "s|.|\*|g")"
 
   # Trigger an event 
-  f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+  LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
   # -- END POLICY --
   ;;
@@ -127,7 +125,7 @@ case ${LCL_EventName} in
 esac
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 
 # ---

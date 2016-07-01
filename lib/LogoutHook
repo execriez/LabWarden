@@ -2,8 +2,8 @@
 #
 # Short:    When a user logs out - call the LOGOUT trigger(s)
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as root at user login as follows:    
 #   LogoutHook username
@@ -23,11 +23,11 @@ fi
 # -- Login/Logout hooks run as root and pass the user as first parameter --
 
 # Get user name
-GLB_ThisUserName="${1}"
+LW_sv_ThisUserName="${1}"
 
 # We are assuming that we never log in as root, therefore the only time that
 # root logs out is when you press "Restart" or "Shutdown" at the LoginWindow
-if [ "${GLB_ThisUserName}" = "root" ]
+if [ "${LW_sv_ThisUserName}" = "root" ]
 then
   /usr/local/LabWarden/lib/Trigger "LoginWindowRestartOrShutdown"
   exit 0
@@ -38,7 +38,7 @@ fi
 # 'HEREDOC' is quoted to prevent variable expansion.
 # This means that variables outside are not available.
  
-/usr/bin/su ${GLB_ThisUserName} <<'HEREDOC'
+/usr/bin/su ${LW_sv_ThisUserName} <<'HEREDOC'
 
 /usr/local/LabWarden/lib/Trigger "UserLogout" "$(whoami)"
 
@@ -46,4 +46,4 @@ HEREDOC
 
 # -- The following is executed as root --
 
-/usr/local/LabWarden/lib/Trigger "LogoutEnd" "${GLB_ThisUserName}"
+/usr/local/LabWarden/lib/Trigger "LogoutEnd" "${LW_sv_ThisUserName}"

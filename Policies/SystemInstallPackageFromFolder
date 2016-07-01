@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Install package(s) from folder
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,108 +13,105 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else    
-  LCL_PolicyExecuted="false"
+  bv_PolicyExecuted="false"
 
-  LCL_PathCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
-  for (( LCL_i=0; LCL_i<${LCL_PathCount}; LCL_i++ ))
+  iv_PathCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_PathCount}; iv_LoopCount++ ))
   do
-    LCL_PackagePath="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
-    if test -n "${LCL_PackagePath}"
+    sv_PackageDirPath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path:${iv_LoopCount}")"
+    if test -n "${sv_PackageDirPath}"
     then
-      while read LCL_pkg
+      while read sv_PackageFilePath
       do
-        LCL_shasum="$(shasum -a 256 "${LCL_pkg}")"
-        if ! test -n "$(f_GetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${LCL_shasum}$")"
+        sv_PackageFileShasum="$(shasum -a 256 "${sv_PackageFilePath}")"
+        if ! test -n "$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_PackageFileShasum}$")"
         then
-          LCL_PolicyExecuted="true"
-          LCL_InstalledCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed")"
-          f_logmessage "NOTE, Installing ${LCL_pkg}"
-          installer -pkg "${LCL_pkg}" -target /
-          f_SetPlistProperty "${GLB_ThisUserPrefDir}/LabWarden.plist" ":${LCL_PolicyName}:LocalPrefs:Installed:${LCL_InstalledCount}" "${LCL_shasum}"
+          bv_PolicyExecuted="true"
+          iv_InstalledCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:Installed")"
+          LW_nf_logmessage "NOTE, Installing ${sv_PackageFilePath}"
+          installer -pkg "${sv_PackageFilePath}" -target /
+          LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:Installed:${iv_InstalledCount}" "${sv_PackageFileShasum}"
         fi
-      done < <(find "${LCL_PackagePath}" -iname "*.pkg")
+      done < <(find "${sv_PackageDirPath}" -iname "*.pkg")
     fi
   done
   
-  if [ "${LCL_PolicyExecuted}" = "true" ]
+  if [ "${bv_PolicyExecuted}" = "true" ]
   then
     # Restart if there are any packages installed
-    f_RestartNow "ATTENTION, packages installed - we need to reboot."
+    LW_nf_RestartNow "ATTENTION, packages installed - we need to reboot."
   
   else
-    f_QuickExit "NOTE, policy aborted: No packages to install"
+    LW_nf_QuickExit "NOTE, policy aborted: No packages to install"
     
   fi
 
 fi
   
 # We might never get here, but I don't suppose that matters
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

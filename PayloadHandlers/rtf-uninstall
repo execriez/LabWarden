@@ -2,79 +2,63 @@
 #
 # Short:    Payload Handler Script - uninstall a .rtf payload
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Full souce of this script
-LCL_MySource="${0}"
+sv_PayloadFilePath="${1}"
 
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-# Full souce of this script
-LCL_MySource="${0}"
-
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-LCL_Payload="${1}"
-
-if test -z "${LCL_Payload}"
+if test -z "${sv_PayloadFilePath}"
 then
-  f_QuickExit "Usage ${LCL_MyScript} somefile.rtf"
+  LW_nf_QuickExit "Usage ${LW_sv_ThisScriptFileName} somefile.rtf"
 fi
 
-if ! test -e "${LCL_Payload}"
+if ! test -e "${sv_PayloadFilePath}"
 then
-  f_QuickExit "File not found - ${LCL_Payload}"
+  LW_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
 fi
 
 # ---
 
-LCL_GPOuser="${2}"
+sv_GPOuser="${2}"
 
 # ---
 
 # Uninstall the RTF
-LCL_PayloadName="$(basename ${LCL_Payload})"
-case ${LCL_PayloadName} in
+sv_PayloadFileName="$(basename ${sv_PayloadFilePath})"
+case ${sv_PayloadFileName} in
 PolicyBanner.rtf)
-  if test -n "${LCL_GPOuser}"
+  if test -n "${sv_GPOuser}"
   then
-    f_QuickExit "I cannot uninstall this payload for a user - ${LCL_PayloadName}"
+    LW_nf_QuickExit "I cannot uninstall this payload for a user - ${sv_PayloadFileName}"
     
   else
-    if [ "${GLB_ThisUserName}" != "root" ]
+    if [ "${LW_sv_ThisUserName}" != "root" ]
     then
-      f_QuickExit "${LCL_Payload} can only be uninstalled as root"
+      LW_nf_QuickExit "${sv_PayloadFilePath} can only be uninstalled as root"
 
     else
-      f_logmessage "ATTENTION, uninstalling ${LCL_PayloadName}"
-      rm -f "/Library/Security/${LCL_PayloadName}"
+      LW_nf_logmessage "ATTENTION, uninstalling ${sv_PayloadFileName}"
+      rm -f "/Library/Security/${sv_PayloadFileName}"
     fi
   fi
   ;;
 
   *)
-  f_QuickExit "I dont know how to uninstall this payload - ${LCL_PayloadName}"
+  LW_nf_QuickExit "I dont know how to uninstall this payload - ${sv_PayloadFileName}"
 
   ;;
 
 esac	    
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"

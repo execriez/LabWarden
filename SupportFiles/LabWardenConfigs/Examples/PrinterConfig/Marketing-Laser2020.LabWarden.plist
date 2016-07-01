@@ -11,13 +11,13 @@
 		<key>PPDURI</key>
 		<string>file://localhost/Library/Printers/PPDs/Contents/Resources/HP Color LaserJet CP2020 Series.gz</string>
 		<key>PrinterURI</key>
-		<string>lpd://192.168.0.5/</string>
+		<string>smb://PRINTSRV.example.com/Marketing-Laser2020</string>
 	</dict>
 	<key>Name</key>
-	<string>Marketing-Laser2020-direct</string>
+	<string>Marketing-Laser2020</string>
 	<key>Type</key>
 	<string>Printer</string>
 	<key>UUID</key>
-	<string>D38E7D02-7D3A-4A8E-BF06-CB6777D8963C</string>
+	<string>AD273FAE-DDF6-4B74-925F-93578CC514DB</string>
 </dict>
 </plist>

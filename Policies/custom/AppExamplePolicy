@@ -2,8 +2,8 @@
 #
 # Short:    Example App Policy script - A blank canvas
 # Author:   Mark J Swift
-# Version:  1.0.88
-# Modified: 27-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   AppWillLaunch   (as user)
@@ -17,29 +17,26 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.88"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get the event that triggered this policy.
 # This can be one of the following system events:
@@ -47,8 +44,8 @@ LCL_EventHistory="${2}"
 # ...or one of the following User events:
 #   UserLogin, UserAtDesktop, AppWillLaunch, AppDidLaunch, AppDidTerminate, UserIdle, UserLogout
 
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
@@ -56,37 +53,37 @@ fi
 
 # Get the name of the logged in user, a null string signifies no-one is logged in
 # This is generally null during a system event, and not null during a user event
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
 # So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
 # Note, older applications may return "(null)"
-GLB_ApplicationBundleIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f3)"
+sv_ThisAppBundleIdentifier="$(echo ${sv_OptionalParam} | cut -d":" -f3)"
 
 # Get notification e.g. WillLaunch, DidLaunch or DidTerminate
-GLB_ApplicationNotification="$(echo ${LCL_OptionalParam} | cut -d":" -f1)"
+sv_ThisAppNotificationType="$(echo ${sv_OptionalParam} | cut -d":" -f1)"
 
 # Get Date/Time Epoch of the notification
-GLB_NotificationEpoch="$(echo ${LCL_OptionalParam} | cut -d":" -f2)"
+iv_ThisAppNotificationEpoch="$(echo ${sv_OptionalParam} | cut -d":" -f2)"
 
 # Get ApplicationName e.g. TextEdit
-GLB_ApplicationName="$(echo ${LCL_OptionalParam} | cut -d":" -f4)"
+sv_ThisAppName="$(echo ${sv_OptionalParam} | cut -d":" -f4)"
 
 # Get ApplicationPath e.g. /Applications/TextEdit.app
-GLB_ApplicationPath="$(echo ${LCL_OptionalParam} | cut -d":" -f5)"
+sv_ThisAppFilePath="$(echo ${sv_OptionalParam} | cut -d":" -f5)"
 
 # Get ApplicationProcessIdentifier - i.e. the process ID
-GLB_ApplicationProcessIdentifier="$(echo ${LCL_OptionalParam} | cut -d":" -f6)"
+sv_ThisAppProcessID="$(echo ${sv_OptionalParam} | cut -d":" -f6)"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
@@ -96,57 +93,65 @@ fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if test -z "${GLB_LoggedInUserName}"
+if test -z "${LW_sv_LoggedInUserName}"
 then
-  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  LW_nf_QuickExit "NOTE, policy aborted: No-one is logged in."
   
 else
-  f_logmessage "ATTENTION, running Policy '${LCL_PolicyName}'"
+  LW_nf_logmessage "ATTENTION, running Policy '${sv_PolicyName}'"
 
   # ------------------
   # BEGIN YOUR CODE HERE
   
-  LCL_ExampleBool="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:ExampleBool")"
-  if [ "${LCL_ExampleBool}" = "true" ]
+  # Get a value from the static config
+  bv_ExampleBool="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ExampleBool")"
+  
+  if [ "${bv_ExampleBool}" = "true" ]
   then
   
-    case ${LCL_EventName} in
+    case ${sv_EventName} in
     
     AppWillLaunch)
-      say "${LCL_PolicyName}, ${LCL_EventName}, ${GLB_ApplicationName} will launch." 
+      # Do this just before an Application launches
+      say "${sv_PolicyName}, ${sv_EventName} ${sv_ThisAppName}" &
       ;;
 
     AppDidLaunch)
-      say "${LCL_PolicyName}, ${LCL_EventName}, ${GLB_ApplicationName} did launch." 
+      # Do this when an Application has fully launched
+      say "${sv_PolicyName}, ${sv_EventName} ${sv_ThisAppName}" &
       ;;
 
     AppDidTerminate)
-      say "${LCL_PolicyName}, ${LCL_EventName}, ${GLB_ApplicationName} did quit." 
+      # Do this when an Application quits
+      say "${sv_PolicyName}, ${sv_EventName} ${sv_ThisAppName}" &
       ;;
 
     esac
 
   fi
   
+  # Write a value to the vars 
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastRunEpoch" "${LW_sv_ThisScriptStartEpoch}"
+
   # END YOUR CODE HERE
   # ------------------
   
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

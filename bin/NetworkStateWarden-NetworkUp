@@ -2,8 +2,8 @@
 #
 # Short:    Do something when the network comes up
 # Author:   Mark J Swift
-# Version:  1.0.84
-# Modified: 06-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called by NetworkStateWarden as follows:    
 #   NetworkStateWarden-NetworkUp

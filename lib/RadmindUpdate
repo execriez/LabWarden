@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
@@ -21,20 +21,20 @@
 # ---
 
 # Get filename of this script
-GLB_ThisScriptName="$(basename "${0}")"
+sv_ThisScriptFileName="$(basename "${0}")"
 
 # Get dir of this script
-GLB_ThisScriptDir="$(dirname "${0}")"
+sv_ThisScriptDirPath="$(dirname "${0}")"
 
 # Get Process ID of this script
-GLB_ThisScriptPID=$$
+iv_ThisScriptPID=$$
 
 # ---
 
 # Get user name
-GLB_ThisUserName="$(whoami)"
+sv_ThisUserName="$(whoami)"
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${sv_ThisUserName}" != "root" ]
 then
   # we only like root
   exit 0
@@ -43,40 +43,40 @@ fi
 # ---
 
 # Get parameter(s)
-GLB_Param="${1}"
-if test -z "${GLB_Param}"
+sv_Param="${1}"
+if test -z "${sv_Param}"
 then
   # We need something to work with
   exit 0
 fi
 
-GLB_NotifyURI="${2}"
-GLB_SuccessURI="${3}"
-GLB_FailURI="${4}"
+sv_NotifyURI="${2}"
+sv_SuccessURI="${3}"
+sv_FailURI="${4}"
 
 # ---
 
 # Parse the 1st parameter
 
 # Get Radmind server address
-GLB_RadServer=$(echo "${GLB_Param}" | cut -d"," -f1)
+sv_RadServer=$(echo "${sv_Param}" | cut -d"," -f1)
 
 # Checksum eg sha1
-GLB_RadCksum=$(echo "${GLB_Param}" | cut -d"," -f2)
+sv_RadCksum=$(echo "${sv_Param}" | cut -d"," -f2)
 
 # TLS auth level. 0: None; 1: Verify Server; 2: Verify Server & Client
-GLB_RadAuthLevel=$(echo "${GLB_Param}" | cut -d"," -f3)
+iv_RadAuthLevel=$(echo "${sv_Param}" | cut -d"," -f3)
 
 # Get transcript case. -I means ignore case in filenames
-GLB_CaseSwitch=$(echo "${GLB_Param}" | cut -d"," -f4)
+sv_CaseSwitch=$(echo "${sv_Param}" | cut -d"," -f4)
 
 # Get Maximum negative changes
-GLB_MaxDeletes=$(echo "${GLB_Param}" | cut -d"," -f5)
+iv_MaxDeletes=$(echo "${sv_Param}" | cut -d"," -f5)
 
 # ---
 
 # urlencode/urldecode functions - thanks to https://gist.github.com/cdown/1163649
-f_urlencode() {
+Sf_urlencode() {
     # urlencode <string>
 
     local length="${#1}"
@@ -91,60 +91,60 @@ f_urlencode() {
 }
 
 # Save a message to the log file
-f_showmessage()   # messagetxt
+Nf_showmessage()   # messagetxt
 {
-  echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_ThisScriptName}[${GLB_ThisScriptPID}]: ${1}"
+  echo "$(date '+%d %b %Y %H:%M:%S') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]: ${1}"
 }
 
-f_showerror()   # messagetxt
+Nf_showerror()   # messagetxt
 {
-  f_showmessage "${1}"
+  Nf_showmessage "${1}"
 
   # Update the RemoteDesktop Computer Info Fields #4
   /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 "${1}"
 
-  if test -n "${GLB_FailURI}"
+  if test -n "${sv_FailURI}"
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(f_urlencode "${1}") "${GLB_FailURI}"
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(Sf_urlencode "${1}") "${sv_FailURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      f_showmessage "NOTE, cannot connect to ${GLB_FailURI}"
+      Nf_showmessage "NOTE, cannot connect to ${sv_FailURI}"
     fi
   fi
 }
 
-f_showsuccess()   # messagetxt
+Nf_showsuccess()   # messagetxt
 {
-  f_showmessage "${1}"
+  Nf_showmessage "${1}"
 
   # Update the RemoteDesktop Computer Info Fields #4
   /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
 
-  if test -n "${GLB_SuccessURI}"
+  if test -n "${sv_SuccessURI}"
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(f_urlencode "") "${GLB_SuccessURI}"
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(Sf_urlencode "") "${sv_SuccessURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      f_showmessage "NOTE, cannot connect to ${GLB_SuccessURI}"
+      Nf_showmessage "NOTE, cannot connect to ${sv_SuccessURI}"
     fi
   fi
 }
 
 # ---
 
-GLB_SystemVersionStampAsString="$(sw_vers -productVersion)"
+sv_SystemVersionStampAsString="$(sw_vers -productVersion)"
 
 # ---
 
-if test -n "${GLB_NotifyURI}"
+if test -n "${sv_NotifyURI}"
 then
-  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(f_urlencode "${GLB_SystemVersionStampAsString}") "${GLB_NotifyURI}"
+  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(Sf_urlencode "${sv_SystemVersionStampAsString}") "${sv_NotifyURI}"
   if [ $? != "0" ]
   then
     # Some kind of error occurred
-    f_showerror "ERROR, cannot connect to ${GLB_NotifyURI}"
+    Nf_showerror "ERROR, cannot connect to ${sv_NotifyURI}"
     exit 0
   fi
 fi
@@ -153,59 +153,59 @@ fi
 
 # RADMIND UPDATE HERE - ktcheck/fsdiff/lapply
 
-LCL_fsdiffPath="/"
-LCL_fsdiffOutput="/tmp/diff.T.$$"
+sv_fsdiffCompareSysPath="/"
+sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
 
-f_showmessage "NOTE, checking server $GLB_RadServer for transcript changes"
+Nf_showmessage "NOTE, checking server $sv_RadServer for transcript changes"
 
-/usr/local/bin/ktcheck 2>&1 -i -c${GLB_RadCksum} -w${GLB_RadAuthLevel} -h${GLB_RadServer}
-rc="$?"
+/usr/local/bin/ktcheck 2>&1 -i -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer}
+iv_ErrCode="$?"
 
 # Check exit status of ktcheck. If > 1, an error occurred.
-case "${rc}" in
+case "${iv_ErrCode}" in
 0)
-  f_showmessage "NOTE, no transcript changes found - no need to update"
+  Nf_showmessage "NOTE, no transcript changes found - no need to update"
   exit 0
   ;;
 1)
-  f_showmessage "NOTE, Transcript changes found"
+  Nf_showmessage "NOTE, Transcript changes found"
   ;;
 *)
-  f_showerror "ERROR, update aborted - ktcheck failed (${rc})"
+  Nf_showerror "ERROR, update aborted - ktcheck failed (${iv_ErrCode})"
   exit 0
   ;;
 esac
 
-f_showmessage "NOTE, Examining the filesystem for differences..."
+Nf_showmessage "NOTE, Examining the filesystem for differences..."
 
 # run fsdiff, redirecting output to a file.
-rm -f ${LCL_fsdiffOutput}
-/usr/local/bin/fsdiff ${GLB_CaseSwitch} -A -o${LCL_fsdiffOutput} -% ${LCL_fsdiffPath}
-rc="$?"
+rm -f ${sv_fsdiffOutputFilePath}
+/usr/local/bin/fsdiff ${sv_CaseSwitch} -A -o${sv_fsdiffOutputFilePath} -% ${sv_fsdiffCompareSysPath}
+iv_ErrCode="$?"
 
-case "${rc}" in
+case "${iv_ErrCode}" in
 0)
   ;;
 *)
   # try opposite case
-  if test -z "${GLB_CaseSwitch}"
+  if test -z "${sv_CaseSwitch}"
   then
-    GLB_CaseSwitch="-I"
+    sv_CaseSwitch="-I"
   else
-    GLB_CaseSwitch=""
+    sv_CaseSwitch=""
   fi
         
   # run fsdiff, redirecting output to a file.
-  rm -f ${LCL_fsdiffOutput}
-  /usr/local/bin/fsdiff ${GLB_CaseSwitch} -A -o${LCL_fsdiffOutput} -% ${LCL_fsdiffPath}
-  rc="$?"
+  rm -f ${sv_fsdiffOutputFilePath}
+  /usr/local/bin/fsdiff ${sv_CaseSwitch} -A -o${sv_fsdiffOutputFilePath} -% ${sv_fsdiffCompareSysPath}
+  iv_ErrCode="$?"
 
-  case "$rc" in
+  case "$iv_ErrCode" in
   0)
     ;;
   *)
-    rm -f ${LCL_fsdiffOutput}
-    f_showerror "ERROR, update aborted - fsdiff failed (${rc})"
+    rm -f ${sv_fsdiffOutputFilePath}
+    Nf_showerror "ERROR, update aborted - fsdiff failed (${iv_ErrCode})"
     exit 0
     ;;
   esac
@@ -213,21 +213,21 @@ case "${rc}" in
 esac
 
 # Fix for SIP on 10.11
-f_showmessage "NOTE, Removing SIP protected entries from transcript"
-/usr/local/LabWarden/bin/RadmindTfix4SIP ${LCL_fsdiffOutput}
+Nf_showmessage "NOTE, Removing SIP protected entries from transcript"
+/usr/local/LabWarden/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
 
 # Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
-if test -n "${GLB_MaxDeletes}"
+if test -n "${iv_MaxDeletes}"
 then
-  LCL_Additions=$(cat ${LCL_fsdiffOutput} | grep "^+" | wc | tr -s " " | cut -d" " -f2)
-  LCL_Removals=$(cat ${LCL_fsdiffOutput} | grep "^-" | wc | tr -s " " | cut -d" " -f2)
-  LCL_NegChanges=$((${LCL_Removals} - ${LCL_Additions}))
-  if [ ${LCL_NegChanges} -gt 0 ]
+  iv_Additions=$(cat ${sv_fsdiffOutputFilePath} | grep "^+" | wc | tr -s " " | cut -d" " -f2)
+  iv_Removals=$(cat ${sv_fsdiffOutputFilePath} | grep "^-" | wc | tr -s " " | cut -d" " -f2)
+  iv_NegChanges=$((${iv_Removals} - ${iv_Additions}))
+  if [ ${iv_NegChanges} -gt 0 ]
   then
-    if [ ${LCL_NegChanges} -gt ${GLB_MaxDeletes} ]
+    if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
     then
-      rm -f ${LCL_fsdiffOutput}
-      f_showerror "ERROR, update aborted - too many deletes (${LCL_NegChanges} -gt ${GLB_MaxDeletes})"
+      rm -f ${sv_fsdiffOutputFilePath}
+      Nf_showerror "ERROR, update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
       exit 0
     fi
   fi
@@ -236,28 +236,28 @@ fi
 # Apply the changes
 launchctl stop org.cups.cupsd
 
-f_showmessage "NOTE, Applying $((${LCL_Additions} - ${LCL_Removals})) changes…(+$LCL_Additions -$LCL_Removals)"
-/usr/local/bin/lapply 2>&1 ${GLB_CaseSwitch} -i -F -% -c${GLB_RadCksum} -w${GLB_RadAuthLevel} -h${GLB_RadServer} ${LCL_fsdiffOutput}
-rc="$?"
+Nf_showmessage "NOTE, Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+/usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
+iv_ErrCode="$?"
 
 launchctl start org.cups.cupsd
 
-case "${rc}" in
+case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  f_showsuccess "ATTENTION, apply successful - we should reboot."
+  Nf_showsuccess "ATTENTION, apply successful - we should reboot."
   exit 0
   ;;
 1)
-  f_showerror "ERROR, apply failed - no changes made"
-  #cat "${LCL_fsdiffOutput}"
-  rm -f $LCL_fsdiffOutput
+  Nf_showerror "ERROR, apply failed - no changes made"
+  #cat "${sv_fsdiffOutputFilePath}"
+  rm -f $sv_fsdiffOutputFilePath
   exit 0
   ;;
 2)
-  f_showerror "ERROR, apply failed - changes made"
-  #cat "${LCL_fsdiffOutput}"
-  rm -f $LCL_fsdiffOutput
+  Nf_showerror "ERROR, apply failed - changes made"
+  #cat "${sv_fsdiffOutputFilePath}"
+  rm -f $sv_fsdiffOutputFilePath
   exit 0
   ;;
 esac

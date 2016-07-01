@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Turn wireless on or off
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,119 +13,116 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else
-  LCL_PolicyExecuted="false"
+  bv_PolicyExecuted="false"
 
   # Get the the hardware port for wireless (eg en1)
-  LCL_WirelessHardwarePort="$(networksetup -listallhardwareports | tr "\n" ":" | sed "s|^[:]*||;s|::|;|g" | tr ";" "\n" | grep "Wi-Fi" | sed "s|\(.*Device:[ ]*\)\([^:]*\)\(.*\)|\2|")"
+  sv_WirelessHardwarePort="$(networksetup -listallhardwareports | tr "\n" ":" | sed "s|^[:]*||;s|::|;|g" | tr ";" "\n" | grep "Wi-Fi" | sed "s|\(.*Device:[ ]*\)\([^:]*\)\(.*\)|\2|")"
   
-  if test -n "${LCL_WirelessHardwarePort}"
+  if test -n "${sv_WirelessHardwarePort}"
   then
-    LCL_WirelessState="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:WirelessState")"
+    sv_WirelessState="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WirelessState")"
 
-    if test -n "${LCL_WirelessState}"
+    if test -n "${sv_WirelessState}"
     then
-      LCL_PolicyExecuted="true"
+      bv_PolicyExecuted="true"
 
       # Turn Wi-Fi port on or off
-      networksetup -setairportpower ${LCL_WirelessHardwarePort} ${LCL_WirelessState}
+      networksetup -setairportpower ${sv_WirelessHardwarePort} ${sv_WirelessState}
 
-      LCL_RequireAdminIBSS="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminIBSS")"
-      if [ "${LCL_RequireAdminIBSS}" = "true" ]
+      bv_RequireAdminIBSS="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:RequireAdminIBSS")"
+      if [ "${bv_RequireAdminIBSS}" = "true" ]
       then
-        LCL_RequireAdminIBSS="YES"
+        sv_YesNoAdminIBSS="YES"
       else
-        LCL_RequireAdminIBSS="NO"
+        sv_YesNoAdminIBSS="NO"
       fi
       
-      LCL_RequireAdminNetworkChange="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminNetworkChange")"
-      if [ "${LCL_RequireAdminNetworkChange}" = "true" ]
+      bv_RequireAdminNetworkChange="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:RequireAdminNetworkChange")"
+      if [ "${bv_RequireAdminNetworkChange}" = "true" ]
       then
-        LCL_RequireAdminNetworkChange="YES"
+        sv_YesNoAdminNetworkChange="YES"
       else
-        LCL_RequireAdminNetworkChange="NO"
+        sv_YesNoAdminNetworkChange="NO"
       fi
       
-      LCL_RequireAdminPowerToggle="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:RequireAdminPowerToggle")"
-      if [ "${LCL_RequireAdminPowerToggle}" = "true" ]
+      bv_RequireAdminPowerToggle="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:RequireAdminPowerToggle")"
+      if [ "${bv_RequireAdminPowerToggle}" = "true" ]
       then
-        LCL_RequireAdminPowerToggle="YES"
+        sv_YesNoAdminPowerToggle="YES"
       else
-        LCL_RequireAdminPowerToggle="NO"
+        sv_YesNoAdminPowerToggle="NO"
       fi
       
       # Set the Wi-Fi options
-      /usr/libexec/airportd prefs RequireAdminIBSS="${LCL_RequireAdminIBSS}" RequireAdminNetworkChange="${LCL_RequireAdminNetworkChange}" RequireAdminPowerToggle="${LCL_RequireAdminPowerToggle}"
+      /usr/libexec/airportd prefs RequireAdminIBSS="${sv_YesNoAdminIBSS}" RequireAdminNetworkChange="${sv_YesNoAdminNetworkChange}" RequireAdminPowerToggle="${sv_YesNoAdminPowerToggle}"
     fi
 
-    if [ "${LCL_PolicyExecuted}" = "true" ]
+    if [ "${bv_PolicyExecuted}" = "true" ]
     then
-      f_logmessage "ATTENTION, wireless state has been set."
+      LW_nf_logmessage "ATTENTION, wireless state has been set."
   
     else
-      f_QuickExit "NOTE, policy aborted: "
+      LW_nf_QuickExit "NOTE, policy aborted: "
     
     fi
   
@@ -134,9 +131,9 @@ else
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

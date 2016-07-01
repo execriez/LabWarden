@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Pack a payload file for AD deployment
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   PackForDeployment <somefile>
@@ -15,111 +15,118 @@
 # Any member of the group (user or workstation) will receive the payload
 # at the next gpupdate.
 
-# Full souce of this script
-LCL_MySource="${0}"
+# -- Get some info about this script
 
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
+# Full source of this script
+sv_ThisScriptFilePath="${0}"
+
+# Get dir of this script
+sv_ThisScriptDirPath="$(dirname "${sv_ThisScriptFilePath}")"
+
+# Get filename of this script
+sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
-LCL_MyName="$(basename ${LCL_MySource} | sed 's|\.[^.]*$||')"
+sv_ThisScriptName="$(basename ${sv_ThisScriptFilePath} | sed 's|\.[^.]*$||')"
 
-cd "${LCL_MyPath}"
+# ---
 
-LCL_PayloadFile="${1}"
+cd "${sv_ThisScriptDirPath}"
 
-if test -z "${LCL_PayloadFile}"
+sv_PayloadFilePath="${1}"
+
+if test -z "${sv_PayloadFilePath}"
 then
   echo "This script packs (via gzip & base64) a payload file/folder for AD deployment"
-  echo "  Usage: ${LCL_MyScript} SomePayloadFileOrFolder"
+  echo "  Usage: ${sv_ThisScriptFileName} SomePayloadFileOrFolder"
   exit 0
 fi
 
-if ! test -e "${LCL_PayloadFile}"
+if ! test -e "${sv_PayloadFilePath}"
 then
-  echo "File/folder not found - ${LCL_PayloadFile}"
+  echo "File/folder not found - ${sv_PayloadFilePath}"
   exit 0
 fi
 
 # Filename of the payload
-LCL_DocFileName="$(basename ${LCL_PayloadFile})"
+sv_DocFileName="$(basename ${sv_PayloadFilePath})"
 
 # Path to the payload
-LCL_DocPath="$(dirname ${LCL_PayloadFile})"
+sv_DocDirPath="$(dirname ${sv_PayloadFilePath})"
 
 # Filename without extension
-LCL_DocName=$(echo ${LCL_DocFileName} | sed "s|\.[^.]*$||")
+sv_DocName=$(echo ${sv_DocFileName} | sed "s|\.[^.]*$||")
 
 # A place to store the packed payloads
-LCL_PackedFolder="${LCL_DocPath}/Packed"
-mkdir -p "${LCL_PackedFolder}"
+sv_PackedDirPath="${sv_DocDirPath}/Packed"
+mkdir -p "${sv_PackedDirPath}"
 
 # Filename for the gzip, base64 payload
-LCL_base64tgzFile=${LCL_PackedFolder}/${LCL_DocName}.txt
+sv_base64tgzFilePath=${sv_PackedDirPath}/${sv_DocName}.txt
 
 # Create a temporary folder
-LCL_TempFolder=$(mktemp -d /tmp/XXXXXXXX)
+sv_TempDirPath=$(mktemp -d /tmp/XXXXXXXX)
 
 # Copy the payload to a temporary folder
-if test -d "${LCL_PayloadFile}"
+if test -d "${sv_PayloadFilePath}"
 then
-  cp -pR "${LCL_PayloadFile}/" "${LCL_TempFolder}/"
+  cp -pR "${sv_PayloadFilePath}/" "${sv_TempDirPath}/"
 
 else
-  cp "${LCL_PayloadFile}" "${LCL_TempFolder}/"
+  cp "${sv_PayloadFilePath}" "${sv_TempDirPath}/"
 
 fi
 
 # Shrink the payload if possible
-ls -1 "${LCL_TempFolder}" | while read LCL_PayloadName
+ls -1 "${sv_TempDirPath}" | while read sv_PayloadFileName
 do
-  LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|')
-  if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-shrink
+  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink
   then
-    LCL_ShrunkPayloadName="$(/usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-shrink "${LCL_TempFolder}/${LCL_PayloadName}")"
-    if test -n "${LCL_ShrunkPayloadName}"
+    sv_ShrunkPayloadFilePath="$(/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink "${sv_TempDirPath}/${sv_PayloadFileName}")"
+    if test -n "${sv_ShrunkPayloadFilePath}"
     then
-      rm -f "${LCL_TempFolder}/${LCL_PayloadName}"
-      cp "${LCL_ShrunkPayloadName}" "${LCL_TempFolder}/${LCL_PayloadName}"
+      rm -f "${sv_TempDirPath}/${sv_PayloadFileName}"
+      cp "${sv_ShrunkPayloadFilePath}" "${sv_TempDirPath}/${sv_PayloadFileName}"
     fi
   fi
 done
 
 # tar gzip & base64 the payload
-cd "${LCL_TempFolder}"
-tar -c * | gzip -9 | base64 -b 30 | tr -s "\n" | awk '{ sub(/$/,"\r"); print }' > ${LCL_base64tgzFile}
-cd "${LCL_PackedFolder}"
+cd "${sv_TempDirPath}"
+tar -c * | gzip -9 | base64 -b 30 | tr -s "\n" | awk '{ sub(/$/,"\r"); print }' > ${sv_base64tgzFilePath}
+cd "${sv_PackedDirPath}"
 
 
 # Delete the temporary folder
-rm -fR "${LCL_TempFolder}"
+rm -fR "${sv_TempDirPath}"
 
 #
-LCL_base64tgzFileSize=$(stat -f "%z" ${LCL_base64tgzFile})
-if [ ${LCL_base64tgzFileSize} -le 1024 ]
+sv_base64tgzFileSize=$(stat -f "%z" ${sv_base64tgzFilePath})
+if [ ${sv_base64tgzFileSize} -le 1024 ]
 then
   echo "Unpack the payload file into SomeDirectory as follows"
   echo "  cd SomeDirectory"
-  echo "  cat ${LCL_base64tgzFile} | base64 -D | tar -xvzf -"
+  echo "  cat ${sv_base64tgzFilePath} | base64 -D | tar -xvzf -"
 
 else
-  if [ ${LCL_base64tgzFileSize} -le 10240 ]
+  if [ ${sv_base64tgzFileSize} -le 10240 ]
   then
-    split -a 1 -b 1k ${LCL_base64tgzFile} ${LCL_DocName}-
-    rm -f "${LCL_base64tgzFile}"
-    ls -1 "${LCL_PackedFolder}" | grep -E "${LCL_DocName}-[a-j]{1}$" | while read LCL_PartFile
+    split -a 1 -b 1k ${sv_base64tgzFilePath} ${sv_DocName}-
+    rm -f "${sv_base64tgzFilePath}"
+    ls -1 "${sv_PackedDirPath}" | grep -E "${sv_DocName}-[a-j]{1}$" | while read sv_PartFileName
     do
-      LCL_PartNo=$(echo ${LCL_PartFile} | sed -E "s|(.*)(-[a-j]{1}$)|\2|" | tr [a-j] [0-9])
-      mv ${LCL_PartFile} ${LCL_DocName}${LCL_PartNo}.txt
+      iv_PartNo=$(echo ${sv_PartFileName} | sed -E "s|(.*)(-[a-j]{1}$)|\2|" | tr [a-j] [0-9])
+      mv ${sv_PartFileName} ${sv_DocName}${iv_PartNo}.txt
     done
 
     echo "Note, the payload is too big to fit into a single AD Notes field"
     echo "Unpack the payload file into SomeDirectory as follows"
     echo "  cd SomeDirectory"
     printf "  cat "
-    ls -1 "${LCL_PackedFolder}" | sort | grep -E "${LCL_DocName}-[0-9]{1}\.txt$" | while read LCL_PartFile
+    ls -1 "${sv_PackedDirPath}" | sort | grep -E "${sv_DocName}-[0-9]{1}\.txt$" | while read sv_PartFileName
     do
-      printf "${LCL_PartFile} "
+      printf "${sv_PartFileName} "
     done
     echo "| base64 -D | tar -xvzf -"
 

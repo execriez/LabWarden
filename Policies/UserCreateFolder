@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Create user folders at User Login
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   UserLogin (as user)
@@ -13,108 +13,105 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if test -z "${GLB_LoggedInUserName}"
+if test -z "${LW_sv_LoggedInUserName}"
 then
-  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  LW_nf_QuickExit "NOTE, policy aborted: No-one is logged in."
   
 else
-  if [ ! -e "${GLB_LoggedInUserHomeDir}" ]
+  if [ ! -e "${LW_sv_LoggedInUserHomeDirPath}" ]
   then
-    f_QuickExit "NOTE, policy aborted: home folder doesn't exist."
+    LW_nf_QuickExit "NOTE, policy aborted: home folder doesn't exist."
     
   else
     # The user home dir exists, so far so good
 
-    f_logmessage "ATTENTION, creating folders."
+    LW_nf_logmessage "ATTENTION, creating folders."
 
     # Create Required folders
-    LCL_ObjectCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path")"
 
-    for (( LCL_i=0; LCL_i<${LCL_ObjectCount}; LCL_i++ ))
+    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      LCL_ReqdObject="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Path:${LCL_i}")"
+      sv_ReqdObjectFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Path:${iv_LoopCount}")"
 
       # Sanitise the Entry
-      LCL_ReqdObject=$(echo "/${LCL_ReqdObject}" | sed "s|^/[/]*|/|;s|/$||")
+      sv_ReqdObjectFilePath=$(echo "/${sv_ReqdObjectFilePath}" | sed "s|^/[/]*|/|;s|/$||")
 
-      if test -n "${LCL_ReqdObject}"
+      if test -n "${sv_ReqdObjectFilePath}"
       then
-        /bin/mkdir -p "${GLB_LoggedInUserHomeDir}${LCL_ReqdObject}"
+        /bin/mkdir -p "${LW_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
       fi
     done
 
     # Update loginwindow.plist file
-    f_SetPlistProperty "${GLB_LoggedInUserHomeDir}/Library/Preferences/loginwindow.plist" ":BuildVersionStampAsNumber" "${GLB_BuildVersionStampAsNumber}"
-    f_SetPlistProperty "${GLB_LoggedInUserHomeDir}/Library/Preferences/loginwindow.plist" ":BuildVersionStampAsString" "${GLB_BuildVersionStampAsString}"
-    f_SetPlistProperty "${GLB_LoggedInUserHomeDir}/Library/Preferences/loginwindow.plist" ":SystemVersionStampAsNumber" "${GLB_SystemVersionStampAsNumber}"
-    f_SetPlistProperty "${GLB_LoggedInUserHomeDir}/Library/Preferences/loginwindow.plist" ":SystemVersionStampAsString" "${GLB_SystemVersionStampAsString}"
+    LW_nf_SetPlistProperty "${LW_sv_LoggedInUserHomeDirPath}/Library/Preferences/loginwindow.plist" ":BuildVersionStampAsNumber" "${LW_iv_BuildVersionStampAsNumber}"
+    LW_nf_SetPlistProperty "${LW_sv_LoggedInUserHomeDirPath}/Library/Preferences/loginwindow.plist" ":BuildVersionStampAsString" "${LW_sv_BuildVersionStampAsString}"
+    LW_nf_SetPlistProperty "${LW_sv_LoggedInUserHomeDirPath}/Library/Preferences/loginwindow.plist" ":SystemVersionStampAsNumber" "${LW_iv_SystemVersionStampAsNumber}"
+    LW_nf_SetPlistProperty "${LW_sv_LoggedInUserHomeDirPath}/Library/Preferences/loginwindow.plist" ":SystemVersionStampAsString" "${LW_sv_SystemVersionStampAsString}"
 
   fi
 
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

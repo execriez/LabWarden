@@ -13,6 +13,9 @@
 					<string>odc.officeapps.live.com</string>
 					<string>omextemplates.content.office.net</string>
 					<string>officeclient.microsoft.com</string>
+					<string>store.office.com</string>
+					<string>nexusrules.officeapps.live.com</string>
+					<string>nexus.officeapps.live.com</string>
 				</array>
 				<key>IP4</key>
 				<string>127.0.0.1</string>
@@ -28,6 +31,6 @@
 	<key>Type</key>
 	<string>Policy</string>
 	<key>UUID</key>
-	<string>6C55B9FF-F8F7-47DB-96D9-6F454E45A622</string>
+	<string>6B0EAC05-66BC-477F-845C-221A8D5AB838</string>
 </dict>
 </plist>

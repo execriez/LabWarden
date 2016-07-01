@@ -2,8 +2,8 @@
 #
 # Short:    Uninstall LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.88
-# Modified: 25-June-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 #
 # Called as follows:    
@@ -15,41 +15,41 @@
 # ---
 
 # Path to this script
-GLB_MyDir="$(dirname "${0}")"
+LW_sv_ThisScriptDirPath="$(dirname "${0}")"
 
 # Path to payload
-GLB_PayloadDir="$(dirname "${GLB_MyDir}")"
+sv_PayloadDirPath="$(dirname "${LW_sv_ThisScriptDirPath}")"
 
 # Change working directory
-cd "${GLB_MyDir}"
+cd "${LW_sv_ThisScriptDirPath}"
 
 # Filename of this script
-GLB_MyFilename="$(basename "${0}")"
+LW_sv_ThisScriptFileName="$(basename "${0}")"
 
 # Filename without extension
-GLB_MyName="$(echo ${GLB_MyFilename} | sed 's|\.[^.]*$||')"
+LW_sv_ThisScriptName="$(echo ${LW_sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
 
 # Full souce of this script
-GLB_MySource="${0}"
+LW_sv_ThisScriptFilePath="${0}"
 
 # ---
 
 # Get user name
-GLB_UserName="$(whoami)"
+LW_sv_ThisUserName="$(whoami)"
 
 # ---
 
 # Check if user is an admin (returns "true" or "false")
-if [ "$(dseditgroup -o checkmember -m "${GLB_UserName}" -n . admin | cut -d" " -f1)" = "yes" ]
+if [ "$(dseditgroup -o checkmember -m "${LW_sv_ThisUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
 then
-  GLB_IsAdmin="true"
+  LW_bv_ThisUserIsAdmin="true"
 else
-  GLB_IsAdmin="false"
+  LW_bv_ThisUserIsAdmin="false"
 fi
 
 # ---
 
-if [ "${GLB_IsAdmin}" = "false" ]
+if [ "${LW_bv_ThisUserIsAdmin}" = "false" ]
 then
   echo "Sorry, you must be an admin to uninstall this script."
   echo ""
@@ -57,19 +57,19 @@ then
 else
   echo ""
   echo "Uninstalling LabWarden."
-  echo "If asked, enter the password for user '"${GLB_UserName}"'"
+  echo "If asked, enter the password for user '"${LW_sv_ThisUserName}"'"
   echo ""
   
   sudo su root <<'HEREDOC'
 
   # Set the signature for the LabWarden installation
-  GLB_LabWardenSignature="com.github.execriez.LabWarden"
+  LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
 
   # Remove old install
   find -d /usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
   find -d /usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
-  rm -f /Library/LaunchAgents/${GLB_LabWardenSignature}*
-  rm -f /Library/LaunchDaemons/${GLB_LabWardenSignature}*
+  rm -f /Library/LaunchAgents/${LW_sv_LabWardenSignature}*
+  rm -f /Library/LaunchDaemons/${LW_sv_LabWardenSignature}*
   
   if test -n "$(defaults read /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook | grep -i "LabWarden")"
   then

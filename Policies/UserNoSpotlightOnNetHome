@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Disable Spotlight on a users network home
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
@@ -13,108 +13,105 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if test -z "${GLB_LoggedInUserName}"
+if test -z "${LW_sv_LoggedInUserName}"
 then
-  f_QuickExit "NOTE, policy aborted: No-one is logged in."
+  LW_nf_QuickExit "NOTE, policy aborted: No-one is logged in."
   
 else    
-  if [ "${GLB_LoggedInUserIsLocal}" = "true" ]
+  if [ "${LW_bv_LoggedInUserIsLocal}" = "true" ]
   then
-    f_QuickExit "NOTE, policy aborted: User account is local."
+    LW_nf_QuickExit "NOTE, policy aborted: User account is local."
     
   else
     # We are a network account
     
-    if [ -z "${GLB_LoggedInUserHomeNetworkDir}" ]
+    if [ -z "${LW_sv_LoggedInUserHomeNetworkDirPath}" ]
     then
-      f_QuickExit "NOTE, policy aborted: Network home is unavailable."
+      LW_nf_QuickExit "NOTE, policy aborted: Network home is unavailable."
 
     else
       # The original home network share is mounted and available
 
-      if [ ! -e "${GLB_LoggedInUserHomeNetworkDir}" ]
+      if [ ! -e "${LW_sv_LoggedInUserHomeNetworkDirPath}" ]
       then
-        f_QuickExit "NOTE, policy aborted: Network home unavailable."
+        LW_nf_QuickExit "NOTE, policy aborted: Network home unavailable."
         
       else
         # The original home network folder exists and is available
     
-        if [ -e "${GLB_LoggedInUserHomeNetworkDir}/.metadata_never_index" ]
+        if [ -e "${LW_sv_LoggedInUserHomeNetworkDirPath}/.metadata_never_index" ]
         then
-          f_QuickExit "NOTE, policy aborted: Spotlight already disabled."
+          LW_nf_QuickExit "NOTE, policy aborted: Spotlight already disabled."
 
         else
-          f_logmessage "ATTENTION, disabling Spotlight on network home."
+          LW_nf_logmessage "ATTENTION, disabling Spotlight on network home."
   
           # tell the system never to index the folder
-          touch "${GLB_LoggedInUserHomeNetworkDir}/.metadata_never_index"
+          touch "${LW_sv_LoggedInUserHomeNetworkDirPath}/.metadata_never_index"
 
           # switch off spotlight for folder
-          mdutil -i off "${GLB_LoggedInUserHomeNetworkDir}"
+          mdutil -i off "${LW_sv_LoggedInUserHomeNetworkDirPath}"
         fi
     
-        if [ -d "${GLB_LoggedInUserHomeNetworkDir}/.Spotlight-V100" ]
+        if [ -d "${LW_sv_LoggedInUserHomeNetworkDirPath}/.Spotlight-V100" ]
         then
           # remove redundant indexing data
-          rm -fR "${GLB_LoggedInUserHomeNetworkDir}/.Spotlight-V100"
+          rm -fR "${LW_sv_LoggedInUserHomeNetworkDirPath}/.Spotlight-V100"
         fi
 
       fi
@@ -124,9 +121,9 @@ else
 fi
 
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

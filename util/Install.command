@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.88
-# Modified: 27-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 #
 # Called as follows:    
@@ -12,25 +12,25 @@
 # ---
 
 # Path to this script
-GLB_MyDir="$(dirname "${0}")"
+LW_sv_ThisScriptDirPath="$(dirname "${0}")"
 
 # Change working directory
-cd "${GLB_MyDir}"
+cd "${LW_sv_ThisScriptDirPath}"
 
 # Filename of this script
-GLB_MyFilename="$(basename "${0}")"
+LW_sv_ThisScriptFileName="$(basename "${0}")"
 
 # Filename without extension
-GLB_MyName="$(echo ${GLB_MyFilename} | sed 's|\.[^.]*$||')"
+LW_sv_ThisScriptName="$(echo ${LW_sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
 
 # Full souce of this script
-GLB_MySource="${0}"
+LW_sv_ThisScriptFilePath="${0}"
 
 # ---
-GLB_ADDomainNameDNS=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameDns" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+LW_sv_ADDomainNameDNS=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameDns" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
 
 # Initial warning
-if test -z "${GLB_ADDomainNameDNS}"
+if test -z "${LW_sv_ADDomainNameDNS}"
 then
   echo >&2 "WARNING: This workstation doesn't appear to be bound to an AD domain"
 fi
@@ -38,21 +38,21 @@ fi
 # ---
 
 # Get user name
-GLB_UserName="$(whoami)"
+LW_sv_ThisUserName="$(whoami)"
 
 # ---
 
 # Check if user is an admin (returns "true" or "false")
-if [ "$(dseditgroup -o checkmember -m "${GLB_UserName}" -n . admin | cut -d" " -f1)" = "yes" ]
+if [ "$(dseditgroup -o checkmember -m "${LW_sv_ThisUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
 then
-  GLB_IsAdmin="true"
+  LW_bv_ThisUserIsAdmin="true"
 else
-  GLB_IsAdmin="false"
+  LW_bv_ThisUserIsAdmin="false"
 fi
 
 # ---
 
-if [ "${GLB_IsAdmin}" = "false" ]
+if [ "${LW_bv_ThisUserIsAdmin}" = "false" ]
 then
   echo "Sorry, you must be an admin to install this script."
   echo ""
@@ -61,17 +61,17 @@ else
   sudo su root <<'HEREDOC'
 
   # Set the signature for the LabWarden installation
-  GLB_LabWardenSignature="com.github.execriez.LabWarden"
+  LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
 
   # Path to this script
-  GLB_MyDir="$(pwd -P)"
+  LW_sv_ThisScriptDirPath="$(pwd -P)"
   
   # Get user name
-  GLB_UserName="$(whoami)"
+  LW_sv_ThisUserName="$(whoami)"
 
   # Path to payload
-  GLB_PayloadDir="$(dirname "${GLB_MyDir}")"
-  if [ "${GLB_PayloadDir}" = "/usr/local/LabWarden" ]
+  sv_PayloadDirPath="$(dirname "${LW_sv_ThisScriptDirPath}")"
+  if [ "${sv_PayloadDirPath}" = "/usr/local/LabWarden" ]
   then
     echo >&2 "Sorry, cannot install from this folder, copy the folder somewhere else and try again."
     exit 0
@@ -79,69 +79,69 @@ else
 
   echo ""
   echo "Installing LabWarden."
-  echo "If asked, enter the password for user '"${GLB_UserName}"'"
+  echo "If asked, enter the password for user '"${LW_sv_ThisUserName}"'"
   echo ""
   
   # Remove old install
-  "${GLB_MyDir}/Uninstall.command"
+  "${LW_sv_ThisScriptDirPath}/Uninstall.command"
 
   # Create a temporary directory private to this script
-  GLB_ThisScriptTempDir="$(mktemp -dq /tmp/Install-XXXXXXXX)"
+  LW_sv_ThisScriptTempDirPath="$(mktemp -dq /tmp/Install-XXXXXXXX)"
 
   # -- Copy the main payload
-  mkdir -p "${GLB_ThisScriptTempDir}/LabWarden"
-  cp -pR "${GLB_PayloadDir}/" "${GLB_ThisScriptTempDir}/LabWarden/"
+  mkdir -p "${LW_sv_ThisScriptTempDirPath}/LabWarden"
+  cp -pR "${sv_PayloadDirPath}/" "${LW_sv_ThisScriptTempDirPath}/LabWarden/"
 
   # -- Remove any unwanted files
-  rm -fR "${GLB_ThisScriptTempDir}/LabWarden/SupportFiles"
-  rm -fR "${GLB_ThisScriptTempDir}/LabWarden/.git"
-  find -d "${GLB_ThisScriptTempDir}/LabWarden" -ipath "*/custom/*" -exec rm -fd {} \;
-  find "${GLB_ThisScriptTempDir}/LabWarden" -iname .DS_Store -exec rm -f {} \;
+  rm -fR "${LW_sv_ThisScriptTempDirPath}/LabWarden/SupportFiles"
+  rm -fR "${LW_sv_ThisScriptTempDirPath}/LabWarden/.git"
+  find -d "${LW_sv_ThisScriptTempDirPath}/LabWarden" -ipath "*/custom/*" -exec rm -fd {} \;
+  find "${LW_sv_ThisScriptTempDirPath}/LabWarden" -iname .DS_Store -exec rm -f {} \;
 
   # -- Copy the example custom policies
-  find -d "${GLB_PayloadDir}/Policies/custom/" -iname "*ExamplePolicy" -exec cp "{}" ${GLB_ThisScriptTempDir}/LabWarden/Policies/custom/ \;
+  find -d "${sv_PayloadDirPath}/Policies/custom/" -iname "*ExamplePolicy" -exec cp "{}" ${LW_sv_ThisScriptTempDirPath}/LabWarden/Policies/custom/ \;
 
   # Lets begin
   mkdir -p /usr/local/LabWarden
   chown root:wheel /usr/local/LabWarden
   chmod 755 /usr/local/LabWarden
   
-  mkdir -p /Library/Preferences/SystemConfiguration/${GLB_LabWardenSignature}
-  chown root:wheel /Library/Preferences/SystemConfiguration/${GLB_LabWardenSignature}
-  chmod 755 /Library/Preferences/SystemConfiguration/${GLB_LabWardenSignature}
+  mkdir -p /Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
+  chown root:wheel /Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
+  chmod 755 /Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
 
-  if test -f "${GLB_ThisScriptTempDir}/LabWarden/LICENSE"
+  if test -f "${LW_sv_ThisScriptTempDirPath}/LabWarden/LICENSE"
   then
-    cp "${GLB_ThisScriptTempDir}/LabWarden/LICENSE" /usr/local/LabWarden/
+    cp "${LW_sv_ThisScriptTempDirPath}/LabWarden/LICENSE" /usr/local/LabWarden/
     chown root:wheel "/usr/local/LabWarden/LICENSE"
     chmod 755 "/usr/local/LabWarden/LICENSE"
   fi
   
-  if test -f "${GLB_ThisScriptTempDir}/LabWarden/README.md"
+  if test -f "${LW_sv_ThisScriptTempDirPath}/LabWarden/README.md"
   then
-    cp "${GLB_ThisScriptTempDir}/LabWarden/README.md" /usr/local/LabWarden/
+    cp "${LW_sv_ThisScriptTempDirPath}/LabWarden/README.md" /usr/local/LabWarden/
     chown root:wheel "/usr/local/LabWarden/README.md"
     chmod 755 "/usr/local/LabWarden/README.md"
   fi
   
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/images"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/images"
   then
     mkdir -p /usr/local/LabWarden/images
     chown root:wheel /usr/local/LabWarden/images
     chmod 755 /usr/local/LabWarden/images
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/images/" "/usr/local/LabWarden/images/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/images/" "/usr/local/LabWarden/images/"
     chown -R root:wheel "/usr/local/LabWarden/images"
     chmod -R 755 "/usr/local/LabWarden/images"
   fi
 
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/bin"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/bin"
   then
     mkdir -p /usr/local/LabWarden/bin
     chown root:wheel /usr/local/LabWarden/bin
     chmod 755 /usr/local/LabWarden/bin
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/bin/" "/usr/local/LabWarden/bin/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/bin/" "/usr/local/LabWarden/bin/"
     chown -R root:wheel "/usr/local/LabWarden/bin"
     chmod -R 755 "/usr/local/LabWarden/bin"
 
@@ -149,15 +149,15 @@ else
     chown root:wheel /usr/local/LabWarden/bin/custom
     chmod 755 /usr/local/LabWarden/bin/custom
 
-    if test -f "${GLB_ThisScriptTempDir}/LabWarden/bin/appwarden"
+    if test -f "${LW_sv_ThisScriptTempDirPath}/LabWarden/bin/appwarden"
     then
-      cat << EOF > /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
+      cat << EOF > /Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.appwarden</string>
+	<string>${LW_sv_LabWardenSignature}.appwarden</string>
 	<key>Program</key>
 	<string>/usr/local/LabWarden/bin/appwarden</string>
 	<key>RunAtLoad</key>
@@ -167,20 +167,20 @@ else
 </dict>
 </plist>
 EOF
-      chown root:wheel /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
-      chmod 644 /Library/LaunchAgents/${GLB_LabWardenSignature}.appwarden.plist
+      chown root:wheel /Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
+      chmod 644 /Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
 
     fi
 
-    if test -f "${GLB_ThisScriptTempDir}/LabWarden/bin/NetworkStateWarden"
+    if test -f "${LW_sv_ThisScriptTempDirPath}/LabWarden/bin/NetworkStateWarden"
     then
-      cat << EOF > /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
+      cat << EOF > /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.NetworkStateWarden</string>
+	<string>${LW_sv_LabWardenSignature}.NetworkStateWarden</string>
 	<key>Program</key>
 	<string>/usr/local/LabWarden/bin/NetworkStateWarden</string>
 	<key>RunAtLoad</key>
@@ -190,54 +190,54 @@ EOF
 </dict>
 </plist>
 EOF
-      chown root:wheel /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
-      chmod 644 /Library/LaunchDaemons/${GLB_LabWardenSignature}.NetworkStateWarden.plist
+      chown root:wheel /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
+      chmod 644 /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
 
     fi
 
 
   fi
     
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/util"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/util"
   then
     mkdir -p /usr/local/LabWarden/util
     chown root:wheel /usr/local/LabWarden/util
     chmod 755 /usr/local/LabWarden/util
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/util/" "/usr/local/LabWarden/util/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/util/" "/usr/local/LabWarden/util/"
     chown -R root:wheel "/usr/local/LabWarden/util"
     chmod -R 755 "/usr/local/LabWarden/util"
   fi
     
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/lib"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/lib"
   then
     mkdir -p /usr/local/LabWarden/lib
     chown root:wheel /usr/local/LabWarden/lib
     chmod 755 /usr/local/LabWarden/lib
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/lib/" "/usr/local/LabWarden/lib/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/lib/" "/usr/local/LabWarden/lib/"
     chown -R root:wheel "/usr/local/LabWarden/lib"
     chmod -R 755 "/usr/local/LabWarden/lib"
   fi
     
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/PayloadHandlers"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/PayloadHandlers"
   then
     mkdir -p /usr/local/LabWarden/PayloadHandlers
     chown root:wheel /usr/local/LabWarden/PayloadHandlers
     chmod 755 /usr/local/LabWarden/PayloadHandlers
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/PayloadHandlers/" "/usr/local/LabWarden/PayloadHandlers/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/PayloadHandlers/" "/usr/local/LabWarden/PayloadHandlers/"
     chown -R root:wheel "/usr/local/LabWarden/PayloadHandlers"
     chmod -R 755 "/usr/local/LabWarden/PayloadHandlers"
   fi
     
-  if test -d "${GLB_ThisScriptTempDir}/LabWarden/Policies"
+  if test -d "${LW_sv_ThisScriptTempDirPath}/LabWarden/Policies"
   then
     mkdir -p /usr/local/LabWarden/Policies
     chown root:wheel /usr/local/LabWarden/Policies
     chmod 755 /usr/local/LabWarden/Policies
 
-    cp -pR "${GLB_ThisScriptTempDir}/LabWarden/Policies/" "/usr/local/LabWarden/Policies/"
+    cp -pR "${LW_sv_ThisScriptTempDirPath}/LabWarden/Policies/" "/usr/local/LabWarden/Policies/"
     chown -R root:wheel "/usr/local/LabWarden/Policies"
     chmod -R 755 "/usr/local/LabWarden/Policies"
 
@@ -245,15 +245,15 @@ EOF
     chown root:wheel /usr/local/LabWarden/Policies/custom
     chmod 755 /usr/local/LabWarden/Policies/custom
 
-    if test -f "${GLB_ThisScriptTempDir}/LabWarden/lib/Trigger"
+    if test -f "${LW_sv_ThisScriptTempDirPath}/LabWarden/lib/Trigger"
     then
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.Boot.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Boot.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.Boot</string>
+	<string>${LW_sv_LabWardenSignature}.Boot</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -264,18 +264,18 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.Boot.plist /library/LaunchDaemons/
-      chown root:wheel /library/LaunchDaemons/${GLB_LabWardenSignature}.Boot.plist
-      chmod 644 /library/LaunchDaemons/${GLB_LabWardenSignature}.Boot.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Boot.plist /library/LaunchDaemons/
+      chown root:wheel /library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
+      chmod 644 /library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
 
 
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.LoginWindow.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindow.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.LoginWindow</string>
+	<string>${LW_sv_LabWardenSignature}.LoginWindow</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -288,9 +288,9 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.LoginWindow.plist /library/LaunchAgents/
-      chown root:wheel /library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindow.plist
-      chmod 644 /library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindow.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindow.plist /library/LaunchAgents/
+      chown root:wheel /library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
+      chmod 644 /library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
       
       
       # Make sure the login hooks are set up - these are responsible for calling the Login & Logout TriggerScripts
@@ -300,13 +300,13 @@ EOF
       # Note, the Trigger handler re-installs the Login and Logout Hooks 
 
 
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.LoginWindowIdle.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindowIdle.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.LoginWindowIdle</string>
+	<string>${LW_sv_LabWardenSignature}.LoginWindowIdle</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -319,18 +319,18 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.LoginWindowIdle.plist /library/LaunchAgents/
-      chown root:wheel /library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindowIdle.plist
-      chmod 644 /library/LaunchAgents/${GLB_LabWardenSignature}.LoginWindowIdle.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindowIdle.plist /library/LaunchAgents/
+      chown root:wheel /library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowIdle.plist
+      chmod 644 /library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowIdle.plist
 
 
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.UserAtDesktop.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.UserAtDesktop</string>
+	<string>${LW_sv_LabWardenSignature}.UserAtDesktop</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -343,18 +343,18 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.UserAtDesktop.plist /library/LaunchAgents/
-      chown root:wheel /library/LaunchAgents/${GLB_LabWardenSignature}.UserAtDesktop.plist
-      chmod 644 /library/LaunchAgents/${GLB_LabWardenSignature}.UserAtDesktop.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserAtDesktop.plist /library/LaunchAgents/
+      chown root:wheel /library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
+      chmod 644 /library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
 
 
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.UserPoll.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserPoll.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.UserPoll</string>
+	<string>${LW_sv_LabWardenSignature}.UserPoll</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -367,22 +367,22 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.UserPoll.plist /library/LaunchAgents/
-      chown root:wheel /library/LaunchAgents/${GLB_LabWardenSignature}.UserPoll.plist
-      chmod 644 /library/LaunchAgents/${GLB_LabWardenSignature}.UserPoll.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserPoll.plist /library/LaunchAgents/
+      chown root:wheel /library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
+      chmod 644 /library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
 
 
 
       mkdir -p "/usr/local/LabWarden/Escalated"
       chmod 777 "/usr/local/LabWarden/Escalated"
       
-      cat << EOF > ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.Escalated.plist
+      cat << EOF > ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Escalated.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${GLB_LabWardenSignature}.Escalated</string>
+	<string>${LW_sv_LabWardenSignature}.Escalated</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Escalated</string>
@@ -394,16 +394,16 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${GLB_ThisScriptTempDir}/${GLB_LabWardenSignature}.Escalated.plist /library/LaunchDaemons/
-      chown root:wheel /library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
-      chmod 644 /library/LaunchDaemons/${GLB_LabWardenSignature}.Escalated.plist
+      cp ${LW_sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Escalated.plist /library/LaunchDaemons/
+      chown root:wheel /library/LaunchDaemons/${LW_sv_LabWardenSignature}.Escalated.plist
+      chmod 644 /library/LaunchDaemons/${LW_sv_LabWardenSignature}.Escalated.plist
 
 
     fi
 
   fi
     
-  rm -fR "${GLB_ThisScriptTempDir}/LabWarden"
+  rm -fR "${LW_sv_ThisScriptTempDirPath}/LabWarden"
 
   echo "PLEASE REBOOT."
   echo ""

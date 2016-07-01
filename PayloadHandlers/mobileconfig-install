@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .mobileconfig payload
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   mobileconfig-install <somefile.mobileconfig> [user]
@@ -14,56 +14,48 @@
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Full souce of this script
-LCL_MySource="${0}"
+sv_PayloadFilePath="${1}"
 
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-LCL_Payload="${1}"
-
-if test -z "${LCL_Payload}"
+if test -z "${sv_PayloadFilePath}"
 then
-  f_QuickExit "Usage ${LCL_MyScript} somefile.mobileconfig"
+  LW_nf_QuickExit "Usage ${LW_sv_ThisScriptFileName} somefile.mobileconfig"
 fi
 
-if ! test -e "${LCL_Payload}"
+if ! test -e "${sv_PayloadFilePath}"
 then
-  f_QuickExit "File not found - ${LCL_Payload}"
+  LW_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
 fi
 
 # ---
 
-LCL_GPOuser="${2}"
+sv_GPOuser="${2}"
 
 # ---
 
 # Install the mobileconfig
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  f_logmessage "ATTENTION, installing config "$(basename ${LCL_Payload})
-  f_logmessage "DEBUG: /usr/bin/profiles -I -F '${LCL_Payload}' -U '${LCL_GPOuser}'"
-  /usr/bin/profiles -I -F "${LCL_Payload}" -U "${LCL_GPOuser}"
-  LCL_ErrCode="$?"
+  LW_nf_logmessage "ATTENTION, installing config "$(basename ${sv_PayloadFilePath})
+  LW_nf_logmessage "DEBUG: /usr/bin/profiles -I -F '${sv_PayloadFilePath}' -U '${sv_GPOuser}'"
+  /usr/bin/profiles -I -F "${sv_PayloadFilePath}" -U "${sv_GPOuser}"
+  iv_ErrCode="$?"
 
 else
-  f_logmessage "ATTENTION, installing config "$(basename ${LCL_Payload})
-  f_logmessage "DEBUG: /usr/bin/profiles -I -F '${LCL_Payload}'"
-  /usr/bin/profiles -I -F "${LCL_Payload}"
-  LCL_ErrCode="$?"
+  LW_nf_logmessage "ATTENTION, installing config "$(basename ${sv_PayloadFilePath})
+  LW_nf_logmessage "DEBUG: /usr/bin/profiles -I -F '${sv_PayloadFilePath}'"
+  /usr/bin/profiles -I -F "${sv_PayloadFilePath}"
+  iv_ErrCode="$?"
   
 fi
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
-exit ${LCL_ErrCode}
+exit ${iv_ErrCode}

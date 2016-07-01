@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -25,32 +25,27 @@
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
-# ---
-
 # Get policy
-LCL_EventName="${1}"
+sv_EventName="${1}"
 
-if test -z "${LCL_EventName}"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get logged in user
-GLB_LoggedInUserName="${2}"
+LW_sv_LoggedInUserName="${2}"
 
 # Get optional parameter
-LCL_OptionalParam="${3}"
+sv_OptionalParam="${3}"
 
 # ---
 
 # Get Computer AD domain - i.e. your.domain.com
-GLB_ADDomainNameDNS="$(dsconfigad -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
+LW_sv_ADDomainNameDNS="$(dsconfigad -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
 
-if test -z "${GLB_ADDomainNameDNS}"
+if test -z "${LW_sv_ADDomainNameDNS}"
 then
   # We are probably not part of a domain
   exit 0
@@ -59,31 +54,30 @@ fi
 # ---
 # Some user initiated events may have escalated versions
 
-case ${LCL_EventName} in
+case ${sv_EventName} in
 UserAtDesktop|UserPoll) 
-  touch /usr/local/LabWarden/Escalated/"${LCL_EventName}"
+  touch /usr/local/LabWarden/Escalated/"${sv_EventName}"
   ;;
 
 esac
 
 # ---
 
-
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-LCL_EventHistory=""
+sv_EventHistory=""
 
-f_logmessage "ATTENTION, system event: (${LCL_EventName})"
+LW_nf_logmessage "ATTENTION, system event: (${sv_EventName})"
 
 # ---
 
-if [ "${GLB_ThisUserName}" = "root" ]
+if [ "${LW_sv_ThisUserName}" = "root" ]
 then
   # Make sure the login hooks are set up
   sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/LabWarden/lib/LoginHook"
@@ -92,57 +86,57 @@ then
   # ---
 
   # Check that the workstation policies exist
-  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
-  if ! test -e "${LCL_ConfigDir}/LabWarden.plist"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
   then
-    f_logmessage "ATTENTION, workstation policies not available, running gpupdate"
+    LW_nf_logmessage "ATTENTION, workstation policies not available, running gpupdate"
     /usr/local/LabWarden/util/gpupdate
   fi
 
-  if test -e "${LCL_ConfigDir}/LabWarden.plist"
+  if test -e "${sv_ConfigDirPath}/LabWarden.plist"
   then
     # Check the age of the config
-    LCL_PlistLastUpdateEpoch=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" 1136073660)
-    LCL_PlistAgeHours=$(((${LCL_MyStartEpoch}-${LCL_PlistLastUpdateEpoch})/60/60))
-    if [ ${LCL_PlistAgeHours} -gt ${GLB_GPConfigMaxAgeHours} ]
+    iv_PlistLastUpdateEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" 1136073660)
+    iv_PlistAgeHours=$(((${LW_sv_ThisScriptStartEpoch}-${iv_PlistLastUpdateEpoch})/60/60))
+    if [ ${iv_PlistAgeHours} -gt ${iv_GPConfigMaxAgeHours} ]
     then
-      f_logmessage "ATTENTION, updating workstation group policies - they are ${LCL_PlistAgeHours} hours old and exceed the maximum age."
+      LW_nf_logmessage "ATTENTION, updating workstation group policies - they are ${iv_PlistAgeHours} hours old and exceed the maximum age."
       /usr/local/LabWarden/util/gpupdate
     else
-      LCL_PlistVersion=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:Version")
-      if [ "${LCL_PlistVersion}" != "${GLB_LabWardenVersion}" ]
+      sv_PlistVersion=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version")
+      if [ "${sv_PlistVersion}" != "${LW_sv_LabWardenVersion}" ]
       then
-        f_logmessage "ATTENTION, updating workstation policies - LabWarden version has changed."
+        LW_nf_logmessage "ATTENTION, updating workstation policies - LabWarden version has changed."
         /usr/local/LabWarden/util/gpupdate
       fi
     fi
   fi
   
-  if test -n "${GLB_LoggedInUserName}"
+  if test -n "${LW_sv_LoggedInUserName}"
   then
-    LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_LoggedInUserName}"
+    sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_LoggedInUserName}"
     # Check that the user policies exist
-    if ! test -e "${LCL_ConfigDir}/LabWarden.plist"
+    if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
     then
-      f_logmessage "ATTENTION, user policies for '${GLB_LoggedInUserName}' not available, running gpupdate"
-      /usr/local/LabWarden/util/gpupdate "${GLB_LoggedInUserName}"
+      LW_nf_logmessage "ATTENTION, user policies for '${LW_sv_LoggedInUserName}' not available, running gpupdate"
+      /usr/local/LabWarden/util/gpupdate "${LW_sv_LoggedInUserName}"
     fi
 
-    if test -e "${LCL_ConfigDir}/LabWarden.plist"
+    if test -e "${sv_ConfigDirPath}/LabWarden.plist"
     then
       # Check the age of the config
-      LCL_PlistLastUpdateEpoch=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" 1136073660)
-      LCL_PlistAgeHours=$(((${LCL_MyStartEpoch}-${LCL_PlistLastUpdateEpoch})/60/60))
-      if [ ${LCL_PlistAgeHours} -gt ${GLB_GPConfigMaxAgeHours} ]
+      iv_PlistLastUpdateEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" 1136073660)
+      iv_PlistAgeHours=$(((${LW_sv_ThisScriptStartEpoch}-${iv_PlistLastUpdateEpoch})/60/60))
+      if [ ${iv_PlistAgeHours} -gt ${iv_GPConfigMaxAgeHours} ]
       then
-        f_logmessage "ATTENTION, updating user policies for '${GLB_LoggedInUserName}' - they are ${LCL_PlistAgeHours} hours old and exceed the maximum age."
-        /usr/local/LabWarden/util/gpupdate "${GLB_LoggedInUserName}"
+        LW_nf_logmessage "ATTENTION, updating user policies for '${LW_sv_LoggedInUserName}' - they are ${iv_PlistAgeHours} hours old and exceed the maximum age."
+        /usr/local/LabWarden/util/gpupdate "${LW_sv_LoggedInUserName}"
       else
-        LCL_PlistVersion=$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:Version")
-        if [ "${LCL_PlistVersion}" != "${GLB_LabWardenVersion}" ]
+        sv_PlistVersion=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version")
+        if [ "${sv_PlistVersion}" != "${LW_sv_LabWardenVersion}" ]
         then
-          f_logmessage "ATTENTION, updating user policies for '${GLB_LoggedInUserName}' - LabWarden version has changed."
-          /usr/local/LabWarden/util/gpupdate "${GLB_LoggedInUserName}"
+          LW_nf_logmessage "ATTENTION, updating user policies for '${LW_sv_LoggedInUserName}' - LabWarden version has changed."
+          /usr/local/LabWarden/util/gpupdate "${LW_sv_LoggedInUserName}"
         fi
       fi
     fi
@@ -151,129 +145,129 @@ then
 
 fi
 
-if test -n "${GLB_LoggedInUserName}"
+if test -n "${LW_sv_LoggedInUserName}"
 then
-  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_LoggedInUserName}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_LoggedInUserName}"
   
-  if test -e "${LCL_ConfigDir}/DelayedUninstall"
+  if test -e "${sv_ConfigDirPath}/DelayedUninstall"
   then
     # Uninstall delayed payloads
-    f_logmessage "ATTENTION, uninstalling delayed payloads for user '${GLB_LoggedInUserName}'"
-    ls -1 "${LCL_ConfigDir}/DelayedUninstall" | while read LCL_PayloadName
+    LW_nf_logmessage "ATTENTION, uninstalling delayed payloads for user '${LW_sv_LoggedInUserName}'"
+    ls -1 "${sv_ConfigDirPath}/DelayedUninstall" | while read sv_PayloadFileName
     do
-      LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-      if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall
+      sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+      if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
       then
         
         # Complications arise due to OS version differences
-        LCL_HandleUserPayloadDelays="true"
-        case ${LCL_PayloadExt} in
+        bv_HandleUserPayloadDelays="true"
+        case ${sv_PayloadFileExt} in
         mobileconfig) 
-          if [ ${GLB_SystemVersionStampAsNumber} -lt 168493056 ]
+          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
           then
             # Pre OS X 10.11, the user needs to install his own mobileconfig
-            if [ "${GLB_ThisUserName}" != "${GLB_LoggedInUserName}" ]
+            if [ "${LW_sv_ThisUserName}" != "${LW_sv_LoggedInUserName}" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
           else
             # Only root needs to install user delayed payloads
-            if [ "${GLB_ThisUserName}" != "root" ]
+            if [ "${LW_sv_ThisUserName}" != "root" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
           fi
           ;;
       
           *)
             # Ideally, only root should install user delayed payloads
-            if [ "${GLB_ThisUserName}" != "root" ]
+            if [ "${LW_sv_ThisUserName}" != "root" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
             ;;
       
         esac
         
-        if [ "${LCL_HandleUserPayloadDelays}" = "true" ]
+        if [ "${bv_HandleUserPayloadDelays}" = "true" ]
         then
-          /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall "${LCL_ConfigDir}/DelayedUninstall/${LCL_PayloadName}" "${GLB_LoggedInUserName}"
+          /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${sv_ConfigDirPath}/DelayedUninstall/${sv_PayloadFileName}" "${LW_sv_LoggedInUserName}"
           if [ "$?" = "0" ]
           then
-            rm -f "${LCL_ConfigDir}/DelayedUninstall/${LCL_PayloadName}"
+            rm -f "${sv_ConfigDirPath}/DelayedUninstall/${sv_PayloadFileName}"
                 
           else
-            f_logmessage "ATTENTION, failed to uninstall '${LCL_PayloadName}'."
+            LW_nf_logmessage "ATTENTION, failed to uninstall '${sv_PayloadFileName}'."
                 
           fi
         fi
           
       fi
     done
-    if test -z "$(ls -1 "${LCL_ConfigDir}/DelayedUninstall")"
+    if test -z "$(ls -1 "${sv_ConfigDirPath}/DelayedUninstall")"
     then
-      rm -fR "${LCL_ConfigDir}/DelayedUninstall"
+      rm -fR "${sv_ConfigDirPath}/DelayedUninstall"
     fi
   fi
   
-  if test -e "${LCL_ConfigDir}/DelayedInstall"
+  if test -e "${sv_ConfigDirPath}/DelayedInstall"
   then
     # install delayed payloads
-    f_logmessage "ATTENTION, installing delayed payloads for user '${GLB_LoggedInUserName}'"
-    ls -1 "${LCL_ConfigDir}/DelayedInstall" | while read LCL_PayloadName
+    LW_nf_logmessage "ATTENTION, installing delayed payloads for user '${LW_sv_LoggedInUserName}'"
+    ls -1 "${sv_ConfigDirPath}/DelayedInstall" | while read sv_PayloadFileName
     do
-      LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-      if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-install
+      sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+      if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install
       then
         
         # Complications arise due to OS version differences
-        LCL_HandleUserPayloadDelays="true"
-        case ${LCL_PayloadExt} in
+        bv_HandleUserPayloadDelays="true"
+        case ${sv_PayloadFileExt} in
         mobileconfig) 
-          if [ ${GLB_SystemVersionStampAsNumber} -lt 168493056 ]
+          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
           then
             # Pre OS X 10.11, the user needs to install his own mobileconfig
-            if [ "${GLB_ThisUserName}" != "${GLB_LoggedInUserName}" ]
+            if [ "${LW_sv_ThisUserName}" != "${LW_sv_LoggedInUserName}" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
           else
             # Only root needs to install user delayed payloads
-            if [ "${GLB_ThisUserName}" != "root" ]
+            if [ "${LW_sv_ThisUserName}" != "root" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
           fi
           ;;
       
           *)
             # Ideally, only root should install user delayed payloads
-            if [ "${GLB_ThisUserName}" != "root" ]
+            if [ "${LW_sv_ThisUserName}" != "root" ]
             then
-              LCL_HandleUserPayloadDelays="false"
+              bv_HandleUserPayloadDelays="false"
             fi
             ;;
       
         esac
         
-        if [ "${LCL_HandleUserPayloadDelays}" = "true" ]
+        if [ "${bv_HandleUserPayloadDelays}" = "true" ]
         then
-          /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-install "${LCL_ConfigDir}/DelayedInstall/${LCL_PayloadName}" "${GLB_LoggedInUserName}"
+          /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install "${sv_ConfigDirPath}/DelayedInstall/${sv_PayloadFileName}" "${LW_sv_LoggedInUserName}"
           if [ "$?" = "0" ]
           then
-            rm -f "${LCL_ConfigDir}/DelayedInstall/${LCL_PayloadName}"
+            rm -f "${sv_ConfigDirPath}/DelayedInstall/${sv_PayloadFileName}"
                 
           else
-            f_logmessage "ATTENTION, failed to install '${LCL_PayloadName}'."
+            LW_nf_logmessage "ATTENTION, failed to install '${sv_PayloadFileName}'."
                 
           fi
         fi
           
       fi
     done
-    if test -z "$(ls -1 "${LCL_ConfigDir}/DelayedInstall")"
+    if test -z "$(ls -1 "${sv_ConfigDirPath}/DelayedInstall")"
     then
-      rm -fR "${LCL_ConfigDir}/DelayedInstall"
+      rm -fR "${sv_ConfigDirPath}/DelayedInstall"
     fi
   fi
 
@@ -281,29 +275,29 @@ fi
 # ---
 
 # Check policies against event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_EventName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # Have we been flagged to restart or shutdown
-if [ "${GLB_ThisUserName}" = "root" ]
+if [ "${LW_sv_ThisUserName}" = "root" ]
 then
-  if [ -e "${GLB_ThisUserTempDir}/RestartNow" ] || [ -e "${GLB_ThisUserTempDir}/ShutdownNow" ]
+  if [ -e "${LW_sv_ThisUserTempDirPath}/RestartNow" ] || [ -e "${LW_sv_ThisUserTempDirPath}/ShutdownNow" ]
   then
-    while [ -n "$(ls -1 "${GLB_ThisUserTempDir}/ActiveEvents")" ]
+    while [ -n "$(ls -1 "${LW_sv_ThisUserTempDirPath}/ActiveEvents")" ]
     do
-      f_logmessage "NOTE, Waiting for events to finish in order to restart or shutdown"
+      LW_nf_logmessage "NOTE, Waiting for events to finish in order to restart or shutdown"
       sleep 1
     done
-    if [ -e "${GLB_ThisUserTempDir}/RestartNow" ]
+    if [ -e "${LW_sv_ThisUserTempDirPath}/RestartNow" ]
     then
-      f_logmessage "ATTENTION, restarting workstation"
+      LW_nf_logmessage "ATTENTION, restarting workstation"
       shutdown -r now
     fi
-    if [ -e "${GLB_ThisUserTempDir}/ShutdownNow" ]
+    if [ -e "${LW_sv_ThisUserTempDirPath}/ShutdownNow" ]
     then
-      f_logmessage "ATTENTION, shutting down workstation"
+      LW_nf_logmessage "ATTENTION, shutting down workstation"
       shutdown -h now
     fi
   fi

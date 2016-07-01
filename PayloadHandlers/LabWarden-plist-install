@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.88
-# Modified: 27-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -14,50 +14,42 @@
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Full souce of this script
-LCL_MySource="${0}"
+sv_PayloadFilePath="${1}"
 
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-LCL_Payload="${1}"
-
-if test -z "${LCL_Payload}"
+if test -z "${sv_PayloadFilePath}"
 then
-  f_QuickExit "Usage ${LCL_MyScript} somefile.LabWarden.plist"
+  LW_nf_QuickExit "Usage ${LW_sv_ThisScriptFileName} somefile.LabWarden.plist"
 fi
 
-if ! test -e "${LCL_Payload}"
+if ! test -e "${sv_PayloadFilePath}"
 then
-  f_QuickExit "File not found - ${LCL_Payload}"
+  LW_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
 fi
 
 # ---
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "${LCL_Payload} can only be installed as root"
+  LW_nf_QuickExit "${sv_PayloadFilePath} can only be installed as root"
 fi
 
 # ---
 
-LCL_GPOuser="${2}"
+sv_GPOuser="${2}"
 
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
   
 else
-  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
   
 fi
 
@@ -65,111 +57,111 @@ fi
 
 # Install the LabWarden.plist config 
 
-mkdir -p "${LCL_ConfigDir}"
+mkdir -p "${sv_ConfigDirPath}"
 
-LCL_ObjectName=$(f_GetPlistProperty "${LCL_Payload}" ":Name")
-LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
+sv_ObjectName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Name")
+sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
 
-  if test -n "${LCL_ObjectName}"
+  if test -n "${sv_ObjectName}"
   then
-    if test -n "${LCL_ObjectType}"
+    if test -n "${sv_ObjectType}"
     then
   
       # Create object
-      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_ObjectName}'" "${LCL_ConfigDir}/LabWarden.plist"
+      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
         # Add a new object
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${LCL_ObjectName}' dict" "${LCL_ConfigDir}/LabWarden.plist"
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ObjectName}' dict" "${sv_ConfigDirPath}/LabWarden.plist"
         if [ $? -ne 0 ]
         then
-          f_QuickExit "Failed to Add dict ':${LCL_ObjectName}' to '${LCL_ConfigDir}/LabWarden.plist'"
+          LW_nf_QuickExit "Failed to Add dict ':${sv_ObjectName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
         fi
       fi
       
       # Merge config
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Merge '${LCL_Payload}' ':${LCL_ObjectName}'" "${LCL_ConfigDir}/LabWarden.plist"
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Merge '${sv_PayloadFilePath}' ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${LCL_ObjectName}'" "${LCL_ConfigDir}/LabWarden.plist"
-        f_QuickExit "Failed to Merge '${LCL_Payload}' into '${LCL_ConfigDir}/LabWarden.plist'"
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+        LW_nf_QuickExit "Failed to Merge '${sv_PayloadFilePath}' into '${sv_ConfigDirPath}/LabWarden.plist'"
       fi
       
       # Create object
-      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_ObjectName}:LocalPrefs'" "${LCL_ConfigDir}/LabWarden.plist"
+      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ObjectName}:LocalPrefs'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
         # Create prefs
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${LCL_ObjectName}:LocalPrefs' dict" "${LCL_ConfigDir}/LabWarden.plist"
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ObjectName}:LocalPrefs' dict" "${sv_ConfigDirPath}/LabWarden.plist"
         if [ $? -ne 0 ]
         then
-          f_QuickExit "Failed to Add dict ':${LCL_ObjectName}' to '${LCL_ConfigDir}/LabWarden.plist'"
+          LW_nf_QuickExit "Failed to Add dict ':${sv_ObjectName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
         fi
       fi  
 
-      f_logmessage "ATTENTION, installing config for ${LCL_ObjectType} '${LCL_ObjectName}'"
-      case "${LCL_ObjectType}" in
+      LW_nf_logmessage "ATTENTION, installing config for ${sv_ObjectType} '${sv_ObjectName}'"
+      case "${sv_ObjectType}" in
       Printer)
-        LCL_PrinterName=$(f_GetPlistProperty "${LCL_Payload}" ":Name")
-        if test -n "${LCL_PrinterName}"
+        sv_PrinterName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Name")
+        if test -n "${sv_PrinterName}"
         then
-          LCL_PrinterURI=$(f_GetPlistProperty "${LCL_Payload}" ":Config:PrinterURI")
-          if test -n "${LCL_PrinterURI}"
+          sv_PrinterURI=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Config:PrinterURI")
+          if test -n "${sv_PrinterURI}"
           then
-            LCL_ppdURI=$(f_GetPlistProperty "${LCL_Payload}" ":Config:PPDURI")
-            if test -n "${LCL_ppdURI}"
+            sv_PPDURI=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Config:PPDURI")
+            if test -n "${sv_PPDURI}"
             then
-              LCL_PrinterPPD=$(f_ResolveFilename "${LCL_ppdURI}")
-              if test -n "${LCL_PrinterPPD}"
+              sv_PrinterPPDFilePath=$(LW_sf_ResolveFilename "${sv_PPDURI}")
+              if test -n "${sv_PrinterPPDFilePath}"
               then
-                LCL_PrinterOptions=$(f_GetPlistProperty "${LCL_Payload}" ":Config:Options")
-                LCL_PrinterLocation=$(f_GetPlistProperty "${LCL_Payload}" ":Config:Location")
+                sv_PrinterOptions=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Config:Options")
+                sv_PrinterLocation=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Config:Location")
 
-                LCL_PrinterDesc=$(echo $LCL_PrinterName | tr " " "_")
-                LCL_PrinterName=$(echo $LCL_PrinterDesc | tr "-" "_")
+                sv_PrinterDesc=$(echo $sv_PrinterName | tr " " "_")
+                sv_PrinterName=$(echo $sv_PrinterDesc | tr "-" "_")
 
                 # If the ppd is gzipped, extract it.
-                if [ "$(echo ${LCL_PrinterPPD} | tr "." "\n" | tail -n1)" = "gz" ]
+                if [ "$(echo ${sv_PrinterPPDFilePath} | tr "." "\n" | tail -n1)" = "gz" ]
                 then
-                  gunzip -c "${LCL_PrinterPPD}" > "${GLB_ThisScriptTempDir}/UNGZ.ppd"
-                  LCL_PrinterPPD="${GLB_ThisScriptTempDir}/UNGZ.ppd"
+                  gunzip -c "${sv_PrinterPPDFilePath}" > "${LW_sv_ThisScriptTempDirPath}/UNGZ.ppd"
+                  sv_PrinterPPDFilePath="${LW_sv_ThisScriptTempDirPath}/UNGZ.ppd"
                 fi
   
                 # if we downloaded the PPD from a print server, remove filters
-                if test -n "$(echo "${LCL_ppdURI}" | grep ":631/")"
+                if test -n "$(echo "${sv_PPDURI}" | grep ":631/")"
                 then
-                  if test -n "$(cat "${LCL_PrinterPPD}" | grep "DOCTYPE HTML PUBLIC")"
+                  if test -n "$(cat "${sv_PrinterPPDFilePath}" | grep "DOCTYPE HTML PUBLIC")"
                   then
-                    f_logmessage "ATTENTION, error '"$(cat "${LCL_PrinterPPD}" | grep -i "<TITLE>")"' downloading PPD from ${LCL_ppdURI}"
-                    rm -f "${LCL_PrinterPPD}"
+                    LW_nf_logmessage "ATTENTION, error '"$(cat "${sv_PrinterPPDFilePath}" | grep -i "<TITLE>")"' downloading PPD from ${sv_PPDURI}"
+                    rm -f "${sv_PrinterPPDFilePath}"
                   else
-                    cat "${LCL_PrinterPPD}" | grep -v "cupsFilter" | grep -v "cupsPreFilter" | grep -v "APAutoSetupTool" > "${GLB_ThisScriptTempDir}/TEMP.ppd"
-                    echo '*cupsFilter: "application/pdf 0 -"' >> "${GLB_ThisScriptTempDir}/TEMP.ppd"
-                    echo '*cupsFilter: "image/* 0 -"' >> "${GLB_ThisScriptTempDir}/TEMP.ppd"
-                    echo '*cupsFilter: "application/vnd.cups-command 0 -"' >> "${GLB_ThisScriptTempDir}/TEMP.ppd"
-                    rm -f "${LCL_PrinterPPD}"
-                    LCL_PrinterPPD="${GLB_ThisScriptTempDir}/TEMP.ppd"
+                    cat "${sv_PrinterPPDFilePath}" | grep -v "cupsFilter" | grep -v "cupsPreFilter" | grep -v "APAutoSetupTool" > "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
+                    echo '*cupsFilter: "application/pdf 0 -"' >> "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
+                    echo '*cupsFilter: "image/* 0 -"' >> "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
+                    echo '*cupsFilter: "application/vnd.cups-command 0 -"' >> "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
+                    rm -f "${sv_PrinterPPDFilePath}"
+                    sv_PrinterPPDFilePath="${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
                   fi
 
                 else
                   # If there's a setup tool call it. It copies a modified PPD to stdout
-                  LCL_setuptool=$(cat ${LCL_PrinterPPD} | grep "APAutoSetupTool" | cut -d'"' -f2)
-                  if test -n "${LCL_setuptool}"
+                  sv_SetuptoolFilePath=$(cat ${sv_PrinterPPDFilePath} | grep "APAutoSetupTool" | cut -d'"' -f2)
+                  if test -n "${sv_SetuptoolFilePath}"
                   then
-                    "${LCL_setuptool}" "${LCL_PrinterURI}" "${LCL_PrinterPPD}" > "${GLB_ThisScriptTempDir}/TEMP.ppd"
-                    rm -f "${LCL_PrinterPPD}"
-                    LCL_PrinterPPD="${GLB_ThisScriptTempDir}/TEMP.ppd"
+                    "${sv_SetuptoolFilePath}" "${sv_PrinterURI}" "${sv_PrinterPPDFilePath}" > "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
+                    rm -f "${sv_PrinterPPDFilePath}"
+                    sv_PrinterPPDFilePath="${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
                   fi
                 fi
 
                 # Add the printer
-                f_logmessage "ATTENTION, installing printer ${LCL_PrinterName}"
-                /usr/sbin/lpadmin -p "${LCL_PrinterName}" -v "${LCL_PrinterURI}" -D "${LCL_PrinterDesc}" -L "${LCL_PrinterLocation}" -P "${LCL_PrinterPPD}" "${LCL_PrinterOptions}" -E
+                LW_nf_logmessage "ATTENTION, installing printer ${sv_PrinterName}"
+                /usr/sbin/lpadmin -p "${sv_PrinterName}" -v "${sv_PrinterURI}" -D "${sv_PrinterDesc}" -L "${sv_PrinterLocation}" -P "${sv_PrinterPPDFilePath}" "${sv_PrinterOptions}" -E
 
                 # If the printer is to be shared, turn on printer sharing
-                if test -n "$(echo "${LCL_PrinterOptions}" | grep -i "printer-is-shared=true")"
+                if test -n "$(echo "${sv_PrinterOptions}" | grep -i "printer-is-shared=true")"
                 then
-                  f_logmessage "ATTENTION, enabling printer sharing"
+                  LW_nf_logmessage "ATTENTION, enabling printer sharing"
                   /usr/sbin/cupsctl --share-printers
                   /usr/sbin/cupsctl WebInterface=yes
                 fi
@@ -181,64 +173,64 @@ LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
         ;;
 
       Policy)
-        LCL_PolicyPath="/usr/local/LabWarden/Policies/custom/${LCL_PolicyName}"
-        if ! test -e "${LCL_PolicyPath}"
+        sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
+        if ! test -e "${sv_PolicyFilePath}"
         then
-          LCL_PolicyPath="/usr/local/LabWarden/Policies/${LCL_PolicyName}"
-          if ! test -e "${LCL_PolicyPath}"
+          sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
+          if ! test -e "${sv_PolicyFilePath}"
           then
-            LCL_PolicyPath=""
+            sv_PolicyFilePath=""
           fi
         fi
-        if test -n "${LCL_PolicyPath}"
+        if test -n "${sv_PolicyFilePath}"
         then
-          LCL_PolicyScriptVersion="$(${LCL_PolicyPath})"
-          f_SetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_ObjectName}:LocalPrefs:Version" "${LCL_PolicyScriptVersion}"
+          sv_PolicyVersion="$(${sv_PolicyFilePath})"
+          LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ObjectName}:LocalPrefs:Version" "${sv_PolicyVersion}"
         fi
         
-        LCL_TriggeredByCount="$(f_GetPlistArraySize "${LCL_Payload}" ":TriggeredBy")"
-        for (( LCL_TriggeredByIndex=0; LCL_TriggeredByIndex<${LCL_TriggeredByCount}; LCL_TriggeredByIndex++ ))
+        iv_TriggeredByEventCount="$(LW_if_GetPlistArraySize "${sv_PayloadFilePath}" ":TriggeredBy")"
+        for (( iv_TriggeredByEventIndex=0; iv_TriggeredByEventIndex<${iv_TriggeredByEventCount}; iv_TriggeredByEventIndex++ ))
         do
-          LCL_TriggeredByEventName=$(f_GetPlistProperty "${LCL_Payload}" ":TriggeredBy:${LCL_TriggeredByIndex}")
-          if test -n "${LCL_TriggeredByEventName}"
+          sv_TriggeredByEventName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":TriggeredBy:${iv_TriggeredByEventIndex}")
+          if test -n "${sv_TriggeredByEventName}"
           then
 
             # Create object
-            /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_TriggeredByEventName}'" "${LCL_ConfigDir}/LabWarden.plist"
+            /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}'" "${sv_ConfigDirPath}/LabWarden.plist"
             if [ $? -ne 0 ]
             then
               # Add a new object
-              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${LCL_TriggeredByEventName}' dict" "${LCL_ConfigDir}/LabWarden.plist"
+              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}' dict" "${sv_ConfigDirPath}/LabWarden.plist"
               if [ $? -ne 0 ]
               then
-                f_QuickExit "Failed to Add dict ':${LCL_TriggeredByEventName}' to '${LCL_ConfigDir}/LabWarden.plist'"
+                LW_nf_QuickExit "Failed to Add dict ':${sv_TriggeredByEventName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
               fi
             fi
 
             # Create array
-            /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_TriggeredByEventName}:DoesTrigger'" "${LCL_ConfigDir}/LabWarden.plist"
+            /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_ConfigDirPath}/LabWarden.plist"
             if [ $? -ne 0 ]
             then
               # Add a new object
-              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${LCL_TriggeredByEventName}:DoesTrigger' array" "${LCL_ConfigDir}/LabWarden.plist"
+              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}:DoesTrigger' array" "${sv_ConfigDirPath}/LabWarden.plist"
               if [ $? -ne 0 ]
               then
-                f_QuickExit "Failed to Add dict ':${LCL_TriggeredByEventName}:DoesTrigger' to '${LCL_ConfigDir}/LabWarden.plist'"
+                LW_nf_QuickExit "Failed to Add dict ':${sv_TriggeredByEventName}:DoesTrigger' to '${sv_ConfigDirPath}/LabWarden.plist'"
               fi
             fi
             
-            LCL_DoesTriggerCount="$(f_GetPlistArraySize "${LCL_Payload}" ":${LCL_TriggeredByEventName}:DoesTrigger")"
+            iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_PayloadFilePath}" ":${sv_TriggeredByEventName}:DoesTrigger")"
 
-            if test -z "$(/usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${LCL_TriggeredByEventName}:DoesTrigger'" "${LCL_ConfigDir}/LabWarden.plist" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${LCL_ObjectName}$")"
+            if test -z "$(/usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_ConfigDirPath}/LabWarden.plist" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_ObjectName}$")"
             then
-              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${LCL_TriggeredByEventName}:DoesTrigger:${LCL_DoesTriggerCount}' string" "${LCL_ConfigDir}/LabWarden.plist"
+              /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' string" "${sv_ConfigDirPath}/LabWarden.plist"
               if [ $? -ne 0 ]
               then
-                f_QuickExit "Failed to Add array entry ':${LCL_TriggeredByEventName}:DoesTrigger:${LCL_DoesTriggerCount}' to '${LCL_ConfigDir}/LabWarden.plist'"
+                LW_nf_QuickExit "Failed to Add array entry ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' to '${sv_ConfigDirPath}/LabWarden.plist'"
               fi
             
               # Set array Value    
-              /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set ':${LCL_TriggeredByEventName}:DoesTrigger:${LCL_DoesTriggerCount}' '${LCL_ObjectName}'" "${LCL_ConfigDir}/LabWarden.plist"
+              /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' '${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
             
             fi
 
@@ -252,5 +244,5 @@ LCL_ObjectType=$(f_GetPlistProperty "${LCL_Payload}" ":Type")
   fi
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 

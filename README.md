@@ -1867,20 +1867,115 @@ If the script is triggered by a system event, it will be called as root.
 
 If the script is triggered by a user event, it will be called as that user.
 
-Custom Policies should be stored in the directory "/usr/local/LabWarden/Policies/custom/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
+You should note that when an event happens, every script that is triggered by that event is run. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
 
-For a policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Policies/custom/MyPolicy'.
+Custom policies should be stored in the directory "/usr/local/LabWarden/Policies/custom/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
+
+For a custom policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Policies/custom/MyPolicy'.
 
 The accompanying config file (which is stored in AD) should be called 'MyPolicy.LabWarden.plist'.
 
-Use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups info field.
+Use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups 'Notes' field.
 
 Take a look at the example custom policies for inspiration ( AppExamplePolicy , SystemExamplePolicy and UserExamplePolicy ).
 
-Each policy has a line that includes the common library. This library (/usr/local/LabWarden/lib/CommonLib) sets up a number of useful global variables (documented in the CommonLib code).
+Each policy has a line that includes the common library. This library (/usr/local/LabWarden/lib/CommonLib) sets up a number of useful LabWarden global variables. These are documented at the start of the CommonLib code (see below).
 
-You should note that when an event happens, every script that is triggered by that event is run. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
-
+	# 'CommonLib' should be included into scripts as follows:
+	#   . /usr/local/LabWarden/lib/CommonLib
+	#
+	# Take a look at the example policy scripts before getting bogged down with detail.
+	#  (AppExamplePolicy, SystemExamplePolicy and UserExamplePolicy)
+	#
+	# Enter 'CommonLib' with the following globals already defined
+	#  LW_sv_LoggedInUserName                - The name of the logged-in user, a null string signifies no-one is logged in
+	#                                        - The logged-in user may or may not be the user who is running the script
+	#
+	# 'CommonLib' calculates the following LabWarden globals:
+	#
+	#  LW_sv_LabWardenVersion                - Main code version
+	#  LW_sv_LabWardenSignature              - LabWarden signature (com.github.execriez.LabWarden)
+	#
+	#  LW_iv_LogMaxLength                    - Maximum length of LabWarden log(s)
+	#  LW_bv_LogIsActiveDefault              - Whether we should log by default (true/false)
+	#  LW_bv_LogIsActiveStatus               - Whether the log is currently active (true/false)
+	#
+	#  LW_sv_BinDirPath                      - Path to binaries such as rsync or CocoaDialog
+	#  LW_sv_ConfigDirPath                   - Path to main LabWarden config files
+	#
+	#  LW_sv_ThisScriptStartEpoch            - When the script started running
+	#  LW_sv_ThisScriptFilePath              - Full source path of running script
+	#  LW_sv_ThisScriptDirPath               - Directory location of running script
+	#  LW_sv_ThisScriptFileName              - filename of running script
+	#  LW_sv_ThisScriptName                  - Filename without extension
+	#  LW_iv_ThisScriptPID                   - Process ID of running script
+	#
+	#  LW_sv_ThisScriptTempDirPath           - Temporary Directory for the currently running script
+	#
+	#  LW_sv_ThisUserTempDirPath             - Temporary Directory for the current user
+	#  LW_sv_ThisUserLogDirPath              - Directory where the user log is stored
+	#  LW_sv_ThisUserPrefDirPath             - Directory for user configs
+	#
+	#  LW_sv_ThisUserName                    - The name of the user that is running this script
+	#  LW_iv_ThisUserID                      - The user ID of the user that is running this script
+	#
+	#  LW_iv_LoggedInUserID                  - The user ID of the logged-in user
+	#  LW_bv_LoggedInUserIsAdmin             - Whether the logged-in user is an admin (true/false)
+	#  LW_bv_LoggedInUserIsLocal             - Whether the logged-in user account is local (true/false)
+	#  LW_bv_LoggedInUserIsMobile            - Whether the logged-in user account is mobile (true/false)
+	#
+	#  LW_sv_LoggedInUserHomeDirPath         - Home directory for the logged-in user
+	#  LW_sv_LoggedInUserLocalHomeDirPath    - Local home directory for the logged-in user (in /Users)
+	#  LW_sv_LoggedInUserHomeNetworkDirPath  - Network home directory path, i.e. /Volumes/staff/t/testuser
+	#  LW_sv_LoggedInUserHomeNetworkURI      - Network home directory URI, i.e smb://yourserver.com/staff/t/testuser
+	#  LW_bv_LoggedInUserHomeIsLocal         - Whether the logged-in user account is local (true/false)
+	#
+	#                                        - The logged-in user may or may not be the user who is running the script
+	#
+	#  LW_iv_BuildVersionStampAsNumber       - The build version represented as a number, i.e. 14F1808 translates to 29745664
+	#  LW_sv_BuildVersionStampAsString       - The build version represented as a string, i.e. 14F1808
+	#  LW_iv_SystemVersionStampAsNumber      - The system version represented as a number, i.e. 10.10.5 translates to 168428800
+	#  LW_sv_SystemVersionStampAsString      - The system version represented as a string, i.e. 10.10.5
+	#
+	#  LW_sv_IPv4PrimaryService              - A uuid like 9804EAB2-718C-42A7-891D-79B73F91CA4B
+	#  LW_sv_NetworkServiceDHCPOption15      - The domain advertised by DHCP
+	#  LW_sv_NetworkServiceInterfaceName     - i.e. Wi-Fi
+	#  LW_sv_NetworkServiceInterfaceDevice   - i.e. en1
+	#  LW_sv_NetworkServiceInterfaceHardware - i.e. Airport
+	#
+	#  LW_sv_ADTrustAccount                  - This is the account used by the workstation for AD services - i.e. workstationname$
+	#  LW_sv_ADComputerName                  - i.e. workstationname
+	#  LW_sv_ADDomainNameFlat                - i.e. yourdomain.yourcompany.com
+	#  LW_sv_ADDomainNameDNS                 - i.e. YOURDOMAIN
+	# And when LW_sv_ThisUserName=root, the following global is defined
+	#  LW_sv_ADTrustPassword                 - This is the password used by the workstation for AD services
+	#
+	# 'CommonLib' defines the following LabWarden functions:
+	#
+	#  LW_if_SystemIdleSecs
+	#  LW_sf_urlencode <string>                                        - URL encode a string
+	#  LW_sf_urldecode <string>                                        - URL decode a string
+	#  LW_nf_logmessage <messagetxt>                                   - Output message text to the log file
+	#  LW_nf_ShowNotification <Title> <Text>                           - Show a notification dialog
+	#  LW_nf_SetPlistProperty <plistfile> <property> <value>           - Set a property to a value in a plist file
+	#  LW_sf_GetPlistProperty <plistfile> <property> [defaultvalue]    - Get a property value from a plist file
+	#  LW_if_GetPlistArraySize <plistfile> <property>                  - Get an array property size from a plist file
+	#  LW_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
+	#  LW_sf_ResolveFilename <fileuri>                                 - Resolve a file URI to a local path (downloading the file if necessary)
+	#  LW_nf_QuickExit                                                 - Quickly exit a script
+	#  LW_nf_TriggerEvent <config> <eventHistory> [OptionalParam]      - Internal private function
+	#
+	#  Key:
+	#    LW_ - LabWarden global variable
+	#
+	#    bv_ - string variable with the values "true" or "false"
+	#    iv_ - integer variable
+	#    sv_ - string variable
+	#
+	#    nf_ - null function    (doesn't return a value)
+	#    bf_ - boolean function (returns string values "true" or "false"
+	#    if_ - integer function (returns an integer value)
+	#    sf_ - string function  (returns a string value)
 
 ## References
 
@@ -1895,6 +1990,16 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.90 - 01 JUL 2016
+
+* Renamed every variable to make the code more readable should you want to develop your own custom policies. This is quite a big change without any intentional change to functionality.
+
+* Bug fix to 'UserRedirLocalHomeToNetwork' and 'UserRedirNetworkHomeToLocal' to prevent existing links being copied to a back-up folder.
+
+1.0.89 - 30 JUN 2016
+
+* Fixed bug in 'LabWarden-plist-install' script introduced in 1.0.88.
 
 1.0.88 - 27 JUN 2016
 

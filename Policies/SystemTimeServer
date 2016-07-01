@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Set System Time server options
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,106 +13,103 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else    
-  LCL_PolicyExecuted="false"
+  bv_PolicyExecuted="false"
 
   # Get time server
-  LCL_TimeServer="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:TimeServer")"
+  sv_TimeServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:TimeServer")"
   /usr/sbin/systemsetup -setusingnetworktime off
-  if test -n "${LCL_TimeServer}"
+  if test -n "${sv_TimeServer}"
   then
-    f_logmessage "NOTE, setting time server to '${LCL_TimeServer}'."
-    /usr/sbin/systemsetup -setnetworktimeserver "${LCL_TimeServer}"
+    LW_nf_logmessage "NOTE, setting time server to '${sv_TimeServer}'."
+    /usr/sbin/systemsetup -setnetworktimeserver "${sv_TimeServer}"
     /usr/sbin/systemsetup -setusingnetworktime on
-    LCL_PolicyExecuted="true"
+    bv_PolicyExecuted="true"
   fi
 
   # Get time zone
-  LCL_TimeZone="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:TimeZone")"
-  if test -n "${LCL_TimeZone}"
+  sv_TimeZone="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:TimeZone")"
+  if test -n "${sv_TimeZone}"
   then
-    f_logmessage "NOTE, setting time zone to '${LCL_TimeZone}'."
-    /usr/sbin/systemsetup -settimezone "${LCL_TimeZone}"
-    LCL_PolicyExecuted="true"
+    LW_nf_logmessage "NOTE, setting time zone to '${sv_TimeZone}'."
+    /usr/sbin/systemsetup -settimezone "${sv_TimeZone}"
+    bv_PolicyExecuted="true"
   fi
 
-  if [ "${LCL_PolicyExecuted}" = "true" ]
+  if [ "${bv_PolicyExecuted}" = "true" ]
   then
-    f_logmessage "ATTENTION, time settings configured."
+    LW_nf_logmessage "ATTENTION, time settings configured."
   
   else
-    f_QuickExit "NOTE, policy aborted: No Time server or Time Zone defined"
+    LW_nf_QuickExit "NOTE, policy aborted: No Time server or Time Zone defined"
     
   fi
 
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

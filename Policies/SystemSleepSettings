@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Set system sleep options
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   LoginWindow (as root)
@@ -14,146 +14,143 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-f_SetSystemSleepSettings() # Trigger
+Nf_SetSystemSleepSettings() # Trigger
 {
-  local LCL_Trigger
-  local LCL_SystemSleep
-  local LCL_DisplaySleep
-  local LCL_DiskSleep
-  local LCL_SystemSleepBatt
-  local LCL_DisplaySleepBatt
-  local LCL_DiskSleepBatt
+  local sv_Trigger
+  local iv_PowerSystemSleepSecs
+  local iv_PowerDisplaySleepSecs
+  local iv_PowerDiskSleepSecs
+  local iv_BatterySystemSleepSecs
+  local iv_BatteryDisplaySleepSecs
+  local iv_BatteryDiskSleepSecs
   
-  LCL_Trigger="${1}"
+  sv_Trigger="${1}"
 
   # Turn logging off
-  GLB_LoggingStatus="off"
+  LW_bv_LogIsActiveStatus="false"
 
-  LCL_SystemSleep="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Power:SystemSleep")"
-  if test -n "${LCL_SystemSleep}"
+  iv_PowerSystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:SystemSleep")"
+  if test -n "${iv_PowerSystemSleepSecs}"
   then
-    /usr/bin/pmset -a sleep "${LCL_SystemSleep}"
+    /usr/bin/pmset -a sleep "${iv_PowerSystemSleepSecs}"
   fi
   
-  LCL_DisplaySleep="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Power:DisplaySleep")"
-  if test -n "${LCL_DisplaySleep}"
+  iv_PowerDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:DisplaySleep")"
+  if test -n "${iv_PowerDisplaySleepSecs}"
   then
-    /usr/bin/pmset -a displaysleep "${LCL_DisplaySleep}"
+    /usr/bin/pmset -a displaysleep "${iv_PowerDisplaySleepSecs}"
   fi
   
-  LCL_DiskSleep="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Power:DiskSleep")"
-  if test -n "${LCL_DiskSleep}"
+  iv_PowerDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:DiskSleep")"
+  if test -n "${iv_PowerDiskSleepSecs}"
   then
-    /usr/bin/pmset -a disksleep "${LCL_DiskSleep}"
+    /usr/bin/pmset -a disksleep "${iv_PowerDiskSleepSecs}"
   fi
   
-  LCL_SystemSleepBatt="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Battery:SystemSleep")"
-  if test -n "${LCL_SystemSleepBatt}"
+  iv_BatterySystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:SystemSleep")"
+  if test -n "${iv_BatterySystemSleepSecs}"
   then
-    /usr/bin/pmset -b sleep "${LCL_SystemSleepBatt}"
+    /usr/bin/pmset -b sleep "${iv_BatterySystemSleepSecs}"
   fi
   
-  LCL_DisplaySleepBatt="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Battery:DisplaySleep")"
-  if test -n "${LCL_DisplaySleepBatt}"
+  iv_BatteryDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:DisplaySleep")"
+  if test -n "${iv_BatteryDisplaySleepSecs}"
   then
-    /usr/bin/pmset -b displaysleep "${LCL_DisplaySleepBatt}"
+    /usr/bin/pmset -b displaysleep "${iv_BatteryDisplaySleepSecs}"
   fi
   
-  LCL_DiskSleepBatt="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:${LCL_Trigger}:Battery:DiskSleep")"
-  if test -n "${LCL_DiskSleepBatt}"
+  iv_BatteryDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:DiskSleep")"
+  if test -n "${iv_BatteryDiskSleepSecs}"
   then
-    /usr/bin/pmset -b disksleep "${LCL_DiskSleepBatt}"
+    /usr/bin/pmset -b disksleep "${iv_BatteryDiskSleepSecs}"
   fi
   
   /usr/bin/pmset -a autorestart 1 womp 1
 
   # Turn logging on
-  GLB_LoggingStatus=${GLB_LoggingDefault}
+  LW_bv_LogIsActiveStatus=${LW_bv_LogIsActiveDefault}
 
-  if test -n "${LCL_SystemSleep}${LCL_DisplaySleep}${LCL_DiskSleep}${LCL_SystemSleepBatt}${LCL_DisplaySleepBatt}${LCL_DiskSleepBatt}"
+  if test -n "${iv_PowerSystemSleepSecs}${iv_PowerDisplaySleepSecs}${iv_PowerDiskSleepSecs}${iv_BatterySystemSleepSecs}${iv_BatteryDisplaySleepSecs}${iv_BatteryDiskSleepSecs}"
   then
-    f_logmessage "ATTENTION, setting sleep settings for ${LCL_EventName}"
+    LW_nf_logmessage "ATTENTION, setting sleep settings for ${sv_EventName}"
     
   else
-    f_QuickExit "NOTE, policy aborted: There are no sleep options defined."
+    LW_nf_QuickExit "NOTE, policy aborted: There are no sleep options defined."
     
   fi
 }
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else
-  f_SetSystemSleepSettings "${LCL_EventName}"
+  Nf_SetSystemSleepSettings "${sv_EventName}"
 
 fi
 
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

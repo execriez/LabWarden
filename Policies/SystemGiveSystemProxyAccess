@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Give certain processes access through proxy using workstation credentials
 # Author:   Mark J Swift
-# Version:  1.0.87
-# Modified: 21-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,84 +13,82 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.87"
+sv_CodeVersion="1.0.90"
 
 if [ $# -eq 0 ]
 then
-  echo "${LCL_ScriptVersion}"
+  echo "${sv_CodeVersion}"
   exit 0
 fi
 
 # ---
 
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
-
 # Get the config directory
-LCL_ConfigDir="${1}"
-if test -z "${LCL_ConfigDir}"
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get event History
-LCL_EventHistory="${2}"
+sv_EventHistory="${2}"
 
 # Get event that triggered this policy
-LCL_EventName="$(echo ${LCL_EventHistory} | tr ":" "\n" | tail -n 1)"
-if test -z "${LCL_EventName}"
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
 then
   # We need something to work with
   exit 0
 fi
 
 # Get optional user
-GLB_LoggedInUserName="${3}"
+LW_sv_LoggedInUserName="${3}"
 
 # Get optional parameter
-LCL_OptionalParam="${4}"
+sv_OptionalParam="${4}"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Get policy name (Filename of this script)
-LCL_PolicyName="${GLB_ThisScriptName}"
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # ---
 
-f_SystemProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg bisproxy1.lits.blackpool.ac.uk) port (eg 8080) appPath (eg /usr/sbin/ocspd)
+Nf_SystemProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg bisproxy1.lits.blackpool.ac.uk) port (eg 8080) appPath (eg /usr/sbin/ocspd)
 {
-  local LCL_Protocol
-  local LCL_Server
-  local LCL_Port
-  local LCL_AppPaths
-  local LCL_AppOpt
+  local iv_ProxyPort
+  local sv_AllowAccessDirPathList
+  local sv_Label
+  local sv_ProxyProtocol
+  local sv_ProxyServer
+  local sv_Toption
 
-  LCL_Protocol="${1}"
-  LCL_Server="${2}"
-  LCL_Port="${3}"
-  LCL_AppPaths="${4}"
+  sv_ProxyProtocol="${1}"
+  sv_ProxyServer="${2}"
+  iv_ProxyPort="${3}"
+  sv_AllowAccessDirPathList="${4}"
   
-  f_logmessage "NOTE, allowing ${LCL_AppPaths} through ${LCL_Protocol}://${LCL_Server}:${LCL_Port}."
+  LW_nf_logmessage "NOTE, allowing ${sv_AllowAccessDirPathList} through ${sv_ProxyProtocol}://${sv_ProxyServer}:${iv_ProxyPort}."
 
-  LCL_AppOpt="$(echo "${LCL_AppPaths}" | sed "s|^|-T '|;s|$|'|;s|,|' -T '|g")"
+  sv_Toption="$(echo "${sv_AllowAccessDirPathList}" | sed "s|^|-T '|;s|$|'|;s|,|' -T '|g")"
   
-  LCL_Label="${LCL_Protocol}_${LCL_Server}_${LCL_Port}"
+  sv_Label="${sv_ProxyProtocol}_${sv_ProxyServer}_${iv_ProxyPort}"
 
-  # Just a little trick to expand the LCL_AppOpt variable, but keep the password quoted (eval wouldnt do)
+  # Just a little trick to expand the sv_Toption variable, but keep the password quoted (eval wouldnt do)
   /usr/bin/su root <<HEREDOC
 
-  security delete-internet-password -l "${LCL_Label}" /Library/Keychains/System.keychain
+  security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
 
-  security add-internet-password -U -a "${GLB_ADTrustAccount}" -w "${GLB_ADTrustPassword}" -l "${LCL_Label}" -P "${LCL_Port}" -r "${LCL_Protocol}" -s "${LCL_Server}" ${LCL_AppOpt} /Library/Keychains/System.keychain
+  security add-internet-password -U -a "${LW_sv_ADTrustAccount}" -w "${LW_sv_ADTrustPassword}" -l "${sv_Label}" -P "${iv_ProxyPort}" -r "${sv_ProxyProtocol}" -s "${sv_ProxyServer}" ${sv_Toption} /Library/Keychains/System.keychain
 
 HEREDOC
 }
@@ -100,48 +98,48 @@ HEREDOC
 # Execute the Policy
 
 # Take a note of the Policy call
-f_logmessage "NOTE, policy triggered: '${LCL_PolicyName}' ${LCL_OptionalParam} triggered by event '${LCL_EventHistory}' as user '${GLB_ThisUserName}' "
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
-  f_QuickExit "NOTE, policy aborted: User '${GLB_ThisUserName}' is not supported by policy '${LCL_PolicyName}'"
+  LW_nf_QuickExit "NOTE, policy aborted: User '${LW_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
   
 else    
-  LCL_PolicyExecuted="false"
+  bv_PolicyExecuted="false"
 
   # Give certain processes access to through proxy using workstation credentials
-  LCL_ProxyCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy")"
-  for (( LCL_i=0; LCL_i<${LCL_ProxyCount}; LCL_i++ ))
+  iv_ProxyCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy")"
+  for (( iv_LoopCount1=0; iv_LoopCount1<${iv_ProxyCount}; iv_LoopCount1++ ))
   do
-    LCL_ProxyProtocol="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy:${LCL_i}:ProxyProtocol")"
-    if test -n "${LCL_ProxyProtocol}"
+    sv_ProxyProtocol="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyProtocol")"
+    if test -n "${sv_ProxyProtocol}"
     then
-      LCL_ProxyAddress="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy:${LCL_i}:ProxyAddress")"
-      if test -n "${LCL_ProxyAddress}"
+      sv_ProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyAddress")"
+      if test -n "${sv_ProxyServer}"
       then
-        LCL_ProxyPort="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy:${LCL_i}:ProxyPort")"
-        if test -n "${LCL_ProxyPort}"
+        iv_ProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyPort")"
+        if test -n "${iv_ProxyPort}"
         then
-          LCL_ProcessList=""
+          sv_ProcessList=""
       
-          LCL_ProcessCount="$(f_GetPlistArraySize "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy:${LCL_i}:Process")"
-          for (( LCL_j=0; LCL_j<${LCL_ProcessCount}; LCL_j++ ))
+          iv_ProcessCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:Process")"
+          for (( iv_LoopCount2=0; iv_LoopCount2<${iv_ProcessCount}; iv_LoopCount2++ ))
           do
-            LCL_Process="$(f_GetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":${LCL_PolicyName}:Config:Proxy:${LCL_i}:Process:${LCL_j}")"
-            if test -n "${LCL_Process}"
+            sv_ProcessName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:Process:${iv_LoopCount2}")"
+            if test -n "${sv_ProcessName}"
             then
-              if test -n "${LCL_ProcessList}"
+              if test -n "${sv_ProcessList}"
               then
-                LCL_ProcessList="${LCL_ProcessList},"
+                sv_ProcessList="${sv_ProcessList},"
               fi
-              LCL_ProcessList="${LCL_ProcessList}${LCL_Process}"
+              sv_ProcessList="${sv_ProcessList}${sv_ProcessName}"
             fi
           done
 
-          if test -n "${LCL_ProcessList}"
+          if test -n "${sv_ProcessList}"
           then
-            f_SystemProxyAccess "${LCL_ProxyProtocol}" "${LCL_ProxyAddress}" "${LCL_ProxyPort}" "${LCL_ProcessList}"
-            LCL_PolicyExecuted="true"
+            Nf_SystemProxyAccess "${sv_ProxyProtocol}" "${sv_ProxyServer}" "${iv_ProxyPort}" "${sv_ProcessList}"
+            bv_PolicyExecuted="true"
           fi
       
         fi
@@ -149,21 +147,21 @@ else
     fi
   done
 
-  if [ "${LCL_PolicyExecuted}" = "true" ]
+  if [ "${bv_PolicyExecuted}" = "true" ]
   then
-    f_logmessage "ATTENTION, system proxy access configured."
+    LW_nf_logmessage "ATTENTION, system proxy access configured."
   
   else
-    f_QuickExit "NOTE, policy aborted: "
+    LW_nf_QuickExit "NOTE, policy aborted: "
     
   fi
 
 fi
   
 # Trigger an event
-f_TriggerEvent "${LCL_EventHistory}" "${LCL_PolicyName}" "${LCL_OptionalParam}"
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

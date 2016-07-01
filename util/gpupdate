@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   gpupdate [<user>]
@@ -13,65 +13,60 @@
 
 # ---
 
-LCL_ScriptVersion="1.0.86"
-
-# ---
-
-# Take a note when this script started
-LCL_MyStartEpoch=$(date -u "+%s")
+sv_CodeVersion="1.0.90"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-f_logmessage "NOTE, ${GLB_ThisScriptName} version ${LCL_ScriptVersion}"
+LW_nf_logmessage "NOTE, ${LW_sv_ThisScriptFileName} version ${sv_CodeVersion}"
 
 # ---
 
-if [ "${GLB_ThisUserName}" != "root" ]
+if [ "${LW_sv_ThisUserName}" != "root" ]
 then
   # we only like root
-  f_QuickExit "ERROR, this script must be run with root privileges"
+  LW_nf_QuickExit "ERROR, this script must be run with root privileges"
 fi
 
-if test -z "${GLB_NetworkServiceInterfaceName}"
+if test -z "${LW_sv_NetworkServiceInterfaceName}"
 then
   # we need a network
-  f_QuickExit "ERROR, no network"
+  LW_nf_QuickExit "ERROR, no network"
 fi
 
-if [ "${GLB_ADDomainNameDNS}" != "${GLB_NetworkServiceDHCPOption15}" ]
+if [ "${LW_sv_ADDomainNameDNS}" != "${LW_sv_NetworkServiceDHCPOption15}" ]
 then
-  f_QuickExit "ERROR, not on ${GLB_ADDomainNameFlat} network"
+  LW_nf_QuickExit "ERROR, not on ${LW_sv_ADDomainNameFlat} network"
 fi
 
 # ---
 
-f_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
+Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
 {
-  local LCL_Context
-  local LCL_ObjectName
-  local LCL_NameDelim
-  local LCL_GroupName
-  local LCL_SubGroupName
-  local LCL_CacheEpoch
+  local sv_Context
+  local sv_ObjectName
+  local sv_NameDelim
+  local sv_GroupName
+  local sv_SubGroupName
+  local iv_CacheEpoch
 
-  LCL_Context=${1}
-  LCL_ObjectName=${2}
+  sv_Context=${1}
+  sv_ObjectName=${2}
   
-  case "${LCL_Context}" in
+  case "${sv_Context}" in
   Computers)
-    LCL_NameDelim="$"
+    sv_NameDelim="$"
     ;;
 
   Users|Groups)
-    LCL_NameDelim=""
+    sv_NameDelim=""
     ;;
     
   *)
@@ -80,77 +75,77 @@ f_ListGroups() # <Context> <ObjectName> - List object membership. Context can be
     
   esac
   
-  mkdir -p "${GLB_LabConfigDir}/Cache/Membership"
+  mkdir -p "${LW_sv_ConfigDirPath}/Cache/Membership"
   
-  if test -e "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
+  if test -e "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
   then
-    LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}")
-    if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}")
+    if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
     then
-      rm -f "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
+      rm -f "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
     fi
   fi
   
-  if ! test -e "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
+  if ! test -e "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
   then
-    touch "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
-    dscl 2>/dev/null localhost -read "/Search/${LCL_Context}/${LCL_ObjectName}${LCL_NameDelim}" memberOf | tr -d "\n" | sed "s|dsAttrTypeNative:memberOf:||;s| CN=|:|g;s|^:||" | tr ":" "\n" | cut -d"," -f1 | while read LCL_GroupName
+    touch "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
+    dscl 2>/dev/null localhost -read "/Search/${sv_Context}/${sv_ObjectName}${sv_NameDelim}" memberOf | tr -d "\n" | sed "s|dsAttrTypeNative:memberOf:||;s| CN=|:|g;s|^:||" | tr ":" "\n" | cut -d"," -f1 | while read sv_GroupName
     do
-      echo "${LCL_GroupName}">>"${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
-      f_ListGroups "Groups" "${LCL_GroupName}" | while read LCL_SubGroupName
+      echo "${sv_GroupName}">>"${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
+      Sf_ListGroups "Groups" "${sv_GroupName}" | while read sv_SubGroupName
       do
-        if [ $(cat "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}" | grep -Ec "^${LCL_SubGroupName}$") -eq 0 ]
+        if [ $(cat "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}" | grep -Ec "^${sv_SubGroupName}$") -eq 0 ]
         then
-          echo "${LCL_SubGroupName}">>"${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
+          echo "${sv_SubGroupName}">>"${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
         fi
       done
     done
   fi
 
-  cat "${GLB_LabConfigDir}/Cache/Membership/${LCL_ObjectName}"
+  cat "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
 }
 
 # ---
 
-LCL_GPOuser="${1}"
+sv_GPOuser="${1}"
 
 # ---
 
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  case "${LCL_GPOuser}" in
+  case "${sv_GPOuser}" in
   FLUSHCACHE)
     # Remove cached policies
-    rm -fR "${GLB_LabConfigDir}/Cache"
+    rm -fR "${LW_sv_ConfigDirPath}/Cache"
     
     # Remove temporary files
-    srm -fR "${GLB_ThisScriptTempDir}"
+    srm -fR "${LW_sv_ThisScriptTempDirPath}"
     
     exit 0
     ;;
     
   USERS)
-    while read LCL_UserFolder
+    while read sv_FolderDirPath
     do
-      if test -d "${LCL_UserFolder}"
+      if test -d "${sv_FolderDirPath}"
       then
-        LCL_User="$(stat -f "%Su" "${LCL_UserFolder}")"
+        sv_UserName="$(stat -f "%Su" "${sv_FolderDirPath}")"
         
-        if test -e "${LCL_UserFolder}/Library/Preferences/com.apple.finder.plist"
+        if test -e "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist"
         then
-          LCL_LastUseEpoch=$(stat -f "%m" "${LCL_UserFolder}/Library/Preferences/com.apple.finder.plist")
-          if [ $((${LCL_MyStartEpoch}-${LCL_LastUseEpoch})) -lt $((2*31*24*60*60)) ]
+          iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist")
+          if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_LastUseEpoch})) -lt $((2*31*24*60*60)) ]
           then
-            f_logmessage "ATTENTION, auto-updating group policies for user '${LCL_User}'"
-            /usr/local/LabWarden/util/gpupdate "${LCL_User}"
+            LW_nf_logmessage "ATTENTION, auto-updating group policies for user '${sv_UserName}'"
+            /usr/local/LabWarden/util/gpupdate "${sv_UserName}"
           
           else
-            f_logmessage "NOTE, skipping auto-update of group policies for user '${LCL_User}' (hasn't logged on for over 2 months)"
+            LW_nf_logmessage "NOTE, skipping auto-update of group policies for user '${sv_UserName}' (hasn't logged on for over 2 months)"
         
           fi
         
         else
-          f_logmessage "NOTE, skipping auto-update of group policies for user '${LCL_User}' (has never logged on)"
+          LW_nf_logmessage "NOTE, skipping auto-update of group policies for user '${sv_UserName}' (has never logged on)"
         
         fi
       
@@ -158,40 +153,40 @@ then
     done < <(find /Users \( -depth 1 -prune \) -and \( -type d \) -and \( ! -user root \))
     
     # Remove temporary files
-    srm -fR "${GLB_ThisScriptTempDir}"
+    srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
     exit 0
     ;;
     
   *)
-    LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+    sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
     ;;
     
   esac
   
 else
-  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
   
 fi
 
 # ---
 
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  dscl >/dev/null 2>&1 localhost -read /Search/Users/${LCL_GPOuser} memberOf
+  dscl >/dev/null 2>&1 localhost -read /Search/Users/${sv_GPOuser} memberOf
   if [ "$?" != "0" ]
   then
-    f_QuickExit "ERROR, cannot get user info from AD (maybe it hasn't connected yet)."
+    LW_nf_QuickExit "ERROR, cannot get user info from AD (maybe it hasn't connected yet)."
   fi
-  LCL_SemaphoreFile="${GLB_ThisUserTempDir}/.${GLB_ThisScriptName}-${LCL_GPOuser}"
+  sv_SemaphoreFilePath="${LW_sv_ThisUserTempDirPath}/.${LW_sv_ThisScriptFileName}-${sv_GPOuser}"
   
 else
-  dscl >/dev/null 2>&1 localhost -read /Search/Computers/${GLB_ADComputerName}$ memberOf
+  dscl >/dev/null 2>&1 localhost -read /Search/Computers/${LW_sv_ADComputerName}$ memberOf
   if [ "$?" != "0" ]
   then
-    f_QuickExit "ERROR, cannot get computer info from AD (maybe it hasn't connected yet)."
+    LW_nf_QuickExit "ERROR, cannot get computer info from AD (maybe it hasn't connected yet)."
   fi
-  LCL_SemaphoreFile="${GLB_ThisUserTempDir}/.${GLB_ThisScriptName}-${GLB_ADComputerName}"
+  sv_SemaphoreFilePath="${LW_sv_ThisUserTempDirPath}/.${LW_sv_ThisScriptFileName}-${LW_sv_ADComputerName}"
 
 fi
 
@@ -199,61 +194,61 @@ fi
 
 # There might be a bit of mult-tasking going on - however we only want one task at a time updating individual policies
 
-touch "${LCL_SemaphoreFile}"
-echo ${GLB_ThisScriptPID} >> "${LCL_SemaphoreFile}"
-LCL_GPOScriptPID="$(cat "${LCL_SemaphoreFile}" | head -n1)"
+touch "${sv_SemaphoreFilePath}"
+echo ${LW_iv_ThisScriptPID} >> "${sv_SemaphoreFilePath}"
+iv_GPOScriptPID="$(cat "${sv_SemaphoreFilePath}" | head -n1)"
 
-if [ "${LCL_GPOScriptPID}" != "${GLB_ThisScriptPID}" ]
+if [ "${iv_GPOScriptPID}" != "${LW_iv_ThisScriptPID}" ]
 then
   # Another job is processing the policy update - so wait until its finished, then quit
   
-  while [ -n "$(ps -p ${LCL_GPOScriptPID} -o comm=)" ]
+  while [ -n "$(ps -p ${iv_GPOScriptPID} -o comm=)" ]
   do
     # we don't want to hog the CPU - so lets sleep a while
     sleep 1
   done
   
-  rm -f "${LCL_SemaphoreFile}"
+  rm -f "${sv_SemaphoreFilePath}"
   
   # Remove temporary files
-  srm -fR "${GLB_ThisScriptTempDir}"
+  srm -fR "${LW_sv_ThisScriptTempDirPath}"
 
   exit 0
 fi
 
 # ---
 
-mkdir -p "${LCL_ConfigDir}"
+mkdir -p "${sv_ConfigDirPath}"
 
-if ! test -e "${LCL_ConfigDir}/LabWarden.plist"
+if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
 then
   # There's no config, so there shouldn't be any payloads
-  rm -fR "${LCL_ConfigDir}/ADPayload"
+  rm -fR "${sv_ConfigDirPath}/ADPayload"
 fi
 
-mkdir -p "${LCL_ConfigDir}/ADPayload"
+mkdir -p "${sv_ConfigDirPath}/ADPayload"
 
 # ---
 
-f_SetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${GLB_LabWardenVersion}"
-f_SetPlistProperty "${LCL_ConfigDir}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${LCL_MyStartEpoch}"
+LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${LW_sv_LabWardenVersion}"
+LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${LW_sv_ThisScriptStartEpoch}"
 
 # ---
 
 # Here we verify the already installed payloads
-ls -1 "${LCL_ConfigDir}/ADpayload" | while read LCL_PayloadName
+ls -1 "${sv_ConfigDirPath}/ADpayload" | while read sv_PayloadFileName
 do
-  LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|')
-  if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-verify
+  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify
   then
-    /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-verify "${LCL_ConfigDir}/ADpayload/${LCL_PayloadName}" "${LCL_GPOuser}"
+    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
     if [ "$?" != "0" ]
     then
-      if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall
+      if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
       then
-        /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall "${LCL_ConfigDir}/ADpayload/${LCL_PayloadName}" "${LCL_GPOuser}"
+        /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
       fi
-      rm -f "${LCL_ConfigDir}/ADpayload/${LCL_PayloadName}"
+      rm -f "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}"
     fi
   fi
 done
@@ -261,139 +256,139 @@ done
 # ---
 
 # Here we copy the relevant payloads from AD into a temporary folder - wherever possible, we do it from cache
-mkdir -p "${GLB_LabConfigDir}/Cache/Info"
-cd "${GLB_LabConfigDir}/Cache/Info"
+mkdir -p "${LW_sv_ConfigDirPath}/Cache/Info"
+cd "${LW_sv_ConfigDirPath}/Cache/Info"
 
 # Check age of pre-existing split info files
-ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read LCL_Group
+ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
 do
   # If the companion joined file is too old, delete it and its split parts
-  LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt")
-  if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+  iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
+  if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
   then
-    rm -f "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
-    rm -f $(ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -E "${LCL_Group}-[0-9]{1}.txt$" | sort)
+    rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
+    rm -f $(ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort)
   fi
 done
 
 # Check age of normal info files
-ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read LCL_Group
+ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
 do
   # If the  file is too old, delete it
-  LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt")
-  if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+  iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
+  if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
   then
-    rm -f "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
   fi
 done
 
 # Read the AD payload from the Group notes field (info)
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  f_ListGroups "Users" "${LCL_GPOuser}" | while read LCL_Group
+  Sf_ListGroups "Users" "${sv_GPOuser}" | while read sv_GroupName
   do
     # Save group info to file
 
-    if test -e "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    if test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     then
-      LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt")
-      if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+      iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
+      if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
       then
-        rm -f "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+        rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
       fi
     fi
 
-    if ! test -e "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     then
-      dscl 2>/dev/null localhost -read "/Search/Groups/${LCL_Group}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
-      touch -t $(date -r ${LCL_MyStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+      dscl 2>/dev/null localhost -read "/Search/Groups/${sv_GroupName}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
+      touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     fi
   done
 
 else
-  f_ListGroups "Computers" "${GLB_ADComputerName}" | while read LCL_Group
+  Sf_ListGroups "Computers" "${LW_sv_ADComputerName}" | while read sv_GroupName
   do
     # Save group info to file
 
-    if test -e "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    if test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     then
-      LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt")
-      if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+      iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
+      if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
       then
-        rm -f "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+        rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
       fi
     fi
 
-    if ! test -e "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     then
-      dscl 2>/dev/null localhost -read "/Search/Groups/${LCL_Group}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
-      touch -t $(date -r ${LCL_MyStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+      dscl 2>/dev/null localhost -read "/Search/Groups/${sv_GroupName}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
+      touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
     fi
   done
 fi
 
 # Join split group info
-ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|(.*)(-[0-9]{1}.txt$)|\1|" | sort -u | while read LCL_Group
+ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|(.*)(-[0-9]{1}.txt$)|\1|" | sort -u | while read sv_GroupName
 do
   # If the joined file has a size of zero, create a new file from the split parts
-  if ! test -s "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+  if ! test -s "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
   then
-    cat $(ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -E "${LCL_Group}-[0-9]{1}.txt$" | sort) > "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
-    touch -t $(date -r ${LCL_MyStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+    cat $(ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort) > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
+    touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
   fi
 done
 
 # Unpack the payload(s)
-mkdir -p "${GLB_LabConfigDir}/Cache/Payload"
-ls -1 "${GLB_LabConfigDir}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read LCL_Group
+mkdir -p "${LW_sv_ConfigDirPath}/Cache/Payload"
+ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
 do
   # Check the age of any existing payload folders
-  if test -e "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+  if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
   then
-    LCL_CacheEpoch=$(stat -f "%m" "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}")
-    if [ $((${LCL_MyStartEpoch}-${LCL_CacheEpoch})) -gt $((${GLB_GPCacheMaxAgeHours}*60*60)) ]
+    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}")
+    if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
     then
-      rm -fR "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+      rm -fR "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
     fi
   fi
 
-  if test -s "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt"
+  if test -s "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
   then
-    if ! test -e "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
     then
-      mkdir -p "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
-      cd "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
-      cat "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt" | base64 -D | tar -xvzf -
+      mkdir -p "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
+      cd "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
+      cat "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt" | base64 -D | tar -xvzf -
       if [ "$?" != "0" ]
       then
-        f_logmessage "NOTE, the notes field on the AD group ${LCL_Group} does not appear to be in a supported format"
-        f_logmessage "$(cat "${GLB_LabConfigDir}/Cache/Info/${LCL_Group}.txt")"
+        LW_nf_logmessage "NOTE, the notes field on the AD group ${sv_GroupName} does not appear to be in a supported format"
+        LW_nf_logmessage "$(cat "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")"
       else
-        touch -t $(date -r ${LCL_MyStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+        touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
       fi
     fi
   fi
 done
 
 # Copy Payloads to a temporary folder
-mkdir -p "${GLB_ThisScriptTempDir}/ADpayload"
+mkdir -p "${LW_sv_ThisScriptTempDirPath}/ADpayload"
 
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  f_ListGroups "Users" "${LCL_GPOuser}" | grep -Ev "\-[0-9]{1}$" | while read LCL_Group
+  Sf_ListGroups "Users" "${sv_GPOuser}" | grep -Ev "\-[0-9]{1}$" | while read sv_GroupName
   do
-    if test -e "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+    if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
     then
-      cp -af "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}/" "${GLB_ThisScriptTempDir}/ADpayload"
+      cp -af "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}/" "${LW_sv_ThisScriptTempDirPath}/ADpayload"
     fi
   done
 
 else
-  f_ListGroups "Computers" "${GLB_ADComputerName}" | grep -Ev "\-[0-9]{1}$" | while read LCL_Group
+  Sf_ListGroups "Computers" "${LW_sv_ADComputerName}" | grep -Ev "\-[0-9]{1}$" | while read sv_GroupName
   do
-    if test -e "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}"
+    if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
     then
-      cp -af "${GLB_LabConfigDir}/Cache/Payload/${LCL_Group}/" "${GLB_ThisScriptTempDir}/ADpayload"
+      cp -af "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}/" "${LW_sv_ThisScriptTempDirPath}/ADpayload"
     fi
   done
   
@@ -403,78 +398,78 @@ fi
 
 # Here we decide what needs to be uninstalled, and what needs to be installed
 
-cd "${GLB_ThisScriptTempDir}"
+cd "${LW_sv_ThisScriptTempDirPath}"
 
 # Get the src payload
-ls -1 "${GLB_ThisScriptTempDir}/ADpayload" > "${GLB_ThisScriptTempDir}/ADpayload-src.txt"
+ls -1 "${LW_sv_ThisScriptTempDirPath}/ADpayload" > "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt"
 
 # Get the dst (existing) payload
-ls -1 "${LCL_ConfigDir}/ADPayload" > "${GLB_ThisScriptTempDir}/ADpayload-dst.txt"
+ls -1 "${sv_ConfigDirPath}/ADPayload" > "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt"
 
 # Build a list of payloads that are in both src and dst (need to be checked for differences before installation)
-cat "${GLB_ThisScriptTempDir}/ADpayload-src.txt" "${GLB_ThisScriptTempDir}/ADpayload-dst.txt" | sort | uniq -d > "${GLB_ThisScriptTempDir}/ADpayload-replace.txt"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt"
 
 # Build a list of payloads that are in src or dst, but not in both
-cat "${GLB_ThisScriptTempDir}/ADpayload-src.txt" "${GLB_ThisScriptTempDir}/ADpayload-dst.txt" | sort | uniq -u > "${GLB_ThisScriptTempDir}/ADpayload-uniq.txt"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -u > "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt"
 
 # Build a list of payloads unique to the src (need to be installed)
-cat "${GLB_ThisScriptTempDir}/ADpayload-uniq.txt" "${GLB_ThisScriptTempDir}/ADpayload-src.txt" | sort | uniq -d > "${GLB_ThisScriptTempDir}/ADpayload-install.txt"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
 
 # Build a list of payloads unique to the dst (need to be uninstalled)
-cat "${GLB_ThisScriptTempDir}/ADpayload-uniq.txt" "${GLB_ThisScriptTempDir}/ADpayload-dst.txt" | sort | uniq -d > "${GLB_ThisScriptTempDir}/ADpayload-uninstall.txt"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
 
 # Remove temp files
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-src.txt"
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-dst.txt"
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-uniq.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt"
 
 # If necessary, replace payloads that already exist
-cat "${GLB_ThisScriptTempDir}/ADpayload-replace.txt" | while read LCL_PayloadName
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt" | while read sv_PayloadFileName
 do
-  LCL_SrcEpoch=$(stat -f "%m" "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}")
-  LCL_DstEpoch=$(stat -f "%m" "${LCL_ConfigDir}/ADPayload/${LCL_PayloadName}")
-  if [ ${LCL_SrcEpoch} -ne ${LCL_DstEpoch} ]
+  iv_SrcFileEpoch=$(stat -f "%m" "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}")
+  iv_DstFileEpoch=$(stat -f "%m" "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}")
+  if [ ${iv_SrcFileEpoch} -ne ${iv_DstFileEpoch} ]
   then
     # We need to uninstall then re-install this payload
-    echo "${LCL_PayloadName}" >> "${GLB_ThisScriptTempDir}/ADpayload-uninstall.txt"
-    echo "${LCL_PayloadName}" >> "${GLB_ThisScriptTempDir}/ADpayload-install.txt"
+    echo "${sv_PayloadFileName}" >> "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
+    echo "${sv_PayloadFileName}" >> "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
   else
     # The payload is not newer than the existing payload
-    rm -f "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}"
+    rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}"
   fi
 done
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-replace.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt"
 
 # ---
 
 # uninstall payloads
-rm -fR "${LCL_ConfigDir}/DelayedUninstall"
-cat "${GLB_ThisScriptTempDir}/ADpayload-uninstall.txt" | while read LCL_PayloadName
+rm -fR "${sv_ConfigDirPath}/DelayedUninstall"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt" | while read sv_PayloadFileName
 do
-  LCL_PayloadExt=$(echo "${LCL_PayloadName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-  if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall
+  sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
   then
-    /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-uninstall "${LCL_ConfigDir}/ADPayload/${LCL_PayloadName}" "${LCL_GPOuser}"
+    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}" "${sv_GPOuser}"
     if [ "$?" = "0" ]
     then
-      rm -f "${LCL_ConfigDir}/ADPayload/${LCL_PayloadName}"
+      rm -f "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}"
     else
-      mkdir -p "${LCL_ConfigDir}/DelayedUninstall"
-      mv "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}" "${LCL_ConfigDir}/DelayedUninstall/"
+      mkdir -p "${sv_ConfigDirPath}/DelayedUninstall"
+      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/DelayedUninstall/"
 
-      if test -n "${LCL_GPOuser}"
+      if test -n "${sv_GPOuser}"
       then
         # The user will have to be able to delete the payload after install/uninstall
-        chown -R "${LCL_GPOuser}":admin "${LCL_ConfigDir}/DelayedUninstall"
-        chmod -R 770 "${LCL_ConfigDir}/DelayedUninstall"
+        chown -R "${sv_GPOuser}":admin "${sv_ConfigDirPath}/DelayedUninstall"
+        chmod -R 770 "${sv_ConfigDirPath}/DelayedUninstall"
         
         # installing/uninstalling mobileconfigs for other users, is not supported prior to 10.11
-        if [ "${LCL_PayloadExt}" = "mobileconfig" ]
+        if [ "${sv_PayloadFileExt}" = "mobileconfig" ]
         then
-          if [ ${GLB_SystemVersionStampAsNumber} -lt 168493056 ]
+          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
           then
             # The user will have to be able to uninstall the payload
-            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${LCL_ConfigDir}/DelayedUninstall/${LCL_PayloadName}"
+            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${sv_ConfigDirPath}/DelayedUninstall/${sv_PayloadFileName}"
           fi
         fi
       fi
@@ -482,38 +477,38 @@ do
     fi
   fi
 done
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-uninstall.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
 
 # ---
 
 # install payloads
-rm -fR "${LCL_ConfigDir}/DelayedInstall"
-cat "${GLB_ThisScriptTempDir}/ADpayload-install.txt" | while read LCL_PayloadName
+rm -fR "${sv_ConfigDirPath}/DelayedInstall"
+cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt" | while read sv_PayloadFileName
 do
-  LCL_PayloadExt=$(echo ${LCL_PayloadName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-  if test -e /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-install
+  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install
   then
-    /usr/local/LabWarden/PayloadHandlers/${LCL_PayloadExt}-install "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}" "${LCL_GPOuser}"
+    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
     if [ "$?" = "0" ]
     then
-      mv "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}" "${LCL_ConfigDir}/ADPayload/"
+      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/ADPayload/"
     else
-      mkdir -p "${LCL_ConfigDir}/DelayedInstall"
-      mv "${GLB_ThisScriptTempDir}/ADpayload/${LCL_PayloadName}" "${LCL_ConfigDir}/DelayedInstall/"
+      mkdir -p "${sv_ConfigDirPath}/DelayedInstall"
+      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/DelayedInstall/"
 
-      if test -n "${LCL_GPOuser}"
+      if test -n "${sv_GPOuser}"
       then
         # The user will have to be able to delete the payload after install/uninstall
-        chown -R "${LCL_GPOuser}":admin "${LCL_ConfigDir}/DelayedInstall"
-        chmod -R 770 "${LCL_ConfigDir}/DelayedInstall"
+        chown -R "${sv_GPOuser}":admin "${sv_ConfigDirPath}/DelayedInstall"
+        chmod -R 770 "${sv_ConfigDirPath}/DelayedInstall"
         
         # installing/uninstalling mobileconfigs for other users, is not supported prior to 10.11
-        if [ "${LCL_PayloadExt}" = "mobileconfig" ]
+        if [ "${sv_PayloadFileExt}" = "mobileconfig" ]
         then
-          if [ ${GLB_SystemVersionStampAsNumber} -lt 168493056 ]
+          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
           then
             # The user will have to be able to uninstall the payload
-            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${LCL_ConfigDir}/DelayedInstall/${LCL_PayloadName}"
+            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${sv_ConfigDirPath}/DelayedInstall/${sv_PayloadFileName}"
           fi
         fi
       fi
@@ -521,17 +516,17 @@ do
     fi
   fi
 done
-rm -f "${GLB_ThisScriptTempDir}/ADpayload-install.txt"
+rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
 
 # ---
 
 # delete the remaining temporary files
-rm -fR "${GLB_ThisScriptTempDir}/ADpayload"
+rm -fR "${LW_sv_ThisScriptTempDirPath}/ADpayload"
 
 # ---
 
 # Release the semaphore
-rm -f "${LCL_SemaphoreFile}"
+rm -f "${sv_SemaphoreFilePath}"
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"

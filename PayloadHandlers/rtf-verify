@@ -2,92 +2,76 @@
 #
 # Short:    Payload Handler Script - verify that a .rtf payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.86
-# Modified: 09-Jun-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${GLB_LabWardenVersion}"
+if test -z "${LW_sv_LabWardenVersion}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
 
 # ---
 
-# Full souce of this script
-LCL_MySource="${0}"
+sv_PayloadFilePath="${1}"
 
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-# Full souce of this script
-LCL_MySource="${0}"
-
-# Filename of this script
-LCL_MyScript="$(basename ${LCL_MySource})"
-
-# ---
-
-LCL_Payload="${1}"
-
-if test -z "${LCL_Payload}"
+if test -z "${sv_PayloadFilePath}"
 then
-  f_QuickExit "Usage ${LCL_MyScript} somefile.rtf"
+  LW_nf_QuickExit "Usage ${LW_sv_ThisScriptFileName} somefile.rtf"
 fi
 
-if ! test -e "${LCL_Payload}"
+if ! test -e "${sv_PayloadFilePath}"
 then
-  f_QuickExit "File not found - ${LCL_Payload}"
+  LW_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
 fi
 
 # ---
 
-LCL_GPOuser="${2}"
+sv_GPOuser="${2}"
 
-if test -n "${LCL_GPOuser}"
+if test -n "${sv_GPOuser}"
 then
-  LCL_ConfigDir="${GLB_LabConfigDir}/${LCL_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
   
 else
-  LCL_ConfigDir="${GLB_LabConfigDir}/${GLB_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
   
 fi
-mkdir -p "${LCL_ConfigDir}"
+mkdir -p "${sv_ConfigDirPath}"
 
 # ---
 
 # Verify the RTF
-LCL_PayloadName="$(basename ${LCL_Payload})"
-case ${LCL_PayloadName} in
+sv_PayloadFileName="$(basename ${sv_PayloadFilePath})"
+case ${sv_PayloadFileName} in
 PolicyBanner.rtf)
-  if test -n "${LCL_GPOuser}"
+  if test -n "${sv_GPOuser}"
   then
-    f_QuickExit "This is not a user pyload - ${LCL_PayloadName}"
+    LW_nf_QuickExit "This is not a user pyload - ${sv_PayloadFileName}"
 
   else
-    if test -f "/Library/Security/${LCL_PayloadName}"
+    if test -f "/Library/Security/${sv_PayloadFileName}"
     then
       # Remove temporary files
-      srm -fR "${GLB_ThisScriptTempDir}"
+      srm -fR "${LW_sv_ThisScriptTempDirPath}"
       
       exit 0
       
     else
-      f_QuickExit "Profile ${LCL_PayloadName} is not installed"
+      LW_nf_QuickExit "Profile ${sv_PayloadFileName} is not installed"
 
     fi
   fi
   ;;
 
   *)
-  f_QuickExit "I dont know what to do with this payload - ${LCL_PayloadName}"
+  LW_nf_QuickExit "I dont know what to do with this payload - ${sv_PayloadFileName}"
 
   ;;
 
 esac	    
 
 # Remove temporary files
-srm -fR "${GLB_ThisScriptTempDir}"
+srm -fR "${LW_sv_ThisScriptTempDirPath}"

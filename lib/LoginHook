@@ -2,8 +2,8 @@
 #
 # Short:    When a user logs in - call the LOGIN trigger(s)
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as root at user login as follows:    
 #   LoginHook username
@@ -23,32 +23,32 @@ fi
 # -- Login/Logout hooks run as root and pass the user as first parameter --
 
 # Get user name
-GLB_ThisUserName="${1}"
+LW_sv_ThisUserName="${1}"
 
 # We are assuming that we never log in as root.
-if [ "${GLB_ThisUserName}" = "root" ]
+if [ "${LW_sv_ThisUserName}" = "root" ]
 then
   exit 0
 fi
   
 # If necessary, create the local user folder
-if ! test -e "/Users/${GLB_ThisUserName}"
+if ! test -e "/Users/${LW_sv_ThisUserName}"
 then
-  /bin/mkdir -p "/Users/${GLB_ThisUserName}"
-  /bin/chmod 750 "/Users/${GLB_ThisUserName}"
-  /usr/sbin/chown ${LCL_UserName}:wheel "/Users/${GLB_ThisUserName}"
+  /bin/mkdir -p "/Users/${LW_sv_ThisUserName}"
+  /bin/chmod 750 "/Users/${LW_sv_ThisUserName}"
+  /usr/sbin/chown ${LW_sv_ThisUserName}:wheel "/Users/${LW_sv_ThisUserName}"
 fi
 
 # -- The following is executed as root --
 
-/usr/local/LabWarden/lib/Trigger "LoginBegin" "${GLB_ThisUserName}"
+/usr/local/LabWarden/lib/Trigger "LoginBegin" "${LW_sv_ThisUserName}"
 
 # -- The following is executed as the user who is logging in --
 
 # 'HEREDOC' is quoted to prevent variable expansion.
 # This means that variables outside are not available.
  
-/usr/bin/su ${GLB_ThisUserName} <<'HEREDOC'
+/usr/bin/su ${LW_sv_ThisUserName} <<'HEREDOC'
 
 /usr/local/LabWarden/lib/Trigger "UserLogin" "$(whoami)"
 

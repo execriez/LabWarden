@@ -2,39 +2,49 @@
 #
 # Short:    Payload Handler Script - shrink a .LabWarden.plist payload down to its bare minimum content
 # Author:   Mark J Swift
-# Version:  1.0.82
-# Modified: 27-May-2016
+# Version:  1.0.90
+# Modified: 01-Jul-2016
 #
 # Called as follows:    
 #   mobileconfig-install <somefile.mobileconfig>
 #
 # Outputs the path to the shrunken mobileconfig.
 
-# Full souce of this script
-GLB_MySource="${0}"
+# -- Get some info about this script
 
-# Filename of this script
-GLB_MyScript="$(basename ${GLB_MySource})"
+# Full source of this script
+sv_ThisScriptFilePath="${0}"
+
+# Get dir of this script
+sv_ThisScriptDirPath="$(dirname "${sv_ThisScriptFilePath}")"
+
+# Get filename of this script
+sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
+
+# Filename without extension
+sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
+
+# --
 
 # Get the name of the mobileconfig
-GLB_ConfigFile="${1}"
+sv_ConfigFilePath="${1}"
 
-if test -z "${GLB_ConfigFile}"
+if test -z "${sv_ConfigFilePath}"
 then
-  echo "Usage ${GLB_MyScript} SomeFile.LabWarden.plist"
+  echo "Usage ${sv_ThisScriptFileName} SomeFile.LabWarden.plist"
   exit 0
 fi
 
 # Filename of the mobileconfig
-GLB_DocFileName="$(basename ${GLB_ConfigFile})"
+sv_DocFileName="$(basename ${sv_ConfigFilePath})"
 
 # Filename without extension
-GLB_DocName=$(echo ${GLB_DocFileName} | sed "s|\.[^.]*$||")
+sv_DocName=$(echo ${sv_DocFileName} | sed "s|\.[^.]*$||")
 
 # A place to store the shrunken mobileconfigs
-GLB_ShrunkFolder="$(mktemp -dq /tmp/XXXXXXXX)"
-cd "${GLB_ShrunkFolder}"
+sv_ShrunkDirPath="$(mktemp -dq /tmp/XXXXXXXX)"
+cd "${sv_ShrunkDirPath}"
 
-cat "${GLB_ConfigFile}" | tr -d "\t" | tr -d "\n" > "${GLB_ShrunkFolder}/${GLB_DocFileName}"
+cat "${sv_ConfigFilePath}" | tr -d "\t" | tr -d "\n" > "${sv_ShrunkDirPath}/${sv_DocFileName}"
 
-echo "${GLB_ShrunkFolder}/${GLB_DocFileName}"
+echo "${sv_ShrunkDirPath}/${sv_DocFileName}"
