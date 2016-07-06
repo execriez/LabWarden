@@ -2,88 +2,104 @@
 #
 # Short:    Uninstall LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.91
+# Modified: 03-Jul-2016
 #
 #
 # Called as follows:    
-#   Uninstall.command
+#   Uninstall.command [<root_dirpath>]
 #
 # Note, the contents of any directory called "custom" is not uninstalled
 #
 
 # ---
 
-# Path to this script
-LW_sv_ThisScriptDirPath="$(dirname "${0}")"
+# Full souce of this script
+sv_ThisScriptFilePath="${0}"
 
-# Path to payload
-sv_PayloadDirPath="$(dirname "${LW_sv_ThisScriptDirPath}")"
+# Path to this script
+sv_ThisScriptDirPath="$(dirname "${sv_ThisScriptFilePath}")"
 
 # Change working directory
-cd "${LW_sv_ThisScriptDirPath}"
+cd "${sv_ThisScriptDirPath}"
 
 # Filename of this script
-LW_sv_ThisScriptFileName="$(basename "${0}")"
+sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
-LW_sv_ThisScriptName="$(echo ${LW_sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
+sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
 
-# Full souce of this script
-LW_sv_ThisScriptFilePath="${0}"
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
 
 # ---
 
 # Get user name
-LW_sv_ThisUserName="$(whoami)"
+sv_ThisUserName="$(whoami)"
 
 # ---
 
 # Check if user is an admin (returns "true" or "false")
-if [ "$(dseditgroup -o checkmember -m "${LW_sv_ThisUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
+if [ "$(dseditgroup -o checkmember -m "${sv_ThisUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
 then
-  LW_bv_ThisUserIsAdmin="true"
+  bv_ThisUserIsAdmin="true"
 else
-  LW_bv_ThisUserIsAdmin="false"
+  bv_ThisUserIsAdmin="false"
 fi
 
 # ---
 
-if [ "${LW_bv_ThisUserIsAdmin}" = "false" ]
+if [ "${bv_ThisUserIsAdmin}" = "false" ]
 then
-  echo "Sorry, you must be an admin to uninstall this script."
+  echo >&2 "ERROR: You must be an admin to uninstall this software."
+  exit 0
+fi
+
+# ---
+
+if [ "${sv_ThisUserName}" != "root" ]
+then
   echo ""
+  echo "If asked, enter the password for user '"${sv_ThisUserName}"'"
+  echo ""
+  sudo "${sv_ThisScriptFilePath}" "${sv_RootDirPath}"
 
 else
-  echo ""
   echo "Uninstalling LabWarden."
-  echo "If asked, enter the password for user '"${LW_sv_ThisUserName}"'"
   echo ""
   
-  sudo su root <<'HEREDOC'
-
   # Set the signature for the LabWarden installation
-  LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
+  sv_LabWardenSignature="com.github.execriez.LabWarden"
 
   # Remove old install
-  find -d /usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
-  find -d /usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
-  rm -f /Library/LaunchAgents/${LW_sv_LabWardenSignature}*
-  rm -f /Library/LaunchDaemons/${LW_sv_LabWardenSignature}*
+  find 2>/dev/null "${sv_RootDirPath}"/usr/local/LabWarden -iname .DS_Store -exec rm -f {} \;
+  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
+  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
+  rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}*
+  rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}*
   
-  if test -n "$(defaults read /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook | grep -i "LabWarden")"
+  if test -n "$(defaults 2>/dev/null read "${sv_RootDirPath}"/private/var/root/Library/Preferences/com.apple.loginwindow LoginHook | grep -i "LabWarden")"
   then
-    defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook ""
+    defaults write "${sv_RootDirPath}"/private/var/root/Library/Preferences/com.apple.loginwindow LoginHook ""
   fi
   
-  if test -n "$(defaults read /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook | grep -i "LabWarden")"
+  if test -n "$(defaults 2>/dev/null read "${sv_RootDirPath}"/private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook | grep -i "LabWarden")"
   then
-    defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook ""
+    defaults write "${sv_RootDirPath}"/private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook ""
   fi
   
-  echo "PLEASE REBOOT."
-  echo ""
+  if test -z "${sv_RootDirPath}"
+  then
+    pkgutil 2>/dev/null --forget "${sv_LabWardenSignature}"
 
-HEREDOC
+    echo "PLEASE REBOOT."
+    echo ""
+  else
+    pkgutil 2>/dev/null --forget "${sv_LabWardenSignature}" --volume "${sv_RootDirPath}"
+  fi
 
 fi
+
+exit 0

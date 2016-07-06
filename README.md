@@ -1991,6 +1991,12 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.91 - 05 JUL 2016
+
+* MakePackage.command now creates an installation package with a payload. Previously it created a package with no payload that ran the installer script (Install.command).
+
+* Package installer/uninstaller now correctly handle choosing an alternative installation location.
+
 1.0.90 - 01 JUL 2016
 
 * Renamed every variable to make the code more readable should you want to develop your own custom policies. This is quite a big change without any intentional change to functionality.
