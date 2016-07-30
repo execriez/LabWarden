@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Install package(s) from folder
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.90"
+sv_CodeVersion="1.0.92"
 
 if [ $# -eq 0 ]
 then
@@ -89,10 +89,11 @@ else
           bv_PolicyExecuted="true"
           iv_InstalledCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:Installed")"
           LW_nf_logmessage "NOTE, Installing ${sv_PackageFilePath}"
-          installer -pkg "${sv_PackageFilePath}" -target /
+          # Note, no check for if it fails
           LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:Installed:${iv_InstalledCount}" "${sv_PackageFileShasum}"
+          installer -pkg "${sv_PackageFilePath}" -target /
         fi
-      done < <(find "${sv_PackageDirPath}" -iname "*.pkg")
+      done < <(find "${sv_PackageDirPath}" -iname "*.pkg" -prune)
     fi
   done
   
@@ -112,6 +113,6 @@ fi
 LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

@@ -1991,6 +1991,16 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.92 - 21 JUL 2016
+
+* Policy 'SystemInstallPackageFromFolder' altered to update its local vars before the installation, as the package might reboot.
+
+* Replaced every occurence of the 'srm' command with 'rm -P' because it's possible that 'srm' will not ship with 10.12.
+
+* Printer add code (not yet documented) no longer adds a printer from a CUPS print server if the print server returns an error when downloading the printer PPD.
+
+* Fixed issue with install.command to prevent you running the script from the install location.
+
 1.0.91 - 05 JUL 2016
 
 * MakePackage.command now creates an installation package with a payload. Previously it created a package with no payload that ran the installer script (Install.command).

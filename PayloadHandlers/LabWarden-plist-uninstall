@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Called as follows:    
 #   LabWarden-plist-uninstall <somefile.LabWarden.plist> [user]
@@ -153,4 +153,4 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
   fi
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"

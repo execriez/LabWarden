@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -132,7 +132,8 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
                 then
                   if test -n "$(cat "${sv_PrinterPPDFilePath}" | grep "DOCTYPE HTML PUBLIC")"
                   then
-                    LW_nf_logmessage "ATTENTION, error '"$(cat "${sv_PrinterPPDFilePath}" | grep -i "<TITLE>")"' downloading PPD from ${sv_PPDURI}"
+                    sv_ErrorMessage="$(cat "${sv_PrinterPPDFilePath}" | grep -i '<TITLE>' | tr -d '\r' | tr -d '\n' | tr '\t' ' ' | sed 's|\<[^\>]*\>||g;s|^[ ]*||;s|[ ]*$||')"
+                    LW_nf_logmessage "ATTENTION, error '${sv_ErrorMessage}' while downloading PPD from ${sv_PPDURI}"
                     rm -f "${sv_PrinterPPDFilePath}"
                   else
                     cat "${sv_PrinterPPDFilePath}" | grep -v "cupsFilter" | grep -v "cupsPreFilter" | grep -v "APAutoSetupTool" > "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"
@@ -154,16 +155,19 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
                   fi
                 fi
 
-                # Add the printer
-                LW_nf_logmessage "ATTENTION, installing printer ${sv_PrinterName}"
-                /usr/sbin/lpadmin -p "${sv_PrinterName}" -v "${sv_PrinterURI}" -D "${sv_PrinterDesc}" -L "${sv_PrinterLocation}" -P "${sv_PrinterPPDFilePath}" "${sv_PrinterOptions}" -E
+				if test -f "${sv_PrinterPPDFilePath}"
+				then
+                  # If we have a valid PPD file, add the printer
+                  LW_nf_logmessage "ATTENTION, installing printer ${sv_PrinterName}"
+                  /usr/sbin/lpadmin -p "${sv_PrinterName}" -v "${sv_PrinterURI}" -D "${sv_PrinterDesc}" -L "${sv_PrinterLocation}" -P "${sv_PrinterPPDFilePath}" "${sv_PrinterOptions}" -E
 
-                # If the printer is to be shared, turn on printer sharing
-                if test -n "$(echo "${sv_PrinterOptions}" | grep -i "printer-is-shared=true")"
-                then
-                  LW_nf_logmessage "ATTENTION, enabling printer sharing"
-                  /usr/sbin/cupsctl --share-printers
-                  /usr/sbin/cupsctl WebInterface=yes
+                  # If the printer is to be shared, turn on printer sharing
+                  if test -n "$(echo "${sv_PrinterOptions}" | grep -i "printer-is-shared=true")"
+                  then
+                    LW_nf_logmessage "ATTENTION, enabling printer sharing"
+                    /usr/sbin/cupsctl --share-printers
+                    /usr/sbin/cupsctl WebInterface=yes
+                  fi
                 fi
 
               fi
@@ -244,5 +248,5 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
   fi
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 

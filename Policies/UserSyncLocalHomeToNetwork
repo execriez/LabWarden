@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Sync user files between local and network homes on network accounts with forced local homes enabled
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.90"
+sv_CodeVersion="1.0.92"
 
 if [ $# -eq 0 ]
 then
@@ -245,6 +245,6 @@ esac
 LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 
 # ---

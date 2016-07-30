@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 
 # ---
@@ -1285,5 +1285,5 @@ LW_nf_SetPlistProperty "${sv_ConfigPtrDirPath}/${sv_PayloadFileName}.LabWarden.p
 # ---
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 

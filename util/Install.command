@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 07-Jul-2016
 #
 #
 # Called as follows:    
@@ -35,9 +35,9 @@ sv_RootDirPath="${1}"
 
 # Path to payload
 sv_PayloadDirPath="$(dirname "${sv_ThisScriptDirPath}")"
-if [ "${sv_PayloadDirPath}" = "/usr/local/LabWarden" ]
+if [ "${sv_PayloadDirPath}" = "${sv_RootDirPath}/usr/local/LabWarden" ]
 then
-  echo >&2 "ERROR: you cannot install from this folder, copy the folder somewhere else and try again."
+  echo >&2 "ERROR: You cannot install to the folder that you are installing from. Copy the folder somewhere else and try again."
   exit 0
 fi
 

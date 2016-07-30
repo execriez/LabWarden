@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Write Debug info to the LabWarden config
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Triggered by the following events:
 #   All events (as user or root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.90"
+sv_CodeVersion="1.0.92"
 
 if [ $# -eq 0 ]
 then
@@ -125,7 +125,7 @@ case ${sv_EventName} in
 esac
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 
 
 # ---

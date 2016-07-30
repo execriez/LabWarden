@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.92
+# Modified: 21-Jul-2016
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -278,7 +278,7 @@ fi
 LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-srm -fR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 
 # Have we been flagged to restart or shutdown
 if [ "${LW_sv_ThisUserName}" = "root" ]
