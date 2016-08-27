@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Delete old user profiles
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Triggered by the following events:
 #   LoginWindowIdle (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 if [ $# -eq 0 ]
 then
@@ -119,7 +119,7 @@ else
           if test -e "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist"
           then
             iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist")
-            if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_LastUseEpoch})) -gt $((${iv_LoginMaxAgeDays}*24*60*60)) ]
+            if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_LastUseEpoch})) -gt $((${iv_LoginMaxAgeDays}*24*60*60)) ]
             then
               bv_DeleteProfile="true"
               LW_nf_logmessage "NOTE, user '${sv_UserName}' hasn't logged on for more than ${iv_LoginMaxAgeDays} days"

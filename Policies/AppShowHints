@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Show Application hints
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Triggered by the following events:
 #   AppDidLaunch (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 if [ $# -eq 0 ]
 then
@@ -92,9 +92,6 @@ LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam}
 case ${sv_EventName} in
     
 AppDidLaunch)
-  # Take a note of the Policy call
-  LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
-
   bv_PolicyExecuted="false"
   iv_HintCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AppHint")"
   for (( iv_LoopCount=0; iv_LoopCount<${iv_HintCount}; iv_LoopCount++ ))

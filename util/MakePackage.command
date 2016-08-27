@@ -2,8 +2,8 @@
 #
 # Short:    Utility script - Build LabWarden installation package
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
 #   MakePackage.command
@@ -14,7 +14,7 @@
 
 sv_LabWardenSignature="com.github.execriez.LabWarden"
 
-sv_LabWardenVersion="1.0.92"
+sv_LabWardenVersion="1.0.93"
 
 # ---
 
@@ -135,11 +135,11 @@ This package deletes the following files an directories (if they exist):
 
 * /Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
 * /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowIdle.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.PostLogin.plist
+* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
+* /Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
 * /Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
 * /Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.Escalated.plist
+* /Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
 * /usr/LabWarden/
 
 Also, the Login and Logout hooks will be cleared if LabWarden has set them.
@@ -203,11 +203,11 @@ This package installs the following files an directories:
 
 * /Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
 * /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowIdle.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.PostLogin.plist
+* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
+* /Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
 * /Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
 * /Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.Escalated.plist
+* /Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
 * /usr/LabWarden/
 
 You should note that the software overwrites any existing Login and Logout hooks.

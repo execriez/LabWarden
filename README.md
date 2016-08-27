@@ -52,14 +52,14 @@ The installer installs the following files and directories:
 
 * /Library/LaunchAgents/...LabWarden.appwarden.plist
 * /Library/LaunchAgents/...LabWarden.LoginWindow.plist
-* /Library/LaunchAgents/...LabWarden.LoginWindowIdle.plist
-* /Library/LaunchAgents/...LabWarden.PostLogin.plist
+* /Library/LaunchAgents/...LabWarden.LoginWindowPoll.plist
+* /Library/LaunchAgents/...LabWarden.UserAtDesktop.plist
 * /Library/LaunchAgents/...LabWarden.UserPoll.plist
 * /Library/LaunchDaemons/...LabWarden.Boot.plist
-* /Library/LaunchDaemons/...LabWarden.Escalated.plist
+* /Library/LaunchDaemons/...LabWarden.SystemPoll.plist
 * /usr/LabWarden/
 
-You should note that the installer overwrites any existing Login and Logout hooks 
+You should note that LabWarden overwrites any existing Login and Logout hooks 
 
 There are a number of example mobileconfigs, policy configs and printer configs included with LabWarden. These can be found in the following directory.
 
@@ -120,8 +120,7 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
-		sudo /usr/local/LabWarden/util/gpupdate FLUSHCACHE
-		sudo /usr/local/LabWarden/util/gpupdate
+		sudo /usr/local/LabWarden/util/gpupdate -force
 
 >The Policy Banner will be shown on the login window of all associated workstations:
 >
@@ -190,8 +189,7 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
-		sudo /usr/local/LabWarden/util/gpupdate FLUSHCACHE
-		sudo /usr/local/LabWarden/util/gpupdate
+		sudo /usr/local/LabWarden/util/gpupdate -force
 
 >Because you chose to apply the policy to a user or group of users - the mobileconfig will be pulled down as a "User Profile" and installed when an associated user logs in.
 >
@@ -278,8 +276,7 @@ Also, LabWarden generally only updates policies during the Maintenance sequence 
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
-		sudo /usr/local/LabWarden/util/gpupdate FLUSHCACHE
-		sudo /usr/local/LabWarden/util/gpupdate
+		sudo /usr/local/LabWarden/util/gpupdate -force
 
 >Because you chose to apply the policy to a workstation or group of workstations - the policy will affect every user who logs in.
 
@@ -457,6 +454,7 @@ Policy Scripts can be triggered by the following System events:
 * LogoutEnd
 * LoginWindowIdle
 * LoginWindowRestartOrShutdown
+* SystemPoll
 
 ...and by the following User events:
 
@@ -465,7 +463,7 @@ Policy Scripts can be triggered by the following System events:
 * AppWillLaunch
 * AppDidLaunch
 * AppDidTerminate
-* UserIdle
+* UserPoll
 * UserLogout
 
 Policy scripts are controlled via an associated configuration file of type .LabWarden.plist that holds script options (As seen in "Quick Demo 3").
@@ -1850,6 +1848,7 @@ Policy Scripts can be triggered by the following System events:
 * NetworkDown
 * LoginBegin
 * LogoutEnd
+* LoginWindowPoll
 * LoginWindowIdle
 * LoginWindowRestartOrShutdown
 
@@ -1860,6 +1859,7 @@ Policy Scripts can be triggered by the following System events:
 * AppWillLaunch
 * AppDidLaunch
 * AppDidTerminate
+* UserPoll
 * UserIdle
 * UserLogout
 
@@ -1867,7 +1867,7 @@ If the script is triggered by a system event, it will be called as root.
 
 If the script is triggered by a user event, it will be called as that user.
 
-You should note that when an event happens, every script that is triggered by that event is run. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
+You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
 
 Custom policies should be stored in the directory "/usr/local/LabWarden/Policies/custom/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
 
@@ -1901,9 +1901,9 @@ Each policy has a line that includes the common library. This library (/usr/loca
 	#  LW_bv_LogIsActiveStatus               - Whether the log is currently active (true/false)
 	#
 	#  LW_sv_BinDirPath                      - Path to binaries such as rsync or CocoaDialog
-	#  LW_sv_ConfigDirPath                   - Path to main LabWarden config files
+	#  LW_sv_SettingsDirPath                 - Path to main LabWarden settings files
 	#
-	#  LW_sv_ThisScriptStartEpoch            - When the script started running
+	#  LW_iv_ThisScriptStartEpoch            - When the script started running
 	#  LW_sv_ThisScriptFilePath              - Full source path of running script
 	#  LW_sv_ThisScriptDirPath               - Directory location of running script
 	#  LW_sv_ThisScriptFileName              - filename of running script
@@ -1963,7 +1963,7 @@ Each policy has a line that includes the common library. This library (/usr/loca
 	#  LW_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
 	#  LW_sf_ResolveFilename <fileuri>                                 - Resolve a file URI to a local path (downloading the file if necessary)
 	#  LW_nf_QuickExit                                                 - Quickly exit a script
-	#  LW_nf_TriggerEvent <config> <eventHistory> [OptionalParam]      - Internal private function
+	#  LW_nf_TriggerEvent <eventHistory> <event> [OptionalParam]       - Internal private function
 	#
 	#  Key:
 	#    LW_ - LabWarden global variable
@@ -1990,6 +1990,26 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.93 - 20-Aug-2016
+
+* Added SystemPoll, SystemIdle, LoginWindowPoll and UserIdle events. Idle events triggered during poll events - when there has been no user input for over 11 minutes.
+
+* Removed the 'FLUSHCACHE' option from gpupdate.
+
+* Improved 'gpupdate' with better optimisation and caching. Existing policies are only renewed during idle events, hopefully reducing delays during boot or login.
+
+* 'gpupdate' with no options runs a group policy update. Policy information is cached. Policies that are already cached, whos cache is less than 1 day old are not updated. On its own, gpudate updates computer policies. If a user name is passed, or if it is called without root privileges, then gpupdate will update user polies.
+
+* 'gpupdate -force' forces a group policy update. Existing policy caches are renewed.
+
+* 'gpupdate -quick' runs a quick group policy update. Policies that are already cached are not updated.
+
+* Removed escalated user trigger, which handled installing user based mobileconfigs on systems 10.10 and earlier. This is now done via an improved gpupdate.
+
+* Variable name changes. LW\_sv\_ThisScriptStartEpoch becomes LW\_iv\_ThisScriptStartEpoch. LW\_sv\_ConfigDirPath becomes LW\_sv\_SettingsDirPath.
+
+* Bug fix in 'SystemInstallPackageFromFolder' which didn't handle non-flat packages very well.
 
 1.0.92 - 21 JUL 2016
 

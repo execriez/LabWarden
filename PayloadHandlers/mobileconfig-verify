@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 
 # ---
 
@@ -33,10 +33,10 @@ sv_GPOuser="${2}"
 
 if test -n "${sv_GPOuser}"
 then
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${sv_GPOuser}"
   
 else
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
   
 fi
 mkdir -p "${sv_ConfigDirPath}"

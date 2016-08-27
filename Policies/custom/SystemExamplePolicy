@@ -2,8 +2,8 @@
 #
 # Short:    Example System Policy script - A blank canvas
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 if [ $# -eq 0 ]
 then
@@ -38,9 +38,9 @@ sv_EventHistory="${2}"
 
 # Get the event that triggered this policy.
 # This can be one of the following system events:
-#   Boot, LoginWindow, NetworkUp, NetworkDown, LoginBegin, LogoutEnd, LoginWindowIdle, LoginWindowRestartOrShutdown
+#   Boot, LoginWindow, NetworkUp, NetworkDown, LoginBegin, LogoutEnd, LoginWindowIdle, LoginWindowRestartOrShutdown, SystemPoll
 # ...or one of the following User events:
-#   UserLogin, UserAtDesktop, AppWillLaunch, AppDidLaunch, AppDidTerminate, UserIdle, UserLogout
+#   UserLogin, UserAtDesktop, AppWillLaunch, AppDidLaunch, AppDidTerminate, UserPoll, UserLogout
 
 sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
 if test -z "${sv_EventName}"
@@ -99,7 +99,7 @@ else
   fi
   
   # Write a value to the vars 
-  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastRunEpoch" "${LW_sv_ThisScriptStartEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastRunEpoch" "${LW_iv_ThisScriptStartEpoch}"
 
   # END YOUR CODE HERE
   # ------------------

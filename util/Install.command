@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 07-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 #
 # Called as follows:    
@@ -279,6 +279,28 @@ EOF
       chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
 
 
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.SystemPoll.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>${sv_LabWardenSignature}.SystemPoll</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/LabWarden/lib/Poll</string>
+		<string>System</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>241</integer>
+</dict>
+</plist>
+EOF
+      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.SystemPoll.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
+
+
       cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindow.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -317,11 +339,11 @@ EOF
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.LoginWindowIdle</string>
+	<string>${sv_LabWardenSignature}.LoginWindowPoll</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Trigger</string>
-		<string>LoginWindowIdle</string>
+		<string>/usr/local/LabWarden/lib/Poll</string>
+		<string>LoginWindow</string>
 	</array>
 	<key>LimitLoadToSessionType</key>
 	<string>LoginWindow</string>
@@ -330,9 +352,9 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowIdle.plist "${sv_RootDirPath}"/Library/LaunchAgents/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowIdle.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowIdle.plist
+      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
 
 
       cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserAtDesktop.plist
@@ -368,47 +390,19 @@ EOF
 	<string>${sv_LabWardenSignature}.UserPoll</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Trigger</string>
-		<string>UserPoll</string>
+		<string>/usr/local/LabWarden/lib/Poll</string>
+		<string>User</string>
 	</array>
 	<key>LimitLoadToSessionType</key>
 	<string>Aqua</string>
 	<key>StartInterval</key>
-	<integer>191</integer>
+	<integer>181</integer>
 </dict>
 </plist>
 EOF
       cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
       chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
       chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
-
-
-
-      mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Escalated
-      chmod 777 "${sv_RootDirPath}"/usr/local/LabWarden/Escalated
-      
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.Escalated.plist
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>Label</key>
-	<string>${sv_LabWardenSignature}.Escalated</string>
-	<key>ProgramArguments</key>
-	<array>
-		<string>/usr/local/LabWarden/lib/Escalated</string>
-	</array>
-	<key>WatchPaths</key>
-	<array>
-		<string>/usr/local/LabWarden/Escalated</string>
-	</array>
-</dict>
-</plist>
-EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.Escalated.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.Escalated.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.Escalated.plist
-
 
     fi
 

@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
 #   LabWarden-plist-verify <somefile.LabWarden.plist> [user]
@@ -39,10 +39,10 @@ sv_GPOuser="${2}"
 
 if test -n "${sv_GPOuser}"
 then
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${sv_GPOuser}"
   
 else
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
   
 fi
 mkdir -p "${sv_ConfigDirPath}"
@@ -50,46 +50,65 @@ mkdir -p "${sv_ConfigDirPath}"
 # ---
 
 # Verify the LabWarden.plist config
+sv_ObjectUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${sv_PayloadFilePath}")
 sv_ObjectName=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Name'" "${sv_PayloadFilePath}")
 sv_ObjectType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Type'" "${sv_PayloadFilePath}")
 
-case "${sv_ObjectType}" in
-Printer)
-  # Verify the printer
-  sv_PrinterDesc=$(echo $sv_ObjectName | tr " " "_")
-  sv_PrinterName=$(echo $sv_PrinterDesc | tr "-" "_")
-  if test -z "$(lpstat 2>/dev/null -a | cut -d" " -f1 | grep -E "^${sv_PrinterName}$")"
-  then
-    LW_nf_QuickExit "Config "$(basename ${sv_PayloadFilePath})" is not correctly installed"
+/usr/libexec/PlistBuddy >/dev/null 2>/dev/null -c "Print ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+if [ $? -ne 0 ]
+then
+  LW_nf_QuickExit "Config ${sv_ObjectName} is not installed"
 
-  fi
-  ;;
+else
 
-Policy)
-  sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
-  if ! test -e "${sv_PolicyFilePath}"
+  sv_ActiveUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${sv_ConfigDirPath}/LabWarden.plist")
+  if [ "${sv_ObjectUUID}" != "${sv_ActiveUUID}" ]
   then
-    sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
-    if ! test -e "${sv_PolicyFilePath}"
-    then
-      sv_PolicyFilePath=""
-    fi
-  fi
-  if test -n "${sv_PolicyFilePath}"
-  then
-    sv_PolicyVersion="$(${sv_PolicyFilePath})"
-  else
-    LW_nf_QuickExit "Policy script ${sv_ObjectName} is no longer installed"
-  fi
-  sv_ObjectPolicyVersion=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_ObjectName}:LocalPrefs:Version'" "${sv_ConfigDirPath}/LabWarden.plist")
-  if [ "${sv_ObjectPolicyVersion}" != "${sv_PolicyVersion}" ]
-  then
-    LW_nf_QuickExit "Policy ${sv_ObjectName} version has changed from '${sv_ObjectPolicyVersion}' to '${sv_PolicyVersion}'"
-  fi
-
-  ;;
+    LW_nf_QuickExit "A different ${sv_ObjectType} config ${sv_ObjectName} is currently installed"
   
-esac
+  else
+
+    case "${sv_ObjectType}" in
+    Printer)
+      # Verify the printer
+      sv_PrinterDesc=$(echo $sv_ObjectName | tr " " "_")
+      sv_PrinterName=$(echo $sv_PrinterDesc | tr "-" "_")
+      if test -z "$(lpstat 2>/dev/null -a | cut -d" " -f1 | grep -E "^${sv_PrinterName}$")"
+      then
+        LW_nf_QuickExit "${sv_ObjectType} config ${sv_ObjectName} is not correctly installed"
+
+      fi
+      ;;
+
+    Policy)
+      sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
+      if ! test -e "${sv_PolicyFilePath}"
+      then
+        sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
+        if ! test -e "${sv_PolicyFilePath}"
+        then
+          sv_PolicyFilePath=""
+        fi
+      fi
+      if test -z "${sv_PolicyFilePath}"
+      then
+        LW_nf_QuickExit "There is no handler script for the ${sv_ObjectType} config ${sv_ObjectName}"
+        
+      else
+        sv_PolicyVersion="$(${sv_PolicyFilePath})"
+        
+        sv_ObjectPolicyVersion=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_ObjectName}:LocalPrefs:Version'" "${sv_ConfigDirPath}/LabWarden.plist")
+        if [ "${sv_ObjectPolicyVersion}" != "${sv_PolicyVersion}" ]
+        then
+          LW_nf_QuickExit "The handler script for the ${sv_ObjectType} config ${sv_ObjectName} has changed from '${sv_ObjectPolicyVersion}' to '${sv_PolicyVersion}'"
+        fi
+      fi
+      ;;
+  
+    esac
+
+  fi
+fi
 
 # Remove temporary files
 rm -fPR "${LW_sv_ThisScriptTempDirPath}"

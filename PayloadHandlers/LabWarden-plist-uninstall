@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
 #   LabWarden-plist-uninstall <somefile.LabWarden.plist> [user]
@@ -46,10 +46,10 @@ sv_GPOuser="${2}"
 
 if test -n "${sv_GPOuser}"
 then
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${sv_GPOuser}"
   
 else
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
   
 fi
 
@@ -129,25 +129,6 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
 
       # Delete the triggers
       /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:TriggeredBy'" "${sv_ConfigDirPath}/LabWarden.plist"
-
-      # ---
-      # STOP-GAP until I can get my configs consistant
-      
-      # Delete the trigger
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:Trigger'" "${sv_ConfigDirPath}/LabWarden.plist"
-
-      case "${sv_ObjectName}" in
-      Maintenance|SystemInstallPackageFromFolder)
-        # Do nothing more
-        ;;
-        
-      *)
-        # Delete named object
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
-        ;;
-        
-      esac
-      # ---
 
     fi
   fi

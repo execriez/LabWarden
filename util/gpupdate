@@ -2,18 +2,18 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
-#   gpupdate [<user>]
+#   gpupdate [-force|-quick] [<user>]
 #
 # Without a user specified, updates the group policies for the workstation.
 # With a user, updates the group policies for the specified user.
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 # ---
 
@@ -29,12 +29,6 @@ LW_nf_logmessage "NOTE, ${LW_sv_ThisScriptFileName} version ${sv_CodeVersion}"
 
 # ---
 
-if [ "${LW_sv_ThisUserName}" != "root" ]
-then
-  # we only like root
-  LW_nf_QuickExit "ERROR, this script must be run with root privileges"
-fi
-
 if test -z "${LW_sv_NetworkServiceInterfaceName}"
 then
   # we need a network
@@ -48,19 +42,61 @@ fi
 
 # ---
 
-Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
+sv_GPoption="$(echo ${1} | tr [A-Z] [a-z])"
+
+if [ "${LW_sv_ThisUserName}" != "root" ]
+then
+  sv_GPOuser="${LW_sv_ThisUserName}"
+fi
+
+# ---
+
+case "${sv_GPoption}" in
+-force)
+  # Update all (Computer and User) policies older than 5 minutes
+  iv_GPCacheMaxAgeMinutes=5
+  sv_GPOuser=${2}
+  
+  if test -z "${sv_GPOuser}"
+  then
+    ls -1 "${LW_sv_SettingsDirPath}/Config/Users" | while read sv_GPOuser
+    do
+      /usr/local/LabWarden/util/gpupdate "-force" "${sv_GPOuser}"
+  
+    done
+  fi
+  ;;
+
+-quick)
+  # Only update if policy older than 180 days (or doesn't yet exist)
+  iv_GPCacheMaxAgeMinutes=259200
+  sv_GPOuser=${2}
+  ;;
+    
+*)
+  # Update if policy older than 1 day old (or doesn't yet exist)
+  iv_GPCacheMaxAgeMinutes=1440
+  sv_GPOuser=${1}
+  ;;
+    
+esac
+
+# ---
+
+Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
 {
-  local sv_Context
+  local sv_ObjectContext
   local sv_ObjectName
   local sv_NameDelim
   local sv_GroupName
   local sv_SubGroupName
   local iv_CacheEpoch
+  local sv_Temp1FilePath
 
-  sv_Context=${1}
+  sv_ObjectContext=${1}
   sv_ObjectName=${2}
   
-  case "${sv_Context}" in
+  case "${sv_ObjectContext}" in
   Computers)
     sv_NameDelim="$"
     ;;
@@ -75,458 +111,342 @@ Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can b
     
   esac
   
-  mkdir -p "${LW_sv_ConfigDirPath}/Cache/Membership"
-  
-  if test -e "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
+  iv_CacheEpoch=0
+  if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
   then
-    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}")
-    if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-    then
-      rm -f "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
-    fi
+    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
   fi
   
-  if ! test -e "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
+  if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -lt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
   then
-    touch "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
-    dscl 2>/dev/null localhost -read "/Search/${sv_Context}/${sv_ObjectName}${sv_NameDelim}" memberOf | tr -d "\n" | sed "s|dsAttrTypeNative:memberOf:||;s| CN=|:|g;s|^:||" | tr ":" "\n" | cut -d"," -f1 | while read sv_GroupName
-    do
-      echo "${sv_GroupName}">>"${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
-      Sf_ListGroups "Groups" "${sv_GroupName}" | while read sv_SubGroupName
-      do
-        if [ $(cat "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}" | grep -Ec "^${sv_SubGroupName}$") -eq 0 ]
-        then
-          echo "${sv_SubGroupName}">>"${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
-        fi
-      done
-    done
-  fi
+    cat "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
 
-  cat "${LW_sv_ConfigDirPath}/Cache/Membership/${sv_ObjectName}"
+  else
+    sv_Temp0FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+    
+    # Get the memberOf field from AD 
+    dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" memberOf > "${sv_Temp0FilePath}"
+    
+    if [ "$?" != "0" ]
+    then
+      LW_nf_logmessage "ERROR, cannot get ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
+      
+    else
+      # LW_nf_logmessage "DEBUG, just read ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
+    
+      sv_Temp1FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+      touch "${sv_Temp1FilePath}"
+
+      cat "${sv_Temp0FilePath}" | tr -d "\n" | sed "s|dsAttrTypeNative:memberOf:||g;s| CN=|:|g;s|^:||" | tr ":" "\n" | cut -d"," -f1 | sort -u | while read sv_GroupName
+      do
+        echo "${sv_GroupName}"
+        echo "${sv_GroupName}">>"${sv_Temp1FilePath}"
+        Sf_BuildGroupMembershipCache "Groups" "${sv_GroupName}" | while read sv_SubGroupName
+        do
+          if [ "${sv_SubGroupName}" = "${sv_ObjectName}" ]
+          then
+            break
+          
+          else
+            echo "${sv_SubGroupName}"
+            echo "${sv_SubGroupName}">>"${sv_Temp1FilePath}"
+          
+          fi
+        done
+      done
+      rm -f "${sv_Temp0FilePath}"
+    
+      sv_Temp2FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+      chmod 644 "${sv_Temp2FilePath}"
+    
+      cat "${sv_Temp1FilePath}" | sort -u >"${sv_Temp2FilePath}"
+      rm -f "${sv_Temp1FilePath}"
+
+      mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}"
+      chmod 755 "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}"
+    
+      ln -fh "${sv_Temp2FilePath}" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+      rm -f "${sv_Temp2FilePath}"
+      
+      if [ "${sv_ObjectContext}" = "Groups" ]
+      then
+        # Get the Info (Notes) field from AD 
+        dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${sv_Temp1FilePath}"
+        if [ "$?" != "0" ]
+        then
+          LW_nf_logmessage "ERROR, cannot get ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD (maybe it hasn't connected yet)."
+          
+        else
+          # LW_nf_logmessage "DEBUG, just read ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD."
+          
+          # Keep the file if the Info field is not empty
+          if test -s "${sv_Temp1FilePath}"
+          then
+            touch -t $(date -r ${LW_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_Temp1FilePath}"
+            chmod 644 "${sv_Temp1FilePath}"
+            mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}"
+            chmod 755 "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}"
+            ln -fh "${sv_Temp1FilePath}" "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}/${sv_ObjectName}.txt"
+          fi
+        fi
+        rm -f "${sv_Temp1FilePath}"
+        
+      fi
+
+    fi
+
+  fi
+  
+}
+
+Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
+{
+  local sv_ObjectContext
+  local sv_ObjectName
+
+  sv_ObjectContext=${1}
+  sv_ObjectName=${2}
+
+  Sf_BuildGroupMembershipCache "${sv_ObjectContext}" "${sv_ObjectName}" | sort -u
+  
 }
 
 # ---
 
-sv_GPOuser="${1}"
-
-# ---
+# Here we start for real
 
 if test -n "${sv_GPOuser}"
 then
-  case "${sv_GPOuser}" in
-  FLUSHCACHE)
-    # Remove cached policies
-    rm -fR "${LW_sv_ConfigDirPath}/Cache"
+  sv_ObjectContext="Users"
+  sv_ObjectName="${sv_GPOuser}"
+
+  dscl >/dev/null 2>&1 localhost -read /Search/${sv_ObjectContext}/${sv_ObjectName} name
+  if [ "$?" != "0" ]
+  then
+    LW_nf_QuickExit "ERROR, cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD."
+  fi
+else
+  sv_ObjectContext="Computers"
+  sv_ObjectName="${LW_sv_ADComputerName}"
+fi
+
+sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/${sv_ObjectContext}/${sv_ObjectName}"
+
+if [ "${LW_sv_ThisUserName}" = "root" ]
+then
+
+  # If a config has never been set up for this workstation, create base folders and set access rights
+  if ! test -e "${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}/LabWarden.plist"
+  then
+    # Remove old configs
+    rm -fR "${LW_sv_SettingsDirPath}"
     
-    # Remove temporary files
-    rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+    # Create base folders
+    mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/Users"
+    mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/Users"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/Users"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/Users"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/Users"
+    mkdir -p "${LW_sv_SettingsDirPath}/Config/Computers"
+    mkdir -p "${LW_sv_SettingsDirPath}/Config/Users"
     
-    exit 0
-    ;;
-    
-  USERS)
-    while read sv_FolderDirPath
+    # Set access rights
+    chown -R root:wheel "${LW_sv_SettingsDirPath}"
+    chmod -R 755 "${LW_sv_SettingsDirPath}"
+
+    LW_nf_SetPlistProperty "${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}/LabWarden.plist" ":LabWarden:LocalPrefs:InstallEpoch" "${LW_iv_ThisScriptStartEpoch}"
+  fi
+
+  if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
+  then
+    mkdir -p "${sv_ConfigDirPath}"
+    chown -R root:wheel "${sv_ConfigDirPath}"
+    chmod -R 755 "${sv_ConfigDirPath}"
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:InstallEpoch" "${LW_iv_ThisScriptStartEpoch}"
+  fi
+  
+  iv_ObjectEpoch=0
+  if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+  then
+    iv_ObjectEpoch=$(stat -f "%m" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
+  fi
+  
+  if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_ObjectEpoch})) -gt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
+  then
+    LW_nf_logmessage "ATTENTION, Rebuilding cache for ${sv_ObjectContext} ${sv_ObjectName}"
+
+    # Fill a directory with the objects info payload(s)
+    sv_UpdatedInfoPayloadDirPath=$(mktemp -d "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+
+    Sf_ListGroups "${sv_ObjectContext}" "${sv_ObjectName}" | while read sv_ObjectGroup
     do
-      if test -d "${sv_FolderDirPath}"
+      if test -e "${LW_sv_SettingsDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt"
       then
-        sv_UserName="$(stat -f "%Su" "${sv_FolderDirPath}")"
-        
-        if test -e "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist"
-        then
-          iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist")
-          if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_LastUseEpoch})) -lt $((2*31*24*60*60)) ]
-          then
-            LW_nf_logmessage "ATTENTION, auto-updating group policies for user '${sv_UserName}'"
-            /usr/local/LabWarden/util/gpupdate "${sv_UserName}"
-          
-          else
-            LW_nf_logmessage "NOTE, skipping auto-update of group policies for user '${sv_UserName}' (hasn't logged on for over 2 months)"
-        
-          fi
-        
-        else
-          LW_nf_logmessage "NOTE, skipping auto-update of group policies for user '${sv_UserName}' (has never logged on)"
-        
-        fi
-      
+        ln -fh "${LW_sv_SettingsDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt" "${sv_UpdatedInfoPayloadDirPath}/${sv_ObjectGroup}.txt"
       fi
-    done < <(find /Users \( -depth 1 -prune \) -and \( -type d \) -and \( ! -user root \))
+    done
+
+    # Join split info payloads into a new file
+    cd "${sv_UpdatedInfoPayloadDirPath}"
+    ls -1 "${sv_UpdatedInfoPayloadDirPath}" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|(.*)(-[0-9]{1}.txt$)|\1|" | sort -u | while read sv_GroupName
+    do
+      # If the joined file doesn't exist, create a new file from the split parts
+      if ! test -e "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
+      then
+        cat $(ls -1 "${sv_UpdatedInfoPayloadDirPath}" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort) > "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
+        touch -t $(date -r ${LW_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
+      fi
+    done
+
+    # Delete split payloads
+    find "${sv_UpdatedInfoPayloadDirPath}" -iregex '.*\-[0-9]\{1\}.txt$' -exec rm -f "{}" \;
+
+    # Unpack the info payload content
+    sv_UpdatedPayloadContentDirPath=$(mktemp -d "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+
+    cd "${sv_UpdatedPayloadContentDirPath}"
+    ls -1 "${sv_UpdatedInfoPayloadDirPath}" | while read sv_InfoPayloadName
+    do
+      cat "${sv_UpdatedInfoPayloadDirPath}/${sv_InfoPayloadName}" | base64 2>/dev/null -D | tar 2>/dev/null -xvzf -
+    done
+    chown -R root:wheel "${sv_UpdatedPayloadContentDirPath}"
+
+    # Installing/uninstalling mobileconfigs for other users, is not supported prior to 10.11
+    # so normal users will have to be able to uninstall.
+    if [ "${sv_ObjectContext}" = "Users" ]
+    then
+      if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
+      then
+        ls -1 "${sv_UpdatedPayloadContentDirPath}" | grep -E ".*\.mobileconfig" | while read sv_PayloadContentName
+        do
+          iv_PayloadContentEpoch=$(stat -f "%m" "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadContentName}")
+          /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadContentName}"
+          touch -t $(date -r ${iv_PayloadContentEpoch} "+%Y%m%d%H%M.%S") "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadContentName}"
+        done
+      fi
+    fi
+
+    # ---
+
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+    chmod 755 "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
+    chmod 755 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
+
+    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
+    chmod 755 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
+
+    # ---
+
+    # Here we decide what definitely needs to be uninstalled, and what needs to be verified
+
+    cd "${LW_sv_ThisScriptTempDirPath}"
+
+    # Get the src payload
+    ls -1 "${sv_UpdatedPayloadContentDirPath}" > "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt"
+
+    # Get the dst (existing) payload
+    ls -1 "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}" > "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt"
+
+    # Build a list of payloads that are in src or dst, but not in both
+    cat "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt" "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -u > "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
+
+    # Build a list of payloads unique to the dst (need to be uninstalled)
+    cat "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/Policies-uninstall.txt"
+
+    # Remove temp files
+    rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt"
+    rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt"
+    rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
+
+    # Update list of disabled policies (they still need to be uninstalled)
+    cat "${LW_sv_ThisScriptTempDirPath}/Policies-uninstall.txt" | while read sv_PayloadFileName
+    do
+      ln -fh "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+      rm -f "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+    done
+
+    # Update list of active policies (they still need to be verified)
+    ls -1 "${sv_UpdatedPayloadContentDirPath}" | while read sv_PayloadFileName
+    do
+      ln -fh "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+      ln -fh "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+      rm -f "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}"
+    done
     
-    # Remove temporary files
-    rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${LW_sv_LabWardenVersion}"
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${LW_iv_ThisScriptStartEpoch}"
 
-    exit 0
-    ;;
-    
-  *)
-    sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
-    ;;
-    
-  esac
-  
-else
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  fi
   
 fi
 
-# ---
+# This bit can be run as root or user
 
-if test -n "${sv_GPOuser}"
+if test -e "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
 then
-  dscl >/dev/null 2>&1 localhost -read /Search/Users/${sv_GPOuser} memberOf
-  if [ "$?" != "0" ]
-  then
-    LW_nf_QuickExit "ERROR, cannot get user info from AD (maybe it hasn't connected yet)."
-  fi
-  sv_SemaphoreFilePath="${LW_sv_ThisUserTempDirPath}/.${LW_sv_ThisScriptFileName}-${sv_GPOuser}"
-  
-else
-  dscl >/dev/null 2>&1 localhost -read /Search/Computers/${LW_sv_ADComputerName}$ memberOf
-  if [ "$?" != "0" ]
-  then
-    LW_nf_QuickExit "ERROR, cannot get computer info from AD (maybe it hasn't connected yet)."
-  fi
-  sv_SemaphoreFilePath="${LW_sv_ThisUserTempDirPath}/.${LW_sv_ThisScriptFileName}-${LW_sv_ADComputerName}"
-
-fi
-
-# ---
-
-# There might be a bit of mult-tasking going on - however we only want one task at a time updating individual policies
-
-touch "${sv_SemaphoreFilePath}"
-echo ${LW_iv_ThisScriptPID} >> "${sv_SemaphoreFilePath}"
-iv_GPOScriptPID="$(cat "${sv_SemaphoreFilePath}" | head -n1)"
-
-if [ "${iv_GPOScriptPID}" != "${LW_iv_ThisScriptPID}" ]
-then
-  # Another job is processing the policy update - so wait until its finished, then quit
-  
-  while [ -n "$(ps -p ${iv_GPOScriptPID} -o comm=)" ]
+  # uninstall payloads
+  ls -1 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
-    # we don't want to hog the CPU - so lets sleep a while
-    sleep 1
-  done
-  
-  rm -f "${sv_SemaphoreFilePath}"
-  
-  # Remove temporary files
-  rm -fPR "${LW_sv_ThisScriptTempDirPath}"
-
-  exit 0
-fi
-
-# ---
-
-mkdir -p "${sv_ConfigDirPath}"
-
-if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
-then
-  # There's no config, so there shouldn't be any payloads
-  rm -fR "${sv_ConfigDirPath}/ADPayload"
-fi
-
-mkdir -p "${sv_ConfigDirPath}/ADPayload"
-
-# ---
-
-LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${LW_sv_LabWardenVersion}"
-LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${LW_sv_ThisScriptStartEpoch}"
-
-# ---
-
-# Here we verify the already installed payloads
-ls -1 "${sv_ConfigDirPath}/ADpayload" | while read sv_PayloadFileName
-do
-  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
-  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify
-  then
-    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
-    if [ "$?" != "0" ]
+    sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+    if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
     then
-      if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
+      LW_nf_logmessage "ATTENTION, uninstalling ${sv_PayloadFileName}"
+      /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      if [ "$?" = "0" ]
       then
-        /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
-      fi
-      rm -f "${sv_ConfigDirPath}/ADpayload/${sv_PayloadFileName}"
-    fi
-  fi
-done
-
-# ---
-
-# Here we copy the relevant payloads from AD into a temporary folder - wherever possible, we do it from cache
-mkdir -p "${LW_sv_ConfigDirPath}/Cache/Info"
-cd "${LW_sv_ConfigDirPath}/Cache/Info"
-
-# Check age of pre-existing split info files
-ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
-do
-  # If the companion joined file is too old, delete it and its split parts
-  iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
-  if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-  then
-    rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    rm -f $(ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort)
-  fi
-done
-
-# Check age of normal info files
-ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
-do
-  # If the  file is too old, delete it
-  iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
-  if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-  then
-    rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-  fi
-done
-
-# Read the AD payload from the Group notes field (info)
-if test -n "${sv_GPOuser}"
-then
-  Sf_ListGroups "Users" "${sv_GPOuser}" | while read sv_GroupName
-  do
-    # Save group info to file
-
-    if test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    then
-      iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
-      if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-      then
-        rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-      fi
-    fi
-
-    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    then
-      dscl 2>/dev/null localhost -read "/Search/Groups/${sv_GroupName}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-      touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    fi
-  done
-
-else
-  Sf_ListGroups "Computers" "${LW_sv_ADComputerName}" | while read sv_GroupName
-  do
-    # Save group info to file
-
-    if test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    then
-      iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")
-      if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-      then
-        rm -f "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-      fi
-    fi
-
-    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    then
-      dscl 2>/dev/null localhost -read "/Search/Groups/${sv_GroupName}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-      touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    fi
-  done
-fi
-
-# Join split group info
-ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|(.*)(-[0-9]{1}.txt$)|\1|" | sort -u | while read sv_GroupName
-do
-  # If the joined file has a size of zero, create a new file from the split parts
-  if ! test -s "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-  then
-    cat $(ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort) > "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-    touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-  fi
-done
-
-# Unpack the payload(s)
-mkdir -p "${LW_sv_ConfigDirPath}/Cache/Payload"
-ls -1 "${LW_sv_ConfigDirPath}/Cache/Info" | grep -Ev "\-[0-9]{1}.txt$" | sed -E "s|\.txt$||" | sort -u | while read sv_GroupName
-do
-  # Check the age of any existing payload folders
-  if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-  then
-    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}")
-    if [ $((${LW_sv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -gt $((${iv_GPCacheMaxAgeHours}*60*60)) ]
-    then
-      rm -fR "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-    fi
-  fi
-
-  if test -s "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt"
-  then
-    if ! test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-    then
-      mkdir -p "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-      cd "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-      cat "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt" | base64 -D | tar -xvzf -
-      if [ "$?" != "0" ]
-      then
-        LW_nf_logmessage "NOTE, the notes field on the AD group ${sv_GroupName} does not appear to be in a supported format"
-        LW_nf_logmessage "$(cat "${LW_sv_ConfigDirPath}/Cache/Info/${sv_GroupName}.txt")"
+        rm -f "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
       else
-        touch -t $(date -r ${LW_sv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
+        LW_nf_logmessage "ERROR, failed to uninstall ${sv_PayloadFileName}"
       fi
     fi
-  fi
-done
+  done
+fi
 
-# Copy Payloads to a temporary folder
-mkdir -p "${LW_sv_ThisScriptTempDirPath}/ADpayload"
-
-if test -n "${sv_GPOuser}"
+if test -e "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
 then
-  Sf_ListGroups "Users" "${sv_GPOuser}" | grep -Ev "\-[0-9]{1}$" | while read sv_GroupName
+  # verify payloads
+  ls -1 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
-    if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
+    sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+    if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify
     then
-      cp -af "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}/" "${LW_sv_ThisScriptTempDirPath}/ADpayload"
+      LW_nf_logmessage "NOTE, verify ${sv_PayloadFileName}"
+      /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      if [ "$?" = "0" ]
+      then
+        rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+      else
+        if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
+        then
+          LW_nf_logmessage "ATTENTION, uninstall ${sv_PayloadFileName}"
+          /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+          if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install
+          then
+            LW_nf_logmessage "ATTENTION, install ${sv_PayloadFileName}"
+            /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+            if [ "$?" = "0" ]
+            then
+              rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            else
+              LW_nf_logmessage "ERROR, failed to install ${sv_PayloadFileName}"
+            fi
+          fi
+        fi
+      fi
     fi
   done
-
-else
-  Sf_ListGroups "Computers" "${LW_sv_ADComputerName}" | grep -Ev "\-[0-9]{1}$" | while read sv_GroupName
-  do
-    if test -e "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}"
-    then
-      cp -af "${LW_sv_ConfigDirPath}/Cache/Payload/${sv_GroupName}/" "${LW_sv_ThisScriptTempDirPath}/ADpayload"
-    fi
-  done
-  
 fi
 
 # ---
-
-# Here we decide what needs to be uninstalled, and what needs to be installed
-
-cd "${LW_sv_ThisScriptTempDirPath}"
-
-# Get the src payload
-ls -1 "${LW_sv_ThisScriptTempDirPath}/ADpayload" > "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt"
-
-# Get the dst (existing) payload
-ls -1 "${sv_ConfigDirPath}/ADPayload" > "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt"
-
-# Build a list of payloads that are in both src and dst (need to be checked for differences before installation)
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt"
-
-# Build a list of payloads that are in src or dst, but not in both
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -u > "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt"
-
-# Build a list of payloads unique to the src (need to be installed)
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
-
-# Build a list of payloads unique to the dst (need to be uninstalled)
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
-
-# Remove temp files
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-src.txt"
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-dst.txt"
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-uniq.txt"
-
-# If necessary, replace payloads that already exist
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt" | while read sv_PayloadFileName
-do
-  iv_SrcFileEpoch=$(stat -f "%m" "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}")
-  iv_DstFileEpoch=$(stat -f "%m" "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}")
-  if [ ${iv_SrcFileEpoch} -ne ${iv_DstFileEpoch} ]
-  then
-    # We need to uninstall then re-install this payload
-    echo "${sv_PayloadFileName}" >> "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
-    echo "${sv_PayloadFileName}" >> "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
-  else
-    # The payload is not newer than the existing payload
-    rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}"
-  fi
-done
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-replace.txt"
-
-# ---
-
-# uninstall payloads
-rm -fR "${sv_ConfigDirPath}/DelayedUninstall"
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt" | while read sv_PayloadFileName
-do
-  sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
-  then
-    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}" "${sv_GPOuser}"
-    if [ "$?" = "0" ]
-    then
-      rm -f "${sv_ConfigDirPath}/ADPayload/${sv_PayloadFileName}"
-    else
-      mkdir -p "${sv_ConfigDirPath}/DelayedUninstall"
-      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/DelayedUninstall/"
-
-      if test -n "${sv_GPOuser}"
-      then
-        # The user will have to be able to delete the payload after install/uninstall
-        chown -R "${sv_GPOuser}":admin "${sv_ConfigDirPath}/DelayedUninstall"
-        chmod -R 770 "${sv_ConfigDirPath}/DelayedUninstall"
-        
-        # installing/uninstalling mobileconfigs for other users, is not supported prior to 10.11
-        if [ "${sv_PayloadFileExt}" = "mobileconfig" ]
-        then
-          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
-          then
-            # The user will have to be able to uninstall the payload
-            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${sv_ConfigDirPath}/DelayedUninstall/${sv_PayloadFileName}"
-          fi
-        fi
-      fi
-      
-    fi
-  fi
-done
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-uninstall.txt"
-
-# ---
-
-# install payloads
-rm -fR "${sv_ConfigDirPath}/DelayedInstall"
-cat "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt" | while read sv_PayloadFileName
-do
-  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install
-  then
-    /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_GPOuser}"
-    if [ "$?" = "0" ]
-    then
-      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/ADPayload/"
-    else
-      mkdir -p "${sv_ConfigDirPath}/DelayedInstall"
-      mv "${LW_sv_ThisScriptTempDirPath}/ADpayload/${sv_PayloadFileName}" "${sv_ConfigDirPath}/DelayedInstall/"
-
-      if test -n "${sv_GPOuser}"
-      then
-        # The user will have to be able to delete the payload after install/uninstall
-        chown -R "${sv_GPOuser}":admin "${sv_ConfigDirPath}/DelayedInstall"
-        chmod -R 770 "${sv_ConfigDirPath}/DelayedInstall"
-        
-        # installing/uninstalling mobileconfigs for other users, is not supported prior to 10.11
-        if [ "${sv_PayloadFileExt}" = "mobileconfig" ]
-        then
-          if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
-          then
-            # The user will have to be able to uninstall the payload
-            /usr/libexec/PlistBuddy -c "Delete ':PayloadRemovalDisallowed'" "${sv_ConfigDirPath}/DelayedInstall/${sv_PayloadFileName}"
-          fi
-        fi
-      fi
-
-    fi
-  fi
-done
-rm -f "${LW_sv_ThisScriptTempDirPath}/ADpayload-install.txt"
-
-# ---
-
-# delete the remaining temporary files
-rm -fR "${LW_sv_ThisScriptTempDirPath}/ADpayload"
-
-# ---
-
-# Release the semaphore
-rm -f "${sv_SemaphoreFilePath}"
 
 # Remove temporary files
 rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+
+exit 0

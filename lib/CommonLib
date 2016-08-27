@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -25,9 +25,9 @@
 #  LW_bv_LogIsActiveStatus               - Whether the log is currently active (true/false)
 #
 #  LW_sv_BinDirPath                      - Path to binaries such as rsync or CocoaDialog
-#  LW_sv_ConfigDirPath                   - Path to main LabWarden config files
+#  LW_sv_SettingsDirPath                 - Path to main LabWarden settings files
 #
-#  LW_sv_ThisScriptStartEpoch            - When the script started running
+#  LW_iv_ThisScriptStartEpoch            - When the script started running
 #  LW_sv_ThisScriptFilePath              - Full source path of running script
 #  LW_sv_ThisScriptDirPath               - Directory location of running script
 #  LW_sv_ThisScriptFileName              - filename of running script
@@ -87,7 +87,7 @@
 #  LW_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
 #  LW_sf_ResolveFilename <fileuri>                                 - Resolve a file URI to a local path (downloading the file if necessary)
 #  LW_nf_QuickExit                                                 - Quickly exit a script
-#  LW_nf_TriggerEvent <config> <eventHistory> [OptionalParam]      - Internal private function
+#  LW_nf_TriggerEvent <eventHistory> <event> [OptionalParam]       - Internal private function
 #
 #  Key:
 #    LW_ - LabWarden global variable
@@ -105,15 +105,9 @@
 
 LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
 
-LW_sv_LabWardenVersion="1.0.92"
+LW_sv_LabWardenVersion="1.0.93"
 
 # ---
-
-# The point at which we should force refresh the group policy config
-iv_GPConfigMaxAgeHours=48
-
-# The point at which we should rebuild the group policy cache
-iv_GPCacheMaxAgeHours=24
 
 LW_iv_LogMaxLength=250000
 
@@ -125,7 +119,7 @@ LW_bv_LogIsActiveStatus=${LW_bv_LogIsActiveDefault}
 # ---
 
 # Take a note when this script started running
-LW_sv_ThisScriptStartEpoch=$(date -u "+%s")
+LW_iv_ThisScriptStartEpoch=$(date -u "+%s")
 
 # -- Begin Function Definition --
 
@@ -600,7 +594,7 @@ LW_sf_ResolveFilename()   # fileuri - if fileuri ends in a / it is assumed to be
   echo "${sv_DstFilePath}"
 }
 
-LW_nf_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
+LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
 {
   local bv_EventHasPolicies
   local iv_DoesTriggerCount
@@ -638,7 +632,7 @@ LW_nf_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
     if test -n "${LW_sv_LoggedInUserName}"
     then
       # Run through the user policies
-      sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_LoggedInUserName}"
+      sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${LW_sv_LoggedInUserName}"
       iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
       for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
       do
@@ -665,7 +659,7 @@ LW_nf_TriggerEvent() # <eventHistory> <event> <LoggedInUserName> [OptionalParam]
     fi
 
     # Run through the workstation policies
-    sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+    sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
     iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
     for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
     do
@@ -853,17 +847,18 @@ then
     fi
   fi
 
-fi
+  # Where would the user home normally be if it were local
+  if [ "${LW_sv_LoggedInUserName}" = "root" ]
+  then
+    LW_sv_LoggedInUserLocalHomeDirPath="/var/root"
 
-# Where would the user home normally be if it were local
-if [ "${LW_sv_LoggedInUserName}" = "root" ]
-then
-  LW_sv_LoggedInUserLocalHomeDirPath="/var/root"
-
-else
-  LW_sv_LoggedInUserLocalHomeDirPath="/Users/${LW_sv_LoggedInUserName}"
+  else
+    LW_sv_LoggedInUserLocalHomeDirPath="/Users/${LW_sv_LoggedInUserName}"
     
+  fi
+
 fi
+
 
 # -- Decide various folder locations
 
@@ -904,13 +899,13 @@ LW_sv_ADComputerName=$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||")
 # ---
 
 # Decide where the config/pref/log files go
-LW_sv_ConfigDirPath="/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}"
+LW_sv_SettingsDirPath="/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}"
 
 if [ "${LW_sv_ThisUserName}" = "root" ]
 then
-  mkdir -p "${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  mkdir -p "${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
   LW_sv_ThisUserLogDirPath="/Library/Logs/${LW_sv_LabWardenSignature}"
-  LW_sv_ThisUserPrefDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  LW_sv_ThisUserPrefDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
 
 else
   LW_sv_ThisUserLogDirPath="${LW_sv_LoggedInUserHomeDirPath}/Library/Logs/${LW_sv_LabWardenSignature}"

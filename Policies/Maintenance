@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Run a system Maintenance
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Triggered by the following events:
 #   LoginWindow     (as root)
@@ -17,7 +17,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 if [ $# -eq 0 ]
 then
@@ -99,8 +99,8 @@ Nf_GetOpeningHours()   # messagetxt
   done
 
   # Find current open time (before now)
-  iv_ThisZerohourEpoch=$(date -r ${LW_sv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
-  while [ $((${LW_sv_ThisScriptStartEpoch} - ${iv_ThisZerohourEpoch})) -lt 604800 ]
+  iv_ThisZerohourEpoch=$(date -r ${LW_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+  while [ $((${LW_iv_ThisScriptStartEpoch} - ${iv_ThisZerohourEpoch})) -lt 604800 ]
   do
     iv_ThisDayNum=$(date -r ${iv_ThisZerohourEpoch} "+%w")
     sv_ThisOffsetTimeString=${sv_OpenTime[${iv_ThisDayNum}]}
@@ -108,7 +108,7 @@ Nf_GetOpeningHours()   # messagetxt
     then
       iv_ThisOffsetSecs=$(($(echo "${sv_ThisOffsetTimeString}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
       iv_ThisOffsetEpoch=$((${iv_ThisZerohourEpoch}+${iv_ThisOffsetSecs}))
-      if [ ${iv_ThisOffsetEpoch} -lt ${LW_sv_ThisScriptStartEpoch} ]
+      if [ ${iv_ThisOffsetEpoch} -lt ${LW_iv_ThisScriptStartEpoch} ]
       then
         iv_CurrOpenEpoch=${iv_ThisOffsetEpoch}
         break;
@@ -176,7 +176,7 @@ Nf_GetOpeningHours()   # messagetxt
     LW_nf_logmessage "NOTE, NextOpen $(date -r ${iv_NextOpenEpoch} "+%Y%m%d-%H:%M.%S")"
   
     # Now we have to schedule a power on to allow for future Maintenance
-    if [ ${LW_sv_ThisScriptStartEpoch} -lt ${iv_CurrCloseEpoch} ]
+    if [ ${LW_iv_ThisScriptStartEpoch} -lt ${iv_CurrCloseEpoch} ]
     then
       # we are somewhere between opening time and closing time
       iv_MaintenanceStartEpoch=${iv_CurrCloseEpoch}
@@ -274,44 +274,59 @@ Nf_CheckWorkingHoursUserAccess()
   local iv_RemainingSecs
   local iv_JobID
   
-  # Log Users off out of hours. Note, we dont ever log the admin users off
-  if [ "${LW_bv_LoggedInUserIsAdmin}" = "false" ]
-  then
-    iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrCloseEpoch")
-    if test -n "${iv_CurrCloseEpoch}"
-    then
-      bv_StrictWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StrictWorkingHours")
-      if [ "${bv_StrictWorkingHours}" = "true" ]
-      then
-        iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:LogoutWarningSecs")
-        if test -z "${iv_LogoutWarningSecs}"
-        then
-          iv_LogoutWarningSecs=600
-        fi
-    
-        iv_RemainingSecs=$((${iv_CurrCloseEpoch}-${LW_sv_ThisScriptStartEpoch}))
-    
-        if [ ${iv_RemainingSecs} -gt ${iv_LogoutWarningSecs} ] 
-        then
-          LW_nf_logmessage "NOTE, User will not be logged off for a while."
-        else
-          if [ ${iv_RemainingSecs} -gt 0 ] 
-          then
-            LW_nf_logmessage "NOTE, User warned about impending out of hours force logout with ${iv_RemainingSecs} seconds remaining."
-            LW_nf_ShowNotification "WARNING" "Closing time approaches. The system will log you off in about ${iv_RemainingSecs} seconds."
-        
-          else
-            LW_nf_logmessage "NOTE, User out of hours force logout by system."
-            LW_nf_ShowNotification "WARNING" "No out of hours access. The system is logging you off."
-  
-            # cycle through usual apps and kill them dead (unsaved changes will be lost)
-            ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read iv_JobID
-            do
-              kill ${iv_JobID}
-            done
+  # Log Users off out of hours
 
-            # applescript to log out gracefully
-            /usr/bin/osascript -e 'tell application "loginwindow" to «event aevtrlgo»'
+  # Note, we dont log users off when off-network
+  if [ "${LW_sv_ADDomainNameDNS}" != "${LW_sv_NetworkServiceDHCPOption15}" ]
+  then
+    LW_nf_logmessage "NOTE, out of hours restrictions ignored (not on ${LW_sv_ADDomainNameFlat} network)."
+    
+  else
+    # Note, we dont ever log the admin users off
+    if [ "${LW_bv_LoggedInUserIsAdmin}" = "true" ]
+    then
+      LW_nf_logmessage "NOTE, out of hours restrictions ignored (user is admin)."
+      
+    else
+      iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrCloseEpoch")
+      if test -n "${iv_CurrCloseEpoch}"
+      then
+        bv_StrictWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StrictWorkingHours")
+        if [ "${bv_StrictWorkingHours}" = "false" ]
+        then
+          LW_nf_logmessage "NOTE, out of hours restrictions ignored (policy not strictly enforced)."
+          
+        else
+          iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:LogoutWarningSecs")
+          if test -z "${iv_LogoutWarningSecs}"
+          then
+            iv_LogoutWarningSecs=600
+          fi
+    
+          iv_RemainingSecs=$((${iv_CurrCloseEpoch}-${LW_iv_ThisScriptStartEpoch}))
+    
+          if [ ${iv_RemainingSecs} -gt ${iv_LogoutWarningSecs} ] 
+          then
+            LW_nf_logmessage "NOTE, User will not be logged off for a while."
+          else
+            if [ ${iv_RemainingSecs} -gt 0 ] 
+            then
+              LW_nf_logmessage "ATTENTION, User warned about impending out of hours force logout with ${iv_RemainingSecs} seconds remaining."
+              LW_nf_ShowNotification "WARNING" "Closing time approaches. The system will log you off in about ${iv_RemainingSecs} seconds."
+        
+            else
+              LW_nf_logmessage "ATTENTION, User out of hours force logout by system."
+              LW_nf_ShowNotification "WARNING" "No out of hours access. The system is logging you off."
+  
+              # cycle through usual apps and kill them dead (unsaved changes will be lost)
+              ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read iv_JobID
+              do
+                kill ${iv_JobID}
+              done
+
+              # applescript to log out gracefully
+              /usr/bin/osascript -e 'tell application "loginwindow" to «event aevtrlgo»'
+            fi
           fi
         fi
       fi
@@ -329,20 +344,14 @@ LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam}
 case ${sv_EventName} in
     
 LoginWindow)
-  # Take a note of the Policy call
-  LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
-
   # Setup Maintenance options
-  LW_nf_logmessage "ATTENTION, calculating out of hours restrictions and next update time."
+  LW_nf_logmessage "NOTE, calculating out of hours restrictions and next update time."
   Nf_GetOpeningHours
 
   LW_nf_QuickExit "NOTE, policy aborted: ${sv_PolicyName} is not ready to run at this time."
   ;;
   
 LoginWindowIdle)
-  # Take a note of the Policy call
-  LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
-
   bv_PolicyExecuted="false"
   bv_WithinWorkingHours="true"
   
@@ -350,7 +359,7 @@ LoginWindowIdle)
   if test -z "${iv_CurrCloseEpoch}"
   then
     LW_nf_logmessage "ATTENTION, working Hours Closing time not set"
-    LW_nf_logmessage "ATTENTION, recalculating Working Hours"
+    LW_nf_logmessage "NOTE, recalculating Working Hours"
     Nf_GetOpeningHours
   fi
   
@@ -358,7 +367,7 @@ LoginWindowIdle)
   iv_MaintenanceAgeMaxDays=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:MaintenanceAgeMaxDays")
   if test -n "${iv_MaintenanceAgeMaxDays}"
   then
-    iv_MaintenanceAgeSecs=$((${LW_sv_ThisScriptStartEpoch}-${iv_LastMaintenanceEpoch}))
+    iv_MaintenanceAgeSecs=$((${LW_iv_ThisScriptStartEpoch}-${iv_LastMaintenanceEpoch}))
     iv_MaintenanceAgeDays=$((${iv_MaintenanceAgeSecs}/60/60/24))
     LW_nf_logmessage "NOTE, last Maintenance completed approximately ${iv_MaintenanceAgeDays} days ago."
 
@@ -376,7 +385,7 @@ LoginWindowIdle)
       LW_nf_logmessage "ATTENTION, working Hours Closing time not set"
 
     else
-      if [ ${LW_sv_ThisScriptStartEpoch} -lt ${iv_CurrCloseEpoch} ]
+      if [ ${LW_iv_ThisScriptStartEpoch} -lt ${iv_CurrCloseEpoch} ]
       then
         LW_nf_logmessage "NOTE, within Working Hours"
         
@@ -388,7 +397,7 @@ LoginWindowIdle)
           LW_nf_logmessage "ATTENTION, working Hours Next Open time not set"
     
         else
-          if [ ${LW_sv_ThisScriptStartEpoch} -gt ${iv_NextOpenEpoch} ]
+          if [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_NextOpenEpoch} ]
           then
             LW_nf_logmessage "NOTE, recalculating Working Hours"
             Nf_GetOpeningHours
@@ -410,17 +419,23 @@ LoginWindowIdle)
       fi
     fi
   fi
+
+  # Don't run if we are not on the domain network
+  if [ "${LW_sv_ADDomainNameDNS}" != "${LW_sv_NetworkServiceDHCPOption15}" ]
+  then
+    bv_PolicyExecuted="false"
+  fi
   
   if [ "${bv_PolicyExecuted}" = "true" ]
   then
     # Take a note of when we ran the policy
-    LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_sv_ThisScriptStartEpoch}"
+    LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
           
     # Perform the Maintenance
     /usr/local/LabWarden/util/Maintenance
 
     # Restart after a successful update
-    LW_nf_RestartNow "ATTENTION, policies auto-updated - we should reboot."
+    LW_nf_RestartNow "ATTENTION, maintenance complete - we should reboot."
 
   else
     # Check if we should shutdown
@@ -461,22 +476,16 @@ LoginWindowIdle)
   ;;
   
 UserAtDesktop)
-  # Take a note of the Policy call
-  LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
-
   # Log Users off out of hours. Note, we dont ever log the admin users off
-  LW_nf_logmessage "ATTENTION, checking time restrictions as user '${LW_sv_ThisUserName}'"
+  LW_nf_logmessage "NOTE, checking time restrictions as user '${LW_sv_ThisUserName}'"
   Nf_CheckWorkingHoursUserAccess
 
   LW_nf_QuickExit "NOTE, policy aborted: ${sv_PolicyName} is not ready to run at this time."
   ;;
   
 UserPoll)
-  # Take a note of the Policy call
-  LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
-
   # Log Users off out of hours. Note, we dont ever log the admin users off
-  LW_nf_logmessage "ATTENTION, checking time restrictions as user '${LW_sv_ThisUserName}'"
+  LW_nf_logmessage "NOTE, checking time restrictions as user '${LW_sv_ThisUserName}'"
   Nf_CheckWorkingHoursUserAccess
 
   LW_nf_QuickExit "NOTE, policy aborted: ${sv_PolicyName} is not ready to run at this time."

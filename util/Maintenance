@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a maintenance action (workstation update)
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
 #   /usr/local/LabWarden/util/Maintenance
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.93"
 
 # ---
 
@@ -78,7 +78,7 @@ LW_nf_logmessage "ATTENTION, running ${LW_sv_ThisScriptFileName} version ${sv_Co
 sv_PolicyName="${LW_sv_ThisScriptName}"
 
 # Where we find the config
-sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
 
 # ---
 
@@ -89,35 +89,39 @@ then
 
 else
   sv_UpdateExeURI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments:0")"
-  sv_UpdateExeFilePath=$(LW_sf_ResolveFilename "${sv_UpdateExeURI}")
-  if test -z "${sv_UpdateExeFilePath}"
+  if test -n "${sv_UpdateExeURI}"
   then
-    # Its possible that we are assuming the lib directory
-    sv_UpdateExeFilePath="/usr/local/LabWarden/lib/${sv_UpdateExeURI}"
-  fi
-  if !test -e "${sv_UpdateExeFilePath}"
-  then
-    LW_nf_logmessage "ATTENTION, update script does not exist (${sv_UpdateExeFilePath})"
-
-  else
-    if !test -x "${sv_UpdateExeFilePath}"
+    sv_UpdateExeFilePath=$(LW_sf_ResolveFilename "${sv_UpdateExeURI}")
+    if ! test -e "${sv_UpdateExeFilePath}"
     then
-      chown root:wheel "${sv_UpdateExeFilePath}"
-      chmod u+x "${sv_UpdateExeFilePath}"
+      # Its possible that we are assuming the lib directory
+      sv_UpdateExeFilePath="/usr/local/LabWarden/lib/${sv_UpdateExeURI}"
     fi
-    for (( iv_UpdateArgIndex=1; iv_UpdateArgIndex<${iv_UpdateArgCount}; iv_UpdateArgIndex++ ))
-    do
-      sv_UpdateExeFilePath="${sv_UpdateExeFilePath} '""$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments:${iv_UpdateArgIndex}")""'"
-    done
 
-    # Do a software update
-    LW_nf_logmessage "ATTENTION, updating workstation software (${sv_UpdateExeFilePath})"
-    eval "${sv_UpdateExeFilePath}" | tee -a "${LW_sv_ThisUserLogDirPath}/LabWarden.log"
+    if ! test -e "${sv_UpdateExeFilePath}"
+    then
+      LW_nf_logmessage "ATTENTION, update script does not exist (${sv_UpdateExeFilePath})"
+
+    else
+      if ! test -x "${sv_UpdateExeFilePath}"
+      then
+        chown root:wheel "${sv_UpdateExeFilePath}"
+        chmod u+x "${sv_UpdateExeFilePath}"
+      fi
+      for (( iv_UpdateArgIndex=1; iv_UpdateArgIndex<${iv_UpdateArgCount}; iv_UpdateArgIndex++ ))
+      do
+        sv_UpdateExeFilePath="${sv_UpdateExeFilePath} '""$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments:${iv_UpdateArgIndex}")""'"
+      done
+
+      # Do a software update
+      LW_nf_logmessage "ATTENTION, updating workstation software (${sv_UpdateExeFilePath})"
+      eval "${sv_UpdateExeFilePath}" | tee -a "${LW_sv_ThisUserLogDirPath}/LabWarden.log"
+    fi
   fi
 fi
 
 # Take a note of when we ran the maintenance
-LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_sv_ThisScriptStartEpoch}"
+LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
 
 sv_ADpath=$(dscl 2>/dev/null localhost -read "/Search/Computers/${LW_sv_ADTrustAccount}" distinguishedName | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${LW_sv_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
 if test -n "${sv_ADpath}"
@@ -131,17 +135,9 @@ then
   /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "$(echo "${sv_ADpath}" | cut -d"," -f1)" -set2 -2 "$(echo "${sv_ADpath}" | cut -d"," -f2)" -set3 -3 "$(echo "${sv_ADpath}" | cut -d"," -f3-)"
 fi
 
-# Flush any cached group policy info
-LW_nf_logmessage "ATTENTION, flushing group policies (via gpupdate)."
-/usr/local/LabWarden/util/gpupdate "FLUSHCACHE"
- 
-# Do a workstation group policy update
-LW_nf_logmessage "ATTENTION, updating workstation group policies (via gpupdate)."
-/usr/local/LabWarden/util/gpupdate
- 
-# Do a user group policy update
-LW_nf_logmessage "ATTENTION, updating user group policies for all users (via gpupdate)."
-/usr/local/LabWarden/util/gpupdate "USERS"
+# Do a full group policy update
+LW_nf_logmessage "ATTENTION, force updating workstation group policies (via gpupdate)."
+/usr/local/LabWarden/util/gpupdate "-force"
  
 LW_nf_logmessage "NOTE, we should reboot now"
 

@@ -238,7 +238,11 @@ rm -fPR "${LW_sv_ThisScriptTempDirPath}"
 # ---
 
 # Notes to self
+# -display cisco CDP INFO
+#  tcpdump -nn -v -i en0 -s 1500 -c 1 'ether[20:2] == 0x2000'
+# -display tcp traffic
+#  nettop -m tcp
 # -display internet traffic
 #  tcpdump -i en0 -n port 80
-# -display traffic to a particular host (which you could pick out of the above output)
+# -display traffic to a particular host (which you could pick out of the above outputs)
 #  tcpdump -i en0 -n host 95.140.226.15

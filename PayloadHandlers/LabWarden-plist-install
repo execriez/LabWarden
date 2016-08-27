@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.93
+# Modified: 21-Aug-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -46,10 +46,10 @@ sv_GPOuser="${2}"
 
 if test -n "${sv_GPOuser}"
 then
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${sv_GPOuser}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${sv_GPOuser}"
   
 else
-  sv_ConfigDirPath="${LW_sv_ConfigDirPath}/${LW_sv_ADComputerName}"
+  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
   
 fi
 
@@ -100,6 +100,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
       fi  
 
       LW_nf_logmessage "ATTENTION, installing config for ${sv_ObjectType} '${sv_ObjectName}'"
+      
       case "${sv_ObjectType}" in
       Printer)
         sv_PrinterName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Name")
