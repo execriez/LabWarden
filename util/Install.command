@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.94
+# Modified: 31-Aug-2016
 #
 #
 # Called as follows:    
@@ -333,7 +333,7 @@ EOF
       fi
       # Note, the Trigger handler re-installs the Login and Logout Hooks 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowIdle.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowPoll.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

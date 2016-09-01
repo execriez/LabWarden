@@ -1991,6 +1991,10 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.94 - 31-Aug-2016
+
+* Fix - A typo in the installer for update 1.0.93 meant that the LoginWindowPoll and LoginWindowIdle events were not installed.
+
 1.0.93 - 20-Aug-2016
 
 * Added SystemPoll, SystemIdle, LoginWindowPoll and UserIdle events. Idle events triggered during poll events - when there has been no user input for over 11 minutes.
