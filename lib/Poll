@@ -2,8 +2,8 @@
 #
 # Short:    Handle a Poll Trigger
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 # Called as follows:    
 #   Poll "System|LoginWindow|User"
@@ -27,8 +27,8 @@ fi
 
 # ---
 
-# The point at which we trigger an idle event (11 minutes)
-iv_IdleTriggerSecs=661
+# The point at which we trigger an idle event (7 minutes)
+iv_IdleTriggerSecs=421
 
 # Get seconds that mac mouse/keyboard is idle - thanks to https://github.com/CLCMacTeam/IdleLogout
 LW_if_UserInteractionIdleSecs()

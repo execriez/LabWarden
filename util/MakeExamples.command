@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 
 # ---
@@ -643,19 +643,19 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "LoginWindow"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:1" "LoginBegin"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:SystemSleep" 0
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:DisplaySleep" 10
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:DiskSleep" 15
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:SystemSleep" 0
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:DisplaySleep" 1
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:DiskSleep" 2
-
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Power:SystemSleep" 0
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Power:DisplaySleep" 10
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:DiskSleep" 3
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:DisplaySleep" 2
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:SystemSleep" 15
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Power:DiskSleep" 15
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:SystemSleep" 12
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:DisplaySleep" 1
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Battery:DiskSleep" 2
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Power:DisplaySleep" 10
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginBegin:Power:SystemSleep" 0
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:DiskSleep" 3
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:DisplaySleep" 2
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Battery:SystemSleep" 0
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:DiskSleep" 15
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:DisplaySleep" 10
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LoginWindow:Power:SystemSleep" 0
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 

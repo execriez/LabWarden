@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 # Called as follows:    
 #   LabWarden-plist-verify <somefile.LabWarden.plist> [user]
@@ -50,7 +50,7 @@ mkdir -p "${sv_ConfigDirPath}"
 # ---
 
 # Verify the LabWarden.plist config
-sv_ObjectUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${sv_PayloadFilePath}")
+sv_ObjectUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':UUID'" "${sv_PayloadFilePath}")
 sv_ObjectName=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Name'" "${sv_PayloadFilePath}")
 sv_ObjectType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Type'" "${sv_PayloadFilePath}")
 
@@ -61,7 +61,7 @@ then
 
 else
 
-  sv_ActiveUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${sv_ConfigDirPath}/LabWarden.plist")
+  sv_ActiveUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_ObjectName}:UUID'" "${sv_ConfigDirPath}/LabWarden.plist")
   if [ "${sv_ObjectUUID}" != "${sv_ActiveUUID}" ]
   then
     LW_nf_QuickExit "A different ${sv_ObjectType} config ${sv_ObjectName} is currently installed"

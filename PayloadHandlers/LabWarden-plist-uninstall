@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 # Called as follows:    
 #   LabWarden-plist-uninstall <somefile.LabWarden.plist> [user]
@@ -129,6 +129,9 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
 
       # Delete the triggers
       /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:TriggeredBy'" "${sv_ConfigDirPath}/LabWarden.plist"
+
+      # Delete the UUID
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:UUID'" "${sv_ConfigDirPath}/LabWarden.plist"
 
     fi
   fi

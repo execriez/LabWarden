@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.94
-# Modified: 31-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -105,7 +105,7 @@
 
 LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
 
-LW_sv_LabWardenVersion="1.0.93"
+LW_sv_LabWardenVersion="1.0.95"
 
 # ---
 

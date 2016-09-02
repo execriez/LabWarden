@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a maintenance action (workstation update)
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 #
 # Called as follows:    
 #   /usr/local/LabWarden/util/Maintenance
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.93"
+sv_CodeVersion="1.0.95"
 
 # ---
 
@@ -122,18 +122,6 @@ fi
 
 # Take a note of when we ran the maintenance
 LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
-
-sv_ADpath=$(dscl 2>/dev/null localhost -read "/Search/Computers/${LW_sv_ADTrustAccount}" distinguishedName | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${LW_sv_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
-if test -n "${sv_ADpath}"
-then
-  # Update the loginWindow Text
-  sv_LoginWindowText="$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||"):$(echo ${sv_ADpath} | sed "s|,| - |g")"
-  sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ":" "\n")
-  /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
-
-  # Update the RemoteDesktop Computer Info Fields #1-3
-  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "$(echo "${sv_ADpath}" | cut -d"," -f1)" -set2 -2 "$(echo "${sv_ADpath}" | cut -d"," -f2)" -set3 -3 "$(echo "${sv_ADpath}" | cut -d"," -f3-)"
-fi
 
 # Do a full group policy update
 LW_nf_logmessage "ATTENTION, force updating workstation group policies (via gpupdate)."

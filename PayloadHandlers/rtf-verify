@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .rtf payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.95
+# Modified: 01-Sep-2016
 
 # ---
 
@@ -55,8 +55,8 @@ PolicyBanner.rtf)
     if test -f "/Library/Security/${sv_PayloadFileName}"
     then
 
-      sv_ExistingShaSum="$(shasum -a 256 "/Library/Security/${sv_PayloadFileName}")"
-      sv_PayloadShaSum="$(shasum -a 256 "${sv_PayloadFilePath}")"
+      sv_ExistingShaSum="$(shasum -a 256 "/Library/Security/${sv_PayloadFileName}" | cut -d" " -f1)"
+      sv_PayloadShaSum="$(shasum -a 256 "${sv_PayloadFilePath}" | cut -d" " -f1)"
       
       if [ "${sv_ExistingShaSum}" != "${sv_PayloadShaSum}" ]
       then

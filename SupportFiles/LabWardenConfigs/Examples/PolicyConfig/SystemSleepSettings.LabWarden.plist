@@ -9,11 +9,11 @@
 			<key>Battery</key>
 			<dict>
 				<key>DiskSleep</key>
-				<integer>2</integer>
+				<integer>3</integer>
 				<key>DisplaySleep</key>
-				<integer>1</integer>
+				<integer>2</integer>
 				<key>SystemSleep</key>
-				<integer>12</integer>
+				<integer>15</integer>
 			</dict>
 			<key>Power</key>
 			<dict>
@@ -30,9 +30,9 @@
 			<key>Battery</key>
 			<dict>
 				<key>DiskSleep</key>
-				<integer>2</integer>
+				<integer>3</integer>
 				<key>DisplaySleep</key>
-				<integer>1</integer>
+				<integer>2</integer>
 				<key>SystemSleep</key>
 				<integer>0</integer>
 			</dict>
@@ -57,6 +57,6 @@
 	<key>Type</key>
 	<string>Policy</string>
 	<key>UUID</key>
-	<string>27B77579-89FC-41EC-B22A-04680E89150D</string>
+	<string>113CE5E9-12C0-4736-9523-061293AB62FB</string>
 </dict>
 </plist>

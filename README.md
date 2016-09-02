@@ -1991,6 +1991,14 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.95 - 01-Sep-2016
+
+* Fixed bugs in rtf-verify, LabWarden-plist-verify and LabWarden-plist-install that meant that some policy updates were ignored. Bug was introduced in update 1.0.93.
+
+* Updated the example SystemSleepSettings policy config to increase the system sleep delay in order to service some idle events before sleep occurs.
+
+* The code that sets the Login window message and Remote Management strings has been moved from Maintenance to gpupdate.
+
 1.0.94 - 31-Aug-2016
 
 * Fix - A typo in the installer for update 1.0.93 meant that the LoginWindowPoll and LoginWindowIdle events were not installed.
