@@ -452,9 +452,11 @@ Policy Scripts can be triggered by the following System events:
 * NetworkDown
 * LoginBegin
 * LogoutEnd
+* LoginWindowPoll
 * LoginWindowIdle
 * LoginWindowRestartOrShutdown
 * SystemPoll
+* SystemIdle
 
 ...and by the following User events:
 
@@ -464,6 +466,7 @@ Policy Scripts can be triggered by the following System events:
 * AppDidLaunch
 * AppDidTerminate
 * UserPoll
+* UserIdle
 * UserLogout
 
 Policy scripts are controlled via an associated configuration file of type .LabWarden.plist that holds script options (As seen in "Quick Demo 3").
@@ -1255,11 +1258,11 @@ This allows different Battery/Power, DiskSleep, DisplaySleep, and SystemSleep op
 				<key>Battery</key>
 				<dict>
 					<key>DiskSleep</key>
-					<integer>2</integer>
+					<integer>3</integer>
 					<key>DisplaySleep</key>
-					<integer>1</integer>
+					<integer>2</integer>
 					<key>SystemSleep</key>
-					<integer>12</integer>
+					<integer>15</integer>
 				</dict>
 				<key>Power</key>
 				<dict>
@@ -1276,9 +1279,9 @@ This allows different Battery/Power, DiskSleep, DisplaySleep, and SystemSleep op
 				<key>Battery</key>
 				<dict>
 					<key>DiskSleep</key>
-					<integer>2</integer>
+					<integer>3</integer>
 					<key>DisplaySleep</key>
-					<integer>1</integer>
+					<integer>2</integer>
 					<key>SystemSleep</key>
 					<integer>0</integer>
 				</dict>
@@ -1991,6 +1994,12 @@ LabWarden makes use of the following tools:
 
 ## History
 
+1.0.96 - 05-Sep-2016
+
+* Fixed bug in the Poll routine that could cause some polled events to be ignored. Bug was introduced in update 1.0.93.
+
+* Minor changes to allow custom payload handlers.
+ 
 1.0.95 - 01-Sep-2016
 
 * Fixed bugs in rtf-verify, LabWarden-plist-verify and LabWarden-plist-install that meant that some policy updates were ignored. Bug was introduced in update 1.0.93.

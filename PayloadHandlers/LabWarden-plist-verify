@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 #
 # Called as follows:    
 #   LabWarden-plist-verify <somefile.LabWarden.plist> [user]
@@ -57,7 +57,7 @@ sv_ObjectType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':Type'" "${sv_Pay
 /usr/libexec/PlistBuddy >/dev/null 2>/dev/null -c "Print ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
 if [ $? -ne 0 ]
 then
-  LW_nf_QuickExit "Config ${sv_ObjectName} is not installed"
+  LW_nf_QuickExit "ATTENTION, config ${sv_ObjectName} is not installed"
 
 else
 
@@ -75,7 +75,10 @@ else
       sv_PrinterName=$(echo $sv_PrinterDesc | tr "-" "_")
       if test -z "$(lpstat 2>/dev/null -a | cut -d" " -f1 | grep -E "^${sv_PrinterName}$")"
       then
-        LW_nf_QuickExit "${sv_ObjectType} config ${sv_ObjectName} is not correctly installed"
+        LW_nf_QuickExit "ATTENTION, ${sv_ObjectType} config ${sv_ObjectName} is not correctly installed"
+        
+      else
+        LW_nf_logmessage "${sv_ObjectType} config ${sv_ObjectName} is already installed"
 
       fi
       ;;
@@ -92,7 +95,7 @@ else
       fi
       if test -z "${sv_PolicyFilePath}"
       then
-        LW_nf_QuickExit "There is no handler script for the ${sv_ObjectType} config ${sv_ObjectName}"
+        LW_nf_QuickExit "ATTENTION, there is no handler script for the ${sv_ObjectType} config ${sv_ObjectName}"
         
       else
         sv_PolicyVersion="$(${sv_PolicyFilePath})"
@@ -100,7 +103,11 @@ else
         sv_ObjectPolicyVersion=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_ObjectName}:LocalPrefs:Version'" "${sv_ConfigDirPath}/LabWarden.plist")
         if [ "${sv_ObjectPolicyVersion}" != "${sv_PolicyVersion}" ]
         then
-          LW_nf_QuickExit "The handler script for the ${sv_ObjectType} config ${sv_ObjectName} has changed from '${sv_ObjectPolicyVersion}' to '${sv_PolicyVersion}'"
+          LW_nf_QuickExit "ATTENTION, the handler script for the ${sv_ObjectType} config ${sv_ObjectName} has changed from '${sv_ObjectPolicyVersion}' to '${sv_PolicyVersion}'"
+
+        else
+          LW_nf_logmessage "${sv_ObjectType} config ${sv_ObjectName} is already installed"
+
         fi
       fi
       ;;

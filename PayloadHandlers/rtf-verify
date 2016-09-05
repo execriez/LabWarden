@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .rtf payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 
 # ---
 
@@ -49,7 +49,7 @@ case ${sv_PayloadFileName} in
 PolicyBanner.rtf)
   if test -n "${sv_GPOuser}"
   then
-    LW_nf_QuickExit "This is not a user payload - ${sv_PayloadFileName}"
+    LW_nf_QuickExit "ATTENTION, this is not a user payload - ${sv_PayloadFileName}"
 
   else
     if test -f "/Library/Security/${sv_PayloadFileName}"
@@ -60,18 +60,21 @@ PolicyBanner.rtf)
       
       if [ "${sv_ExistingShaSum}" != "${sv_PayloadShaSum}" ]
       then
-        LW_nf_QuickExit "The installed ${sv_PayloadFileName} needs updating"
+        LW_nf_QuickExit "ATTENTION, the installed ${sv_PayloadFileName} needs updating"
+        
+      else
+        LW_nf_logmessage "${sv_PayloadFileName} is already installed"
         
       fi
     else
-      LW_nf_QuickExit "${sv_PayloadFileName} is not installed"
+      LW_nf_QuickExit "ATTENTION, ${sv_PayloadFileName} is not installed"
 
     fi
   fi
   ;;
 
   *)
-  LW_nf_QuickExit "I dont know what to do with this payload - ${sv_PayloadFileName}"
+  LW_nf_QuickExit "ATTENTION, I dont know what to do with this payload - ${sv_PayloadFileName}"
 
   ;;
 

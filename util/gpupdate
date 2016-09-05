@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.95"
+sv_CodeVersion="1.0.96"
 
 # ---
 
@@ -411,10 +411,21 @@ then
   ls -1 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
     sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-    if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
+    
+    sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-uninstall"
+    if ! test -e "${sv_HandlerFilePath}"
+    then
+      sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
+      if ! test -e "${sv_HandlerFilePath}"
+      then
+        sv_HandlerFilePath=""
+      fi
+    fi
+
+    if test -n "${sv_HandlerFilePath}"
     then
       LW_nf_logmessage "ATTENTION, uninstalling ${sv_PayloadFileName}"
-      /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
       if [ "$?" = "0" ]
       then
         rm -f "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
@@ -431,27 +442,60 @@ then
   ls -1 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
     sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
-    if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify
+    
+    sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-verify"
+    if ! test -e "${sv_HandlerFilePath}"
     then
-      LW_nf_logmessage "NOTE, verify ${sv_PayloadFileName}"
-      /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify"
+      if ! test -e "${sv_HandlerFilePath}"
+      then
+        sv_HandlerFilePath=""
+      fi
+    fi
+    if test -n "${sv_HandlerFilePath}"
+    then
+      # Verify the payload
+      "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
       if [ "$?" = "0" ]
       then
         rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        
       else
-        if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall
+      
+        sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-uninstall"
+        if ! test -e "${sv_HandlerFilePath}"
         then
-          LW_nf_logmessage "ATTENTION, uninstall ${sv_PayloadFileName}"
-          /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
-          if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install
+          sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
+          if ! test -e "${sv_HandlerFilePath}"
           then
-            LW_nf_logmessage "ATTENTION, install ${sv_PayloadFileName}"
-            /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+            sv_HandlerFilePath=""
+          fi
+        fi
+        if test -n "${sv_HandlerFilePath}"
+        then
+          # Uninstall the payload
+          "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+
+          sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-install"
+          if ! test -e "${sv_HandlerFilePath}"
+          then
+            sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install"
+            if ! test -e "${sv_HandlerFilePath}"
+            then
+              sv_HandlerFilePath=""
+            fi
+          fi
+          if test -n "${sv_HandlerFilePath}"
+          then
+            # Install the payload
+            "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
             if [ "$?" = "0" ]
             then
               rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+              
             else
               LW_nf_logmessage "ERROR, failed to install ${sv_PayloadFileName}"
+              
             fi
           fi
         fi

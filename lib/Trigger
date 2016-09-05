@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -74,6 +74,12 @@ LW_nf_logmessage "ATTENTION, system event: (${sv_EventName})"
 # ---
 
 case "${sv_EventName}" in
+Boot)
+  # Make sure the login hooks are set up
+  sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/LabWarden/lib/LoginHook"
+  sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/LabWarden/lib/LogoutHook"
+  ;;
+
 LoginBegin|UserAtDesktop|LogoutEnd)
   if test -n "${LW_sv_LoggedInUserName}"
   then
@@ -85,10 +91,6 @@ LoginBegin|UserAtDesktop|LogoutEnd)
 NetworkUp)
   if [ "${LW_sv_ThisUserName}" = "root" ]
   then
-    # Make sure the login hooks are set up
-    sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/LabWarden/lib/LoginHook"
-    sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/LabWarden/lib/LogoutHook"
-
     # Update/apply workstation policies (but if already cached, does very little)
     /usr/local/LabWarden/util/gpupdate "-quick"
   fi

@@ -2,8 +2,8 @@
 #
 # Short:    Handle a Poll Trigger
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 #
 # Called as follows:    
 #   Poll "System|LoginWindow|User"
@@ -42,5 +42,14 @@ iv_IdleSecs=$(LW_if_UserInteractionIdleSecs)
 if [ ${iv_IdleSecs} -gt ${iv_IdleTriggerSecs} ]
 then
   # Trigger an Idle event
-  /usr/local/LabWarden/lib/Trigger "${sv_PollName}Idle"
+  /usr/local/LabWarden/lib/Trigger "${sv_PollName}Idle" &
 fi
+
+# ---
+
+# We dont want to quit until the background scripts are finished or they might terminate early
+while [ -n "$(jobs -r)" ]
+do
+  # we don't want to hog the CPU - so lets sleep a while
+  sleep 1
+done

@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.96
+# Modified: 05-Sep-2016
 
 # ---
 
@@ -49,28 +49,26 @@ if test -n "${sv_GPOuser}"
 then
   if test -n "$(/usr/bin/profiles -U "${sv_GPOuser}" -Lv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    # Remove temporary files
-    rm -fPR "${LW_sv_ThisScriptTempDirPath}"
-    
-    # Everything is OK
-    exit 0
-    
+    LW_nf_logmessage "Profile "$(basename ${sv_PayloadFilePath})" is already installed"
+
   else
-    LW_nf_QuickExit "Profile "$(basename ${sv_PayloadFilePath})" is not installed"
+    LW_nf_QuickExit "ATTENTION, profile "$(basename ${sv_PayloadFilePath})" is not installed"
     
   fi  
   
 else
   if test -n "$(/usr/bin/profiles -Pv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    # Remove temporary files
-    rm -fPR "${LW_sv_ThisScriptTempDirPath}"
-    
-    exit 0
+    LW_nf_logmessage "Profile "$(basename ${sv_PayloadFilePath})" is already installed"
     
   else
-    LW_nf_QuickExit "Profile "$(basename ${sv_PayloadFilePath})" is not installed"
+    LW_nf_QuickExit "ATTENTION, profile "$(basename ${sv_PayloadFilePath})" is not installed"
     
   fi  
 fi
 
+# Remove temporary files
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+    
+# Everything is OK
+exit 0
