@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .LabWarden.plist payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.96
-# Modified: 05-Sep-2016
+# Version:  1.0.97
+# Modified: 19-Sep-2016
 #
 # Called as follows:    
 #   LabWarden-plist-verify <somefile.LabWarden.plist> [user]
@@ -90,7 +90,11 @@ else
         sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
         if ! test -e "${sv_PolicyFilePath}"
         then
-          sv_PolicyFilePath=""
+          sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_ObjectName}"
+          if ! test -e "${sv_PolicyFilePath}"
+          then
+            sv_PolicyFilePath=""
+          fi
         fi
       fi
       if test -z "${sv_PolicyFilePath}"

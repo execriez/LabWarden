@@ -2,18 +2,20 @@
 #
 # Short:    Policy script - Create symbolic links in users local home pointing to files/folders in the network home
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.97
+# Modified: 28-Sep-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
 #
 # Called as follows:    
 #   UserRedirLocalHomeToNetwork <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#
+# This is a legacy policy that is replaced by the "UserHomeMakePathRedirections" policy.
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.97"
 
 if [ $# -eq 0 ]
 then

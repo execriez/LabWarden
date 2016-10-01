@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.97
+# Modified: 21-Sep-2016
 #
 
 # ---
@@ -1067,7 +1067,49 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 
 # ---
-sv_PolicyName="UserRedirLocalHomeToNetwork"
+sv_PolicyName="UserHomeMakePathRedirections"
+sv_Tag=""
+
+if test -z "${sv_Tag}"
+then
+  sv_PayloadFileName="${sv_PolicyName}"
+else
+  sv_PayloadFileName="${sv_PolicyName}-${sv_Tag}"
+fi
+
+sv_PayloadUUID=$(uuidgen)
+rm -f "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Name" "${sv_PolicyName}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":UUID" "${sv_PayloadUUID}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Type" "Policy"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "UserLogin"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:1" "UserAtDesktop"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:MakePathRedirections" "true"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsLocal:Path:0" "/Desktop/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsLocal:Path:1" "/Documents/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsLocal:Path:2" "/Movies/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsLocal:Path:3" "/Music/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsLocal:Path:4" "/Pictures/"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:0" "/Library/Application Support/audacity/.audacity.sock"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:1" "/Library/Application Support/CrashReporter/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:2" "/Library/Caches/com.apple.helpd/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:3" "/Library/Calendars/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:4" "/Library/com.apple.nsurlsessiond/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:5" "/Library/Containers/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:6" "/Library/IdentityServices/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:7" "/Library/Keychains/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:8" "/Library/Logs/DiagnosticReports/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:HomeIsOnNetwork:Path:9" "/Library/Messages/"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+# ---
+sv_PolicyName="UserSidebarContent"
 sv_Tag=""
 
 if test -z "${sv_Tag}"
@@ -1086,17 +1128,34 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "UserAtDesktop"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:NetworkHomeLinkName" "_H-Drive"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:0" "/Desktop/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:1" "/Documents/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:2" "/Movies/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:3" "/Music/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:4" "/Pictures/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Replace" "false"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:0:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:0:Label" "All My Files"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:1:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:1:Label" "iCloud"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:Label" "AirDrop"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:URI" "file://HOMEDIR/Desktop"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:3:URI" "file://HOMEDIR/Documents"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:3:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:4:URI" "file://HOMEDIR/Downloads"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:4:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:5:URI" "file://HOMEDIR/Movies"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:5:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:6:URI" "file://HOMEDIR/Music"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:6:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:7:URI" "file://HOMEDIR/Pictures"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:7:Label" ""
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 
 # ---
-sv_PolicyName="UserRedirNetworkHomeToLocal"
+sv_PolicyName="UserDockContent"
 sv_Tag=""
 
 if test -z "${sv_Tag}"
@@ -1113,18 +1172,31 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":UUID" "${sv_PayloadUUID}"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Type" "Policy"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "UserLogin"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "UserAtDesktop"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:0" "/Library/Application Support/audacity/.audacity.sock"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:1" "/Library/Application Support/CrashReporter/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:2" "/Library/Caches/com.apple.helpd/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:3" "/Library/Calendars/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:4" "/Library/com.apple.nsurlsessiond/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:5" "/Library/Containers/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:6" "/Library/IdentityServices/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:7" "/Library/Keychains/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:8" "/Library/Logs/DiagnosticReports/"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:9" "/Library/Messages/"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Replace" "false"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:0:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:0:Label" "Mail"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:1:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:1:Label" "Contacts"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:Label" "Calendar"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:3:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:3:Label" "Notes"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:4:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:4:Label" "Reminders"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:5:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:5:Label" "Messages"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:6:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:6:Label" "FaceTime"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:7:URI" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:7:Label" "App Store"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:URI" "file://HOMEDIR/Downloads"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:Label" ""
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 
@@ -1205,6 +1277,31 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:17" "/Library/Preferences/com.microsoft.office.plist"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:18" "/Library/Preferences/com.microsoft.outlook.office_reminders.plist"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Path:19" "/Library/Preferences/com.microsoft.Outlook.plist"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+# ---
+# Policy that deploys the mounthome.sh script from https://github.com/amsysuk/public_scripts
+# Script should be renamed to "mounthome" and placed in "/usr/local/LabWarden/Policies/custom"
+# The mounthome script has no configurable options so can be used as-is
+sv_PolicyName="mounthome"
+sv_Tag=""
+
+if test -z "${sv_Tag}"
+then
+  sv_PayloadFileName="${sv_PolicyName}"
+else
+  sv_PayloadFileName="${sv_PolicyName}-${sv_Tag}"
+fi
+
+sv_PayloadUUID=$(uuidgen)
+rm -f "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Name" "${sv_PolicyName}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":UUID" "${sv_PayloadUUID}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Type" "Policy"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "UserLogin"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 

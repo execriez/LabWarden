@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.96
-# Modified: 05-Sep-2016
+# Version:  1.0.97
+# Modified: 19-Sep-2016
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.96"
+sv_CodeVersion="1.0.97"
 
 # ---
 
@@ -61,9 +61,9 @@ case "${sv_GPoption}" in
   then
     if test -e "${LW_sv_SettingsDirPath}/Config/Users"
     then
-      ls -1 "${LW_sv_SettingsDirPath}/Config/Users" | while read sv_GPOuser
+      ls -1 "${LW_sv_SettingsDirPath}/Config/Users" | while read sv_KnownUser
       do
-        /usr/local/LabWarden/util/gpupdate "-force" "${sv_GPOuser}"
+        /usr/local/LabWarden/util/gpupdate "-force" "${sv_KnownUser}"
       done
     fi
   fi
@@ -132,6 +132,11 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
     if [ "$?" != "0" ]
     then
       LW_nf_logmessage "ERROR, cannot get ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
+      if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+      then
+        LW_nf_logmessage "ATTENTION, using cached ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field."
+        cat "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+      fi
       
     else
       # LW_nf_logmessage "DEBUG, just read ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."

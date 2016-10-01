@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.96
-# Modified: 05-Sep-2016
+# Version:  1.0.97
+# Modified: 19-Sep-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -645,7 +645,11 @@ LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
             sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_PolicyName}"
             if ! test -e "${sv_PolicyFilePath}"
             then
-              sv_PolicyFilePath=""
+              sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_PolicyName}"
+              if ! test -e "${sv_PolicyFilePath}"
+              then
+                sv_PolicyFilePath=""
+              fi
             fi
           fi
           if test -n "${sv_PolicyFilePath}"
@@ -672,7 +676,11 @@ LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
           sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_PolicyName}"
           if ! test -e "${sv_PolicyFilePath}"
           then
-            sv_PolicyFilePath=""
+            sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_PolicyName}"
+            if ! test -e "${sv_PolicyFilePath}"
+            then
+              sv_PolicyFilePath=""
+            fi
           fi
         fi
         if test -n "${sv_PolicyFilePath}"
@@ -813,7 +821,7 @@ then
   # Get the network defined home directory
   if [ "${LW_bv_LoggedInUserIsLocal}" = "false" ]
   then
-    # - Network user -
+    # - Network account -
 
     # Get UserHomeNetworkURI 
     # ie: smb://yourserver.com/staff/t/testuser

@@ -1622,6 +1622,102 @@ If a server location is specified in **UserDesktopWallpaperURI**, then it is imp
 
 The example policy config should be configured to your own needs.
 
+###UserDockContent
+This policy allows you to set the user Dock and makes use of **dockutil**.
+
+The policy is triggered by an **UserAtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
+
+The config contains two arrays, **Add** and **Remove** that contain the items to add or remove from the users dock, in the form of a **URI** key and a **Label** key.
+
+The **Replace** key determines whether or not an item will be replaced it already exists in the dock.
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>Config</key>
+		<dict>
+			<key>Add</key>
+			<array>
+				<dict/>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Downloads</string>
+				</dict>
+			</array>
+			<key>Remove</key>
+			<array>
+				<dict>
+					<key>Label</key>
+					<string>Mail</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>Contacts</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>Calendar</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>Notes</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>Reminders</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>Messages</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>FaceTime</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>App Store</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+			</array>
+			<key>Replace</key>
+			<false/>
+		</dict>
+		<key>Name</key>
+		<string>UserDockContent</string>
+		<key>TriggeredBy</key>
+		<array>
+			<string>UserAtDesktop</string>
+		</array>
+		<key>Type</key>
+		<string>Policy</string>
+	</dict>
+	</plist>
+
 ###UserKeychainFix
 This policy attempts to fix Keychain issues caused by password reset issues. Users can be locked out of their keychain if they change their password on a PC, or on a workstation that has no access to the keychain in question. 
 
@@ -1668,14 +1764,27 @@ There are no configurable options.
 	/dict>
 	</plist>
 
-###UserRedirLocalHomeToNetwork
-This policy creates symbolic links in a users local home that points to files/folders in their network home. It is only relevant for network accounts where "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility". 
+###UserHomeMakePathRedirections
 
-It is called as the user and triggered by an **UserAtDesktop** event.
+This policy creates symbolic links at a path within a network users home folder that points to files/folders in an "alternative" home. 
 
-The policy creates a single symbolic link at the root of the local home that points to the users network home. The name of this link is defined by the **NetworkHomeLinkName** key.
+With "Force local home directory on startup disk" enabled, the "alternate" home is the network home. For network homes, the alternate home is the local home.
 
-Also, if the account is NOT a mobile account, it will create symbolic links in the users local home that point to items in the users network home. These items are defined by the **Path** array.
+It is called as the user and triggered by the **UserAtDesktop** and **UserLogin** events.
+
+If the **MakePathRedirections** key in the config is set to **false**, then this policy will actively attempt to remove any existing redirections from the user home. This is useful if you have been using folder redirections, and then change your mind.
+
+If the **MakePathRedirections** key in the config is set to **true**, then this policy will act differently, depending on whether or not "Force local home directory on startup disk" is enabled.
+
+If "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility" then it is serviced by the **UserAtDesktop** event.
+
+In this situation the user home is local, so the policy will attempt to create symbolic links at a path within the user local home that point to files/directories in the users network home. These paths are defined in the config by the **Path** array within the **HomeIsLocal** key.
+
+If "Force local home directory on startup disk" is disabled in the "User experience" tab of "Directory Utility" then it is serviced by the **UserLogin** event.
+
+In this situation the user home is on the networkso the policy will attempt to create symbolic links at a path within the user network home that point to files/directories in the users local home. These paths are defined in the config by the **Path** array within the **HomeIsOnNetwork** key.
+
+The policy will never apply path redirections on a mobile user account as this would make no sense.
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1683,21 +1792,41 @@ Also, if the account is NOT a mobile account, it will create symbolic links in t
 	<dict>
 		<key>Config</key>
 		<dict>
-			<key>NetworkHomeLinkName</key>
-			<string>_H-Drive</string>
-			<key>Path</key>
-			<array>
-				<string>/Desktop/</string>
-				<string>/Documents/</string>
-				<string>/Movies/</string>
-				<string>/Music/</string>
-				<string>/Pictures/</string>
-			</array>
+			<key>HomeIsLocal</key>
+			<dict>
+				<key>Path</key>
+				<array>
+					<string>/Desktop/</string>
+					<string>/Documents/</string>
+					<string>/Movies/</string>
+					<string>/Music/</string>
+					<string>/Pictures/</string>
+				</array>
+			</dict>
+			<key>HomeIsOnNetwork</key>
+			<dict>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/audacity/.audacity.sock</string>
+					<string>/Library/Application Support/CrashReporter/</string>
+					<string>/Library/Caches/com.apple.helpd/</string>
+					<string>/Library/Calendars/</string>
+					<string>/Library/com.apple.nsurlsessiond/</string>
+					<string>/Library/Containers/</string>
+					<string>/Library/IdentityServices/</string>
+					<string>/Library/Keychains/</string>
+					<string>/Library/Logs/DiagnosticReports/</string>
+					<string>/Library/Messages/</string>
+				</array>
+			</dict>
+			<key>MakePathRedirections</key>
+			<true/>
 		</dict>
 		<key>Name</key>
-		<string>UserRedirLocalHomeToNetwork</string>
+		<string>UserHomeMakePathRedirections</string>
 		<key>TriggeredBy</key>
 		<array>
+			<string>UserLogin</string>
 			<string>UserAtDesktop</string>
 		</array>
 		<key>Type</key>
@@ -1705,48 +1834,16 @@ Also, if the account is NOT a mobile account, it will create symbolic links in t
 	</dict>
 	</plist>
 
-###UserRedirNetworkHomeToLocal
-This policy creates symbolic links in a users network home that points to files/folders in their local home. It is only relevant for network accounts where "Force local home directory on startup disk" is disabled in the "User experience" tab of "Directory Utility". 
+The example policy config should be configured to your own needs.
 
-It is called as the user and triggered by an **UserLogin** event.
+###UserSideBarContent
+This policy allows you to set the user Dock and makes use of **mysides**.
 
-The policy creates symbolic links in the users network home that point to items in the users local home. These items are defined by the **Path** array.
+The policy is triggered by an **UserAtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Path</key>
-			<array>
-				<string>/Library/Application Support/audacity/.audacity.sock</string>
-				<string>/Library/Application Support/CrashReporter/</string>
-				<string>/Library/Caches/com.apple.helpd/</string>
-				<string>/Library/Calendars/</string>
-				<string>/Library/com.apple.nsurlsessiond/</string>
-				<string>/Library/Containers/</string>
-				<string>/Library/IdentityServices/</string>
-				<string>/Library/Keychains/</string>
-				<string>/Library/Logs/DiagnosticReports/</string>
-				<string>/Library/Messages/</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>UserRedirNetworkHomeToLocal</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserLogin</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
+The config contains two arrays, **Add** and **Remove** that contain the items to add or remove from the users sidebar, in the form of a **URI** key and a **Label** key.
 
-###UserSidebarList
-This policy sets up the users sidebar. It is called as the user and triggered by an **UserAtDesktop** event. This script uses mysides.
-
-The config contains two arrays, **AddItem** and **DeleteItem** that contain the items to add or remove from the users sidebar.
+The **Replace** key determines whether or not an item will be replaced it already exists in the sidebar.
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1754,27 +1851,78 @@ The config contains two arrays, **AddItem** and **DeleteItem** that contain the 
 	<dict>
 		<key>Config</key>
 		<dict>
-			<key>AddItem</key>
+			<key>Add</key>
 			<array>
-				<string>file:///Applications</string>
-				<string>file://HOMEDIR</string>
-				<string>file://HOMEDIR/Desktop</string>
-				<string>file://HOMEDIR/Documents</string>
-				<string>file://HOMEDIR/Downloads</string>
-				<string>file://HOMEDIR/Movies</string>
-				<string>file://HOMEDIR/Music</string>
-				<string>file://HOMEDIR/Pictures</string>
+				<dict/>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Desktop</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Documents</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Downloads</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Movies</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Music</string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string></string>
+					<key>URI</key>
+					<string>file://HOMEDIR/Pictures</string>
+				</dict>
 			</array>
-			<key>DeleteItem</key>
+			<key>Remove</key>
 			<array>
-				<string>All My Files</string>
-				<string>iCloud</string>
-				<string>iCloud Drive</string>
-				<string>AirDrop</string>
+				<dict>
+					<key>Label</key>
+					<string>All My Files</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>iCloud</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
+				<dict>
+					<key>Label</key>
+					<string>AirDrop</string>
+					<key>URI</key>
+					<string></string>
+				</dict>
 			</array>
+			<key>Replace</key>
+			<false/>
 		</dict>
 		<key>Name</key>
-		<string>UserSidebarList</string>
+		<string>UserSidebarContent</string>
 		<key>TriggeredBy</key>
 		<array>
 			<string>UserAtDesktop</string>
@@ -1987,12 +2135,31 @@ LabWarden makes use of the following tools:
 * [AppWarden](https://github.com/execriez/AppWarden/ "AppWarden")
 * [CocoaDialog](https://mstratman.github.io/cocoadialog/ "CocoaDialog")
 * [duti](https://github.com/moretension/duti "duti")
+* [dockutil](https://github.com/kcrawford/dockutil "dockutil")
 * [iHook](https://sourceforge.net/projects/ihook/ "iHook")
 * [mysides](https://github.com/mosen/mysides "mysides")
 * [NetworkStateWarden](https://github.com/execriez/NetworkStateWarden/ "NetworkStateWarden")
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.97 - 28-Sep-2016
+
+* Fixed bug in 'gpupdate'. It did not use the policy cache contents as a failover, if it happened to fail to update a policy from from AD.
+
+* Fixed bug in 'gpupdate'. 'gpupdate -force' occassionally did not update the Computer policies.
+
+* Added the '/Policies/legacy' folder to allow the retirement of out-dated policy scripts.
+
+* Created a new 'UserHomeMakePathRedirections' policy that handles both 'forced local' and network homes. This replaces the now legacy 'UserRedirNetworkHomeToLocal' and 'UserRedirLocalHomeToNetwork' policies. The config includes a new key called 'MakePathRedirections' that can be set to true or false. When true, the policy will create redirections. When false, the policy will remove any existing redirections. This is useful if you have been using folder redirections, and then change your mind.
+
+* Moved the 'UserRedirNetworkHomeToLocal' and 'UserRedirLocalHomeToNetwork' policies into the legacy folder. Existing policy deployments will still work, but you should switch to using 'UserHomeMakePathRedirections' as soon as you are able.
+
+* Added the 'UserSidebarContent' policy. This replaces the older 'UserSidebarList' policy. This newer policy allows sidebar labels. Also, when replacing an existing entry, it removes all items with the specified name - not just the first one it finds.
+
+* Moved the 'UserSidebarList' policy into the legacy folder. Existing policy deployments will still work, but you should switch to using 'UserSidebarContent' as soon as you are able.
+
+* Added the 'UserDockContent' policy. This makes use of dockutil.
 
 1.0.96 - 05-Sep-2016
 

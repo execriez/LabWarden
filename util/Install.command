@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.94
-# Modified: 31-Aug-2016
+# Version:  1.0.97
+# Modified: 19-Sep-2016
 #
 #
 # Called as follows:    
@@ -254,6 +254,10 @@ EOF
     mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
     chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
     chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
+
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
+    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
+    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/lib/Trigger"
     then
