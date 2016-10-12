@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Request/renew computer certificate from certificate authority
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Required for 802.1X authentication
 #
@@ -11,11 +11,11 @@
 #   Boot (as root)
 #
 # Called as follows:    
-#   SystemEstablishComputerCertificate <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   SystemEstablishComputerCertificate <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.93"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -44,11 +44,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -84,12 +89,12 @@ else
     iv_CertStartEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -startdate | cut -f2 -d=)" "+%s")
     iv_CertEndEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -enddate | cut -f2 -d=)" "+%s")
 
-    iv_RenewCertBeforeDays="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:RenewCertBeforeDays")"
+    iv_RenewCertBeforeDays="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:RenewCertBeforeDays")"
 
     if [ $((${iv_CertEndEpoch}-(${iv_RenewCertBeforeDays}*24*60*60))) -gt ${LW_iv_ThisScriptStartEpoch} ]
     then
       # Cert hasn't expired yet
-      iv_RevokeCertBeforeEpoch="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:RevokeCertBeforeEpoch")"
+      iv_RevokeCertBeforeEpoch="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:RevokeCertBeforeEpoch")"
 
       if [ ${iv_CertStartEpoch} -ge ${iv_RevokeCertBeforeEpoch} ]
       then
@@ -103,8 +108,8 @@ else
   if [ "${bv_RenewComputerCert}" = "true" ]
   then
   
-    sv_CertTemplate="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:CertTemplate")"
-    sv_CertAuthURL="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:CertAuthURL")"
+    sv_CertTemplate="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:CertTemplate")"
+    sv_CertAuthURL="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:CertAuthURL")"
 
     # Define a browser user agent
     sv_BrowserAgent="Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.5) Gecko/2008120122 Firefox/3.0.5"
@@ -149,8 +154,8 @@ else
     openssl pkcs12 -export -in "${sv_CertPemFilePath}" -inkey "${iv_CertKeyFilePath}" -out "${sv_CertPk12FilePath}" -name "${LW_sv_ADTrustAccount}" -passout "pass:pass"
 
     # Get the Wi-Fi options
-    sv_SSIDSTR="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SSIDSTR")"
-    sv_ProxyType="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ProxyType")"
+    sv_SSIDSTR="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SSIDSTR")"
+    sv_ProxyType="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ProxyType")"
 
     # Generate some unique uuids for the payloads within the mobileconfig
     sv_ConfigPayloadUUID=$(uuidgen)

@@ -2,18 +2,18 @@
 #
 # Short:    Policy script - Give certain processes access through proxy using workstation credentials
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
 #
 # Called as follows:    
-#   SystemGiveSystemProxyAccess <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   SystemGiveSystemProxyAccess <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -42,11 +42,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -108,24 +113,24 @@ else
   bv_PolicyExecuted="false"
 
   # Give certain processes access to through proxy using workstation credentials
-  iv_ProxyCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy")"
+  iv_ProxyCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy")"
   for (( iv_LoopCount1=0; iv_LoopCount1<${iv_ProxyCount}; iv_LoopCount1++ ))
   do
-    sv_ProxyProtocol="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyProtocol")"
+    sv_ProxyProtocol="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:ProxyProtocol")"
     if test -n "${sv_ProxyProtocol}"
     then
-      sv_ProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyAddress")"
+      sv_ProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:ProxyAddress")"
       if test -n "${sv_ProxyServer}"
       then
-        iv_ProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:ProxyPort")"
+        iv_ProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:ProxyPort")"
         if test -n "${iv_ProxyPort}"
         then
           sv_ProcessList=""
       
-          iv_ProcessCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:Process")"
+          iv_ProcessCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:Process")"
           for (( iv_LoopCount2=0; iv_LoopCount2<${iv_ProcessCount}; iv_LoopCount2++ ))
           do
-            sv_ProcessName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Proxy:${iv_LoopCount1}:Process:${iv_LoopCount2}")"
+            sv_ProcessName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:Process:${iv_LoopCount2}")"
             if test -n "${sv_ProcessName}"
             then
               if test -n "${sv_ProcessList}"

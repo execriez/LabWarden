@@ -2,18 +2,18 @@
 #
 # Short:    Policy script - Restrict certain Application from launching
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   AppWillLaunch (as user)
 #
 # Called as follows:    
-#   AppRestrict <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   AppRestrict <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -42,11 +42,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -106,13 +111,13 @@ AppWillLaunch)
     # Build ExceptionList
     sv_ExceptionList=""
 
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ExceptionList")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ExceptionList")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ExceptionList:${iv_LoopCount}:ApplicationName")"
+      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ExceptionList:${iv_LoopCount}:ApplicationName")"
       if test -n "${sv_ListedAppName}"
       then
-        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ExceptionList:${iv_LoopCount}:ApplicationBundleIdentifier")"
+        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ExceptionList:${iv_LoopCount}:ApplicationBundleIdentifier")"
         if test -n "${sv_ListedAppBundleIdentifier}"
         then
           sv_ExceptionList="${sv_ExceptionList}|^${sv_ListedAppName}/${sv_ListedAppBundleIdentifier}$"
@@ -128,13 +133,13 @@ AppWillLaunch)
     # Build WhiteList
     sv_WhiteList=""
 
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WhiteList")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WhiteList")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WhiteList:${iv_LoopCount}:ApplicationName")"
+      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WhiteList:${iv_LoopCount}:ApplicationName")"
       if test -n "${sv_ListedAppName}"
       then
-        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WhiteList:${iv_LoopCount}:ApplicationBundleIdentifier")"
+        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WhiteList:${iv_LoopCount}:ApplicationBundleIdentifier")"
         if test -n "${sv_ListedAppBundleIdentifier}"
         then
           sv_WhiteList="${sv_WhiteList}|^${sv_ListedAppName}/${sv_ListedAppBundleIdentifier}$"
@@ -149,13 +154,13 @@ AppWillLaunch)
     # Build BlackList
     sv_BlackList=""
 
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:BlackList")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:BlackList")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:BlackList:${iv_LoopCount}:ApplicationName")"
+      sv_ListedAppName="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:BlackList:${iv_LoopCount}:ApplicationName")"
       if test -n "${sv_ListedAppName}"
       then
-        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:BlackList:${iv_LoopCount}:ApplicationBundleIdentifier")"
+        sv_ListedAppBundleIdentifier="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:BlackList:${iv_LoopCount}:ApplicationBundleIdentifier")"
         if test -n "${sv_ListedAppBundleIdentifier}"
         then
           sv_BlackList="${sv_BlackList}|^${sv_ListedAppName}/${sv_ListedAppBundleIdentifier}$"
@@ -172,10 +177,10 @@ AppWillLaunch)
     # Build PathWhiteList
     sv_PathWhiteList=""
 
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:PathWhiteList")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:PathWhiteList")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ListedAppFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:PathWhiteList:${iv_LoopCount}")"
+      sv_ListedAppFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:PathWhiteList:${iv_LoopCount}")"
       if test -n "${sv_ListedAppFilePath}"
       then
         sv_PathWhiteList="${sv_PathWhiteList}|^${sv_ListedAppFilePath}$"
@@ -190,10 +195,10 @@ AppWillLaunch)
     # Build PathBlackList
     sv_PathBlackList=""
 
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:PathBlackList")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:PathBlackList")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ListedAppFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:PathBlackList:${iv_LoopCount}")"
+      sv_ListedAppFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:PathBlackList:${iv_LoopCount}")"
       if test -n "${sv_ListedAppFilePath}"
       then
         sv_PathBlackList="${sv_PathBlackList}|^${sv_ListedAppFilePath}$"
@@ -202,7 +207,7 @@ AppWillLaunch)
     sv_PathBlackList=$(echo "${sv_PathBlackList}" | sed "s/^\|//;s|~/|"$(eval echo ~/)"|g")
 
     # Should we disallow applications running on mounts
-    bv_OnlyAllowLocalApps="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:OnlyAllowLocalApps")"
+    bv_OnlyAllowLocalApps="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:OnlyAllowLocalApps")"
 
     # Do some simple blacklisting/whitelisting of apps
   

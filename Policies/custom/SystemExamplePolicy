@@ -2,8 +2,8 @@
 #
 # Short:    Example System Policy script - A blank canvas
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -11,11 +11,11 @@
 #   ... see associated config 'SystemExamplePolicy.LabWarden.plist'
 #
 # Called as follows:    
-#   SystemExamplePolicy <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   SystemExamplePolicy <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.93"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -53,9 +53,12 @@ fi
 # This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
 # So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
-sv_OptionalParam="${4}"
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -91,7 +94,7 @@ else
   # BEGIN YOUR CODE HERE
   
   # Get a value from the static config
-  bv_ExampleBool="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ExampleBool")"
+  bv_ExampleBool="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ExampleBool")"
 
   if [ "${bv_ExampleBool}" = "true" ]
   then
@@ -99,7 +102,7 @@ else
   fi
   
   # Write a value to the vars 
-  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastRunEpoch" "${LW_iv_ThisScriptStartEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:LastRunEpoch" "${LW_iv_ThisScriptStartEpoch}"
 
   # END YOUR CODE HERE
   # ------------------

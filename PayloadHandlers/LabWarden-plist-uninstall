@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Called as follows:    
 #   LabWarden-plist-uninstall <somefile.LabWarden.plist> [user]
@@ -61,7 +61,12 @@ mkdir -p "${sv_ConfigDirPath}"
 
 sv_ObjectName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Name")
 sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
+sv_ObjectUUID=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":UUID")
 
+sv_ConfigEntryName=${sv_ObjectUUID}
+
+if test -n "${sv_ConfigEntryName}"
+then
   if test -n "${sv_ObjectName}"
   then
     if test -n "${sv_ObjectType}"
@@ -69,6 +74,17 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
   
       LW_nf_logmessage "ATTENTION, uninstalling config for ${sv_ObjectType} '${sv_ObjectName}'"
       
+      # Fix for versions prior to 1.0.98 that stored configs under policy name instead of UUID
+      /usr/libexec/PlistBuddy >/dev/null 2>/dev/null -c "Print ':${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+      if [ $? -ne 0 ]
+      then
+        /usr/libexec/PlistBuddy >/dev/null 2>/dev/null -c "Print ':${sv_ObjectName}:UUID'" "${sv_ConfigDirPath}/LabWarden.plist"
+        if [ $? -eq 0 ]
+        then
+          sv_ConfigEntryName=${sv_ObjectName}
+        fi
+      fi
+
       case "${sv_ObjectType}" in
       Printer)
         # Delete the printer
@@ -83,10 +99,10 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
         ;;
 
       Policy)
-        iv_TriggeredByEventCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ObjectName}:TriggeredBy")"
+        iv_TriggeredByEventCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:TriggeredBy")"
         for (( iv_TriggeredByEventIndex=0; iv_TriggeredByEventIndex<${iv_TriggeredByEventCount}; iv_TriggeredByEventIndex++ ))
         do
-          sv_TriggeredByEventName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ObjectName}:TriggeredBy:${iv_TriggeredByEventIndex}")
+          sv_TriggeredByEventName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:TriggeredBy:${iv_TriggeredByEventIndex}")
           if test -n "${sv_TriggeredByEventName}"
           then
 
@@ -103,7 +119,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
                 while [ ${iv_DoesTriggerIndex} -lt ${iv_DoesTriggerCount} ]
                 do
                   sv_EventDoesTriggerName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerIndex}")
-                  if [ "${sv_EventDoesTriggerName}" = "${sv_ObjectName}" ]
+                  if [ "${sv_EventDoesTriggerName}" = "${sv_ConfigEntryName}" ]
                   then
                     # Remove object from Events DoesTrigger array
                     /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerIndex}'" "${sv_ConfigDirPath}/LabWarden.plist"
@@ -124,17 +140,38 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
         
       esac
 
-      # Delete the config
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:Config'" "${sv_ConfigDirPath}/LabWarden.plist"
+      /usr/libexec/PlistBuddy >/dev/null 2>/dev/null -c "Print ':${sv_ConfigEntryName}:DoesTrigger'" "${sv_ConfigDirPath}/LabWarden.plist"
+      if [ $? -ne 0 ]
+      then
+        # There's no DoesTrigger array, so might as well delete the whole entry
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+        
+      else
+        # Delete everything except the DoesTrigger array
+        
+        # Delete the Type
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:Type'" "${sv_ConfigDirPath}/LabWarden.plist"
 
-      # Delete the triggers
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:TriggeredBy'" "${sv_ConfigDirPath}/LabWarden.plist"
+        # Delete the Name
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:Name'" "${sv_ConfigDirPath}/LabWarden.plist"
 
-      # Delete the UUID
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}:UUID'" "${sv_ConfigDirPath}/LabWarden.plist"
+        # Delete the Config
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:Config'" "${sv_ConfigDirPath}/LabWarden.plist"
+
+        # Delete the Local Prefs
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:LocalPrefs'" "${sv_ConfigDirPath}/LabWarden.plist"
+
+        # Delete the Triggers
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:TriggeredBy'" "${sv_ConfigDirPath}/LabWarden.plist"
+        
+        # Delete the UUID
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}:UUID'" "${sv_ConfigDirPath}/LabWarden.plist"
+        
+      fi
 
     fi
   fi
+fi
 
 # Remove temporary files
 rm -fPR "${LW_sv_ThisScriptTempDirPath}"

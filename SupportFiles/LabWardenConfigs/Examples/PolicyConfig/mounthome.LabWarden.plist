@@ -6,11 +6,11 @@
 	<string>mounthome</string>
 	<key>TriggeredBy</key>
 	<array>
-		<string>UserAtDesktop</string>
+		<string>UserLogin</string>
 	</array>
 	<key>Type</key>
 	<string>Policy</string>
 	<key>UUID</key>
-	<string>5DEE649F-1672-467C-B8A0-1828E438D5F1</string>
+	<string>0F760E61-4771-4221-924F-76CDE3245C6C</string>
 </dict>
 </plist>

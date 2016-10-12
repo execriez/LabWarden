@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .rtf payload
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Called as follows:    
 #   rtf-install <somefile.rtf> [user]
@@ -44,8 +44,18 @@ sv_GPOuser="${2}"
 
 # Install the RTF
 sv_PayloadFileName="$(basename ${sv_PayloadFilePath})"
-case ${sv_PayloadFileName} in
-PolicyBanner.rtf)
+
+if [ "$(echo ${sv_PayloadFileName} | tr "[A-Z]" "[a-z]")" = "policybanner.rtf" ]
+then
+  sv_PayloadFileExt="PolicyBanner-rtf"
+    
+else
+  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+    
+fi
+
+case ${sv_PayloadFileExt} in
+PolicyBanner-rtf)
   if test -n "${sv_GPOuser}"
   then
     LW_nf_QuickExit "I cannot install this payload for a user - ${sv_PayloadFileName}"
@@ -57,8 +67,8 @@ PolicyBanner.rtf)
 
     else
       LW_nf_logmessage "ATTENTION, installing ${sv_PayloadFileName}"
-      rm -f "/Library/Security/${sv_PayloadFileName}"
-      cp "${sv_PayloadFilePath}" "/Library/Security/"
+      rm -f "/Library/Security/PolicyBanner.rtf"
+      cp "${sv_PayloadFilePath}" "/Library/Security/PolicyBanner.rtf"
     fi
   fi
   ;;

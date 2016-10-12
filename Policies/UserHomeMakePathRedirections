@@ -2,15 +2,15 @@
 #
 # Short:    Policy script - Create symbolic links in users home pointing to an alternative home (local or network)
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 28-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   UserLogin (as user)
 #   UserAtDesktop (as user)
 #
 # Called as follows:    
-#   UserHomeMakePathRedirections <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   UserHomeMakePathRedirections <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.97"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -74,11 +74,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -297,7 +302,7 @@ Nf_MakePathRedirections()
   local iv_ObjectCount
   local iv_LoopCount
   
-  sv_DoRedir="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:MakePathRedirections")"
+  sv_DoRedir="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:MakePathRedirections")"
   if [ "${sv_DoRedir}" = "false" ]
   then
     # Config tells us to unmake any existing folder redirections
@@ -362,10 +367,10 @@ Nf_MakePathRedirections()
       # Create the required link list
       rm -f "${LW_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
       touch "${LW_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
-      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_RedirPathConfigKey}:Path")"
+      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_RedirPathConfigKey}:Path")"
       for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
       do
-        sv_ReqdLinkEntry="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_RedirPathConfigKey}:Path:${iv_LoopCount}")"
+        sv_ReqdLinkEntry="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_RedirPathConfigKey}:Path:${iv_LoopCount}")"
         sv_ReqdLinkEntry=$(echo "/${sv_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
         sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
         if test -n "${sv_ReqdLinkFilePath}"

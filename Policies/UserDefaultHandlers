@@ -2,14 +2,14 @@
 #
 # Short:    Policy script - Set default file type handlers for user
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
 #
 # Called as follows:    
-#   UserDefaultHandlers <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   UserDefaultHandlers <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 #
 # I am uncertain as to whether it would be best to have this run as root (for all users)
 # or to keep it user specific. 
@@ -18,7 +18,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -47,11 +47,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -85,18 +90,18 @@ else
     LW_nf_logmessage "ATTENTION, setting default handlers."
   
     # Set default handlers
-    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler")"
+    iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Handler")"
 
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
-      sv_ReqdBundleID="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:BundleID")"
+      sv_ReqdBundleID="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Handler:${iv_LoopCount}:BundleID")"
       if test -n "${sv_ReqdBundleID}"
       then
-        sv_ReqdUTI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:UTI")"
+        sv_ReqdUTI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Handler:${iv_LoopCount}:UTI")"
         if test -n "${sv_ReqdBundleID}"
         then
           LW_bv_LogIsActiveStatus="false"
-          sv_ReqdRole="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:Handler:${iv_LoopCount}:Role")"
+          sv_ReqdRole="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:Handler:${iv_LoopCount}:Role")"
           LW_bv_LogIsActiveStatus=${LW_bv_LogIsActiveDefault}
           if test -n "${sv_ReqdRole}"
           then

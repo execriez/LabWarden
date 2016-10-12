@@ -2,11 +2,11 @@
 #
 # Short:    Payload Handler Script - shrink a .mobileconfig payload down to its bare minimum content
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Called as follows:    
-#   mobileconfig-install <somefile.mobileconfig>
+#   mobileconfig-shrink <somefile.mobileconfig>
 #
 # Outputs the path to the shrunken mobileconfig.
 
@@ -55,8 +55,8 @@ sv_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "
 /usr/libexec/PlistBuddy -c "Set ':PayloadIdentifier' ${sv_PayloadUUID}" "${sv_TempFilePath}"
 
 # Set the PayloadDisplayName to be the DocName
-sv_PayloadDisplayName="${sv_DocName}"
-/usr/libexec/PlistBuddy -c "Set ':PayloadDisplayName' ${sv_PayloadDisplayName}" "${sv_TempFilePath}"
+#sv_PayloadDisplayName="${sv_DocName}"
+#/usr/libexec/PlistBuddy -c "Set ':PayloadDisplayName' ${sv_PayloadDisplayName}" "${sv_TempFilePath}"
 
 iv_Count=0
 while [ 1 ]
@@ -118,7 +118,9 @@ done
 ## Delete the PayloadType (assumes configuration)
 #/usr/libexec/PlistBuddy -c "Delete ':PayloadType'" "${sv_TempFilePath}"
 
-sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_DocFileName}"
+#sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_DocFileName}"
+sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_PayloadUUID}.mobileconfig"
+
 cat "${sv_TempFilePath}" | sed 's|<!DOCTYPE[^>]*>||;s|<?xml[^>]*>||;s|<plist[^>]*>|<plist>|' | tr -d "\t" | tr -d "\n" > "${sv_ShrunkFilePath}"
 rm -f "${sv_TempFilePath}"
 

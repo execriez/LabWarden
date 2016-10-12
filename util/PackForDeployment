@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Pack a payload file for AD deployment
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Called as follows:    
 #   PackForDeployment <somefile>
@@ -80,14 +80,21 @@ fi
 # Shrink the payload if possible
 ls -1 "${sv_TempDirPath}" | while read sv_PayloadFileName
 do
-  sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+  if [ "$(echo ${sv_DocFileName} | tr "[A-Z]" "[a-z]")" = "policybanner.rtf" ]
+  then
+    sv_PayloadFileExt="PolicyBanner-rtf"
+    
+  else
+    sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+    
+  fi
   if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink
   then
     sv_ShrunkPayloadFilePath="$(/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink "${sv_TempDirPath}/${sv_PayloadFileName}")"
     if test -n "${sv_ShrunkPayloadFilePath}"
     then
       rm -f "${sv_TempDirPath}/${sv_PayloadFileName}"
-      cp "${sv_ShrunkPayloadFilePath}" "${sv_TempDirPath}/${sv_PayloadFileName}"
+      cp "${sv_ShrunkPayloadFilePath}" "${sv_TempDirPath}/"
     fi
   fi
 done

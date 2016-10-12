@@ -2,20 +2,20 @@
 #
 # Short:    Policy script - Set up sidebar for user
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 28-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   UserAtDesktop (as user)
 #
 # Called at regular intervals (as user) as follows:    
-#   UserSidebarList <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   UserSidebarList <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 #
 # This is a legacy policy that is replaced by the "UserSidebarContent" policy.
 
 # ---
 
-sv_CodeVersion="1.0.97"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -44,11 +44,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -90,10 +95,10 @@ else
       LW_nf_logmessage "ATTENTION, setting up side bar list."
     
       # Delete SideBar Entries
-      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:DeleteItem")"
+      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:DeleteItem")"
       for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
       do
-        sv_ReqdObjectFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:DeleteItem:${iv_LoopCount}")"
+        sv_ReqdObjectFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:DeleteItem:${iv_LoopCount}")"
 
         # Sanitise the Entry
         sv_ReqdObjectFilePath="$(echo "${sv_ReqdObjectFilePath}" | sed "s|HOMEDIR|"${LW_sv_LoggedInUserHomeDirPath}"|")"
@@ -107,10 +112,10 @@ else
       done
 
       # Add SideBar Entries
-      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AddItem")"
+      iv_ObjectCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:AddItem")"
       for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
       do
-        sv_ReqdObjectFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AddItem:${iv_LoopCount}")"
+        sv_ReqdObjectFilePath="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:AddItem:${iv_LoopCount}")"
 
         # Sanitise the Entry
         sv_ReqdObjectFilePath="$(echo "${sv_ReqdObjectFilePath}" | sed "s|HOMEDIR|"${LW_sv_LoggedInUserHomeDirPath}"|")"

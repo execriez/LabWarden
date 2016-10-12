@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-# Short:    Payload Handler Script - shrink a .LabWarden.plist payload down to its bare minimum content
+# Short:    Payload Handler Script - shrink a PolicyBanner.rtf payload down to its bare minimum content
 # Author:   Mark J Swift
 # Version:  1.0.98
 # Modified: 11-Oct-2016
 #
 # Called as follows:    
-#   mobileconfig-install <somefile.mobileconfig>
+#   policybanner-rtf-shrink <somefile.policybanner.rtf>
 #
-# Outputs the path to the shrunken mobileconfig.
+# Outputs the path to the shrunken policybanner.rtf.
 
 # -- Get some info about this script
 
@@ -26,12 +26,12 @@ sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
 
 # --
 
-# Get the name of the mobileconfig
+# Get the name of the PolicyBanner
 sv_ConfigFilePath="${1}"
 
 if test -z "${sv_ConfigFilePath}"
 then
-  echo "Usage ${sv_ThisScriptFileName} SomeFile.LabWarden.plist"
+  echo "Usage ${sv_ThisScriptFileName} SomeFile.PolicyBanner.rtf"
   exit 0
 fi
 
@@ -47,8 +47,13 @@ cd "${sv_ShrunkDirPath}"
 
 sv_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':UUID'" "${sv_ConfigFilePath}")
 
-sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_PayloadUUID}.LabWarden.plist"
+sv_ShrunkFilePath=$(mktemp "${sv_ShrunkDirPath}/XXXXXXXX.PolicyBanner.rtf")
 
-cat "${sv_ConfigFilePath}" | tr -d "\t" | tr -d "\n" > "${sv_ShrunkFilePath}"
+cat "${sv_ConfigFilePath}" | sed "s|\\\\$|\\\\line |g" | tr -d "\n" | sed "s| \\\\|\\\\|g;s|\\\\line|\\\\\\
+|g" | sed "s|^[ ]*||g" > "${sv_ShrunkFilePath}"
 
-echo "${sv_ShrunkFilePath}"
+sv_MD5=$(cat "${sv_ShrunkFilePath}" | md5)
+
+mv "${sv_ShrunkDirPath}/XXXXXXXX.PolicyBanner.rtf" "${sv_ShrunkDirPath}/${sv_MD5}.PolicyBanner.rtf"
+
+echo "${sv_ShrunkDirPath}/${sv_MD5}.PolicyBanner.rtf"

@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 19-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -69,8 +69,8 @@
 #
 #  LW_sv_ADTrustAccount                  - This is the account used by the workstation for AD services - i.e. workstationname$
 #  LW_sv_ADComputerName                  - i.e. workstationname
-#  LW_sv_ADDomainNameFlat                - i.e. yourdomain.yourcompany.com
-#  LW_sv_ADDomainNameDNS                 - i.e. YOURDOMAIN
+#  LW_sv_ADDomainNameFlat                - i.e. YOURDOMAIN
+#  LW_sv_ADDomainNameDNS                 - i.e. yourdomain.yourcompany.com
 # And when LW_sv_ThisUserName=root, the following global is defined
 #  LW_sv_ADTrustPassword                 - This is the password used by the workstation for AD services
 #
@@ -105,7 +105,7 @@
 
 LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
 
-LW_sv_LabWardenVersion="1.0.96"
+LW_sv_LabWardenVersion="1.0.98"
 
 # ---
 
@@ -604,6 +604,7 @@ LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
   local sv_OptionalParam
   local sv_PolicyFilePath
   local sv_PolicyName
+  local sv_ConfigEntryName
   
   # Get (full) event History
   sv_EventHistory="${1}"
@@ -636,7 +637,45 @@ LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
       iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
       for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
       do
-        sv_PolicyName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+        sv_ConfigEntryName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+        if test -n "${sv_ConfigEntryName}"
+        then
+          sv_PolicyName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Name")
+          if test -n "${sv_PolicyName}"
+          then
+            sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_PolicyName}"
+            if ! test -e "${sv_PolicyFilePath}"
+            then
+              sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_PolicyName}"
+              if ! test -e "${sv_PolicyFilePath}"
+              then
+                sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_PolicyName}"
+                if ! test -e "${sv_PolicyFilePath}"
+                then
+                  sv_PolicyFilePath=""
+                fi
+              fi
+            fi
+            if test -n "${sv_PolicyFilePath}"
+            then
+              # Run script in background
+              "${sv_PolicyFilePath}" "${sv_ConfigDirPath}" "${sv_EventHistory}:${sv_EventName}" "${LW_sv_LoggedInUserName}" "${sv_ConfigEntryName}" "${sv_OptionalParam}" &
+              bv_EventHasPolicies="true"
+            fi
+          fi
+        fi
+      done
+    fi
+
+    # Run through the workstation policies
+    sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
+    iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
+    for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
+    do
+      sv_ConfigEntryName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+      if test -n "${sv_ConfigEntryName}"
+      then
+        sv_PolicyName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Name")
         if test -n "${sv_PolicyName}"
         then
           sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_PolicyName}"
@@ -655,41 +694,11 @@ LW_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
           if test -n "${sv_PolicyFilePath}"
           then
             # Run script in background
-            "${sv_PolicyFilePath}" "${sv_ConfigDirPath}" "${sv_EventHistory}:${sv_EventName}" "${LW_sv_LoggedInUserName}" "${sv_OptionalParam}" &
+            "${sv_PolicyFilePath}" "${sv_ConfigDirPath}" "${sv_EventHistory}:${sv_EventName}" "${LW_sv_LoggedInUserName}" "${sv_ConfigEntryName}" "${sv_OptionalParam}" &
             bv_EventHasPolicies="true"
           fi
         fi
-      done
-    fi
-
-    # Run through the workstation policies
-    sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
-    iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
-    for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
-    do
-      sv_PolicyName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
-      if test -n "${sv_PolicyName}"
-      then
-        sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_PolicyName}"
-        if ! test -e "${sv_PolicyFilePath}"
-        then
-          sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_PolicyName}"
-          if ! test -e "${sv_PolicyFilePath}"
-          then
-            sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_PolicyName}"
-            if ! test -e "${sv_PolicyFilePath}"
-            then
-              sv_PolicyFilePath=""
-            fi
-          fi
-        fi
-        if test -n "${sv_PolicyFilePath}"
-        then
-          # Run script in background
-          "${sv_PolicyFilePath}" "${sv_ConfigDirPath}" "${sv_EventHistory}:${sv_EventName}" "${LW_sv_LoggedInUserName}" "${sv_OptionalParam}" &
-          bv_EventHasPolicies="true"
-        fi
-     fi
+      fi
     done
     
     if [ "${bv_EventHasPolicies}" = "false" ]

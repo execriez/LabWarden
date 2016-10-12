@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 19-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -61,41 +61,70 @@ mkdir -p "${sv_ConfigDirPath}"
 
 sv_ObjectName=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Name")
 sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
+sv_ObjectUUID=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":UUID")
 
+sv_ConfigEntryName=${sv_ObjectUUID}
+
+if test -n "${sv_ConfigEntryName}"
+then
   if test -n "${sv_ObjectName}"
   then
     if test -n "${sv_ObjectType}"
     then
   
-      # Create object
-      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+      # check if we know what to do with the config object type
+      case "${sv_ObjectType}" in
+      Policy)
+        sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
+        if ! test -e "${sv_PolicyFilePath}"
+        then
+          sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
+          if ! test -e "${sv_PolicyFilePath}"
+          then
+            sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_ObjectName}"
+            if ! test -e "${sv_PolicyFilePath}"
+            then
+              sv_PolicyFilePath=""
+            fi
+          fi
+        fi
+        if test -z "${sv_PolicyFilePath}"
+        then
+          LW_nf_QuickExit "ATTENTION, there is no handler script for the ${sv_ObjectType} config ${sv_ObjectName}"
+        fi
+        ;;
+        
+      esac
+      
+      # Check if the entry already exists
+      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
-        # Add a new object
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ObjectName}' dict" "${sv_ConfigDirPath}/LabWarden.plist"
+        # Add a new entry
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ConfigEntryName}' dict" "${sv_ConfigDirPath}/LabWarden.plist"
         if [ $? -ne 0 ]
         then
-          LW_nf_QuickExit "Failed to Add dict ':${sv_ObjectName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
+          LW_nf_QuickExit "Failed to Add dict ':${sv_ConfigEntryName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
         fi
       fi
       
       # Merge config
-      /usr/libexec/PlistBuddy 2>/dev/null -c "Merge '${sv_PayloadFilePath}' ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Merge '${sv_PayloadFilePath}' ':${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
         LW_nf_QuickExit "Failed to Merge '${sv_PayloadFilePath}' into '${sv_ConfigDirPath}/LabWarden.plist'"
       fi
       
-      # Create object
-      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ObjectName}:LocalPrefs'" "${sv_ConfigDirPath}/LabWarden.plist"
+      # Check prefs
+      /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_ConfigEntryName}:LocalPrefs'" "${sv_ConfigDirPath}/LabWarden.plist"
       if [ $? -ne 0 ]
       then
         # Create prefs
-        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ObjectName}:LocalPrefs' dict" "${sv_ConfigDirPath}/LabWarden.plist"
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_ConfigEntryName}:LocalPrefs' dict" "${sv_ConfigDirPath}/LabWarden.plist"
         if [ $? -ne 0 ]
         then
-          LW_nf_QuickExit "Failed to Add dict ':${sv_ObjectName}' to '${sv_ConfigDirPath}/LabWarden.plist'"
+          LW_nf_QuickExit "Failed to Add dict ':${sv_ConfigEntryName}:LocalPrefs' to '${sv_ConfigDirPath}/LabWarden.plist'"
         fi
       fi  
 
@@ -177,26 +206,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
         fi
         ;;
 
-      Policy)
-        sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
-        if ! test -e "${sv_PolicyFilePath}"
-        then
-          sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
-          if ! test -e "${sv_PolicyFilePath}"
-          then
-            sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_ObjectName}"
-            if ! test -e "${sv_PolicyFilePath}"
-            then
-              sv_PolicyFilePath=""
-            fi
-          fi
-        fi
-        if test -n "${sv_PolicyFilePath}"
-        then
-          sv_PolicyVersion="$(${sv_PolicyFilePath})"
-          LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ObjectName}:LocalPrefs:Version" "${sv_PolicyVersion}"
-        fi
-        
+      Policy)        
         iv_TriggeredByEventCount="$(LW_if_GetPlistArraySize "${sv_PayloadFilePath}" ":TriggeredBy")"
         for (( iv_TriggeredByEventIndex=0; iv_TriggeredByEventIndex<${iv_TriggeredByEventCount}; iv_TriggeredByEventIndex++ ))
         do
@@ -230,7 +240,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
             
             iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_PayloadFilePath}" ":${sv_TriggeredByEventName}:DoesTrigger")"
 
-            if test -z "$(/usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_ConfigDirPath}/LabWarden.plist" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_ObjectName}$")"
+            if test -z "$(/usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_ConfigDirPath}/LabWarden.plist" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_ConfigEntryName}$")"
             then
               /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' string" "${sv_ConfigDirPath}/LabWarden.plist"
               if [ $? -ne 0 ]
@@ -239,7 +249,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
               fi
             
               # Set array Value    
-              /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' '${sv_ObjectName}'" "${sv_ConfigDirPath}/LabWarden.plist"
+              /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' '${sv_ConfigEntryName}'" "${sv_ConfigDirPath}/LabWarden.plist"
             
             fi
 
@@ -251,6 +261,7 @@ sv_ObjectType=$(LW_sf_GetPlistProperty "${sv_PayloadFilePath}" ":Type")
           
     fi
   fi
+fi
 
 # Remove temporary files
 rm -fPR "${LW_sv_ThisScriptTempDirPath}"

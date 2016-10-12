@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Run a system Maintenance
 # Author:   Mark J Swift
-# Version:  1.0.93
-# Modified: 21-Aug-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   LoginWindow     (as root)
@@ -12,12 +12,12 @@
 #   UserPoll        (as user)
 #
 # Called as follows:    
-#   Maintenance <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   Maintenance <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 # 
 
 # ---
 
-sv_CodeVersion="1.0.93"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -46,11 +46,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -94,8 +99,8 @@ Nf_GetOpeningHours()   # messagetxt
   # Get the config settings
   for (( iv_LoopCount=0; iv_LoopCount<=6; iv_LoopCount++ ))
   do
-    sv_OpenTime[${iv_LoopCount}]=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:OpeningHours:${iv_LoopCount}:OpenTime")
-    sv_CloseTime[${iv_LoopCount}]=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:OpeningHours:${iv_LoopCount}:CloseTime")
+    sv_OpenTime[${iv_LoopCount}]=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:OpeningHours:${iv_LoopCount}:OpenTime")
+    sv_CloseTime[${iv_LoopCount}]=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:OpeningHours:${iv_LoopCount}:CloseTime")
   done
 
   # Find current open time (before now)
@@ -242,7 +247,7 @@ Nf_GetOpeningHours()   # messagetxt
       # do not poweron for an update within SafetyNetMinutes of the next opening time
       iv_SafeEndEpoch=${iv_MaintenanceEndEpoch}
 
-      iv_SafetyNetMinutes=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SafetyNetMinutes")
+      iv_SafetyNetMinutes=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SafetyNetMinutes")
       if test -n "${iv_SafetyNetMinutes}"
       then
         iv_SafeEndEpoch=$((${iv_SafeEndEpoch}-(${iv_SafetyNetMinutes}*60)))
@@ -261,9 +266,9 @@ Nf_GetOpeningHours()   # messagetxt
     fi
   fi
 
-  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrOpenEpoch" "${iv_CurrOpenEpoch}"
-  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrCloseEpoch" "${iv_CurrCloseEpoch}"
-  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:NextOpenEpoch" "${iv_NextOpenEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:CurrOpenEpoch" "${iv_CurrOpenEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:CurrCloseEpoch" "${iv_CurrCloseEpoch}"
+  LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:NextOpenEpoch" "${iv_NextOpenEpoch}"
 }
 
 Nf_CheckWorkingHoursUserAccess()
@@ -288,16 +293,16 @@ Nf_CheckWorkingHoursUserAccess()
       LW_nf_logmessage "NOTE, out of hours restrictions ignored (user is admin)."
       
     else
-      iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrCloseEpoch")
+      iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:CurrCloseEpoch")
       if test -n "${iv_CurrCloseEpoch}"
       then
-        bv_StrictWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StrictWorkingHours")
+        bv_StrictWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:StrictWorkingHours")
         if [ "${bv_StrictWorkingHours}" = "false" ]
         then
           LW_nf_logmessage "NOTE, out of hours restrictions ignored (policy not strictly enforced)."
           
         else
-          iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:LogoutWarningSecs")
+          iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutWarningSecs")
           if test -z "${iv_LogoutWarningSecs}"
           then
             iv_LogoutWarningSecs=600
@@ -355,7 +360,7 @@ LoginWindowIdle)
   bv_PolicyExecuted="false"
   bv_WithinWorkingHours="true"
   
-  iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:CurrCloseEpoch")
+  iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:CurrCloseEpoch")
   if test -z "${iv_CurrCloseEpoch}"
   then
     LW_nf_logmessage "ATTENTION, working Hours Closing time not set"
@@ -363,8 +368,8 @@ LoginWindowIdle)
     Nf_GetOpeningHours
   fi
   
-  iv_LastMaintenanceEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" 1136073660)
-  iv_MaintenanceAgeMaxDays=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:MaintenanceAgeMaxDays")
+  iv_LastMaintenanceEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:LastMaintenanceEpoch" 1136073660)
+  iv_MaintenanceAgeMaxDays=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:MaintenanceAgeMaxDays")
   if test -n "${iv_MaintenanceAgeMaxDays}"
   then
     iv_MaintenanceAgeSecs=$((${LW_iv_ThisScriptStartEpoch}-${iv_LastMaintenanceEpoch}))
@@ -391,7 +396,7 @@ LoginWindowIdle)
         
       else
         bv_WithinWorkingHours="false"
-        iv_NextOpenEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:NextOpenEpoch")
+        iv_NextOpenEpoch=$(LW_sf_GetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:NextOpenEpoch")
         if test -z "${iv_CurrCloseEpoch}"
         then
           LW_nf_logmessage "ATTENTION, working Hours Next Open time not set"
@@ -429,7 +434,7 @@ LoginWindowIdle)
   if [ "${bv_PolicyExecuted}" = "true" ]
   then
     # Take a note of when we ran the policy
-    LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
+    LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
           
     # Perform the Maintenance
     /usr/local/LabWarden/util/Maintenance
@@ -443,7 +448,7 @@ LoginWindowIdle)
     iv_IdleSecs=$(LW_if_SystemIdleSecs)
     LW_nf_logmessage "NOTE, workstation Idle for ${iv_IdleSecs} secs"
 
-    iv_IdleShutdownSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:IdleShutdownSecs")
+    iv_IdleShutdownSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:IdleShutdownSecs")
     if test -z "${iv_IdleShutdownSecs}"
     then
       LW_nf_logmessage "ATTENTION, idle Shutdown value not set"
@@ -456,7 +461,7 @@ LoginWindowIdle)
         if [ "${bv_WithinWorkingHours}" = "true" ]
         then
           bv_DoShutdown="false"
-          bv_IdleShutdownInWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:IdleShutdownInWorkingHours")
+          bv_IdleShutdownInWorkingHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:IdleShutdownInWorkingHours")
           if [ "${bv_IdleShutdownInWorkingHours}" = "true" ]
           then
             bv_DoShutdown="true"

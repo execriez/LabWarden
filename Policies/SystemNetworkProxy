@@ -2,18 +2,18 @@
 #
 # Short:    Policy script - Set system Network Proxy options
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   NetworkUp     (as root)
 #
 # Called as follows:    
-#   SystemNetworkProxy <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   SystemNetworkProxy <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -42,11 +42,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -96,17 +101,17 @@ else
     exit 0
   fi
 
-  bv_ProxyAutoDiscoveryEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ProxyAutoDiscovery:Enabled")"
+  bv_ProxyAutoDiscoveryEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ProxyAutoDiscovery:Enabled")"
   if [ "${bv_ProxyAutoDiscoveryEnabled}" = "true" ]
   then
     LW_nf_logmessage "NOTE, switching on 'Auto Proxy Discovery'"
     /usr/sbin/networksetup -setproxyautodiscovery "${LW_sv_NetworkServiceInterfaceName}" on
   fi
 
-  bv_AutoProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AutoProxy:Enabled")"
+  bv_AutoProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:AutoProxy:Enabled")"
   if [ "${bv_AutoProxyEnabled}" = "true" ]
   then
-    sv_AutoProxyURL="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:AutoProxy:URL")"
+    sv_AutoProxyURL="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:AutoProxy:URL")"
     if test -n "${sv_AutoProxyURL}"
     then
       LW_nf_logmessage "NOTE, setting 'Automatic Proxy Configuration' to ${sv_AutoProxyURL}"
@@ -115,13 +120,13 @@ else
     fi
   fi
 
-  bv_WebProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WebProxy:Enabled")"
+  bv_WebProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WebProxy:Enabled")"
   if [ "${bv_WebProxyEnabled}" = "true" ]
   then
-    sv_WebProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WebProxy:Address")"
+    sv_WebProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WebProxy:Address")"
     if test -n "${sv_WebProxyServer}"
     then
-      iv_WebProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:WebProxy:Port")"
+      iv_WebProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:WebProxy:Port")"
       if test -n "${iv_WebProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'Web Proxy' to ${sv_WebProxyServer}:${iv_WebProxyPort}"
@@ -131,13 +136,13 @@ else
     fi
   fi
 
-  bv_SecureWebProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SecureWebProxy:Enabled")"
+  bv_SecureWebProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SecureWebProxy:Enabled")"
   if [ "${bv_SecureWebProxyEnabled}" = "true" ]
   then
-    sv_SecureWebProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SecureWebProxy:Address")"
+    sv_SecureWebProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SecureWebProxy:Address")"
     if test -n "${sv_SecureWebProxyServer}"
     then
-      iv_SecureWebProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SecureWebProxy:Port")"
+      iv_SecureWebProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SecureWebProxy:Port")"
       if test -n "${iv_SecureWebProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'Secure Web Proxy' to ${sv_SecureWebProxyServer}:${iv_SecureWebProxyPort}"
@@ -147,13 +152,13 @@ else
     fi
   fi
 
-  bv_StreamingProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StreamingProxy:Enabled")"
+  bv_StreamingProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:StreamingProxy:Enabled")"
   if [ "${bv_StreamingProxyEnabled}" = "true" ]
   then
-    sv_StreamingProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StreamingProxy:Address")"
+    sv_StreamingProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:StreamingProxy:Address")"
     if test -n "${sv_StreamingProxyServer}"
     then
-      iv_StreamingProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:StreamingProxy:Port")"
+      iv_StreamingProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:StreamingProxy:Port")"
       if test -n "${iv_StreamingProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'Secure Streaming Proxy' to ${sv_StreamingProxyServer}:${iv_StreamingProxyPort}"
@@ -163,13 +168,13 @@ else
     fi
   fi
 
-  bv_FTPProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:FTPProxy:Enabled")"
+  bv_FTPProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:FTPProxy:Enabled")"
   if [ "${bv_FTPProxyEnabled}" = "true" ]
   then
-    sv_FTPProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:FTPProxy:Address")"
+    sv_FTPProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:FTPProxy:Address")"
     if test -n "${sv_FTPProxyServer}"
     then
-      iv_FTPProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:FTPProxy:Port")"
+      iv_FTPProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:FTPProxy:Port")"
       if test -n "${iv_FTPProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'FTP Proxy' to ${sv_FTPProxyServer}:${iv_FTPProxyPort}"
@@ -179,13 +184,13 @@ else
     fi
   fi
 
-  bv_SOCKSProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SOCKSProxy:Enabled")"
+  bv_SOCKSProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SOCKSProxy:Enabled")"
   if [ "${bv_SOCKSProxyEnabled}" = "true" ]
   then
-    sv_SOCKSProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SOCKSProxy:Address")"
+    sv_SOCKSProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SOCKSProxy:Address")"
     if test -n "${sv_SOCKSProxyServer}"
     then
-      iv_SOCKSProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:SOCKSProxy:Port")"
+      iv_SOCKSProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:SOCKSProxy:Port")"
       if test -n "${iv_SOCKSProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'SOCKS Proxy' to ${sv_SOCKSProxyServer}:${iv_SOCKSProxyPort}"
@@ -195,13 +200,13 @@ else
     fi
   fi
 
-  bv_GopherProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:GopherProxy:Enabled")"
+  bv_GopherProxyEnabled="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:GopherProxy:Enabled")"
   if [ "${bv_GopherProxyEnabled}" = "true" ]
   then
-    sv_GopherProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:GopherProxy:Address")"
+    sv_GopherProxyServer="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:GopherProxy:Address")"
     if test -n "${sv_GopherProxyServer}"
     then
-      iv_GopherProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:GopherProxy:Port")"
+      iv_GopherProxyPort="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:GopherProxy:Port")"
       if test -n "${iv_GopherProxyPort}"
       then
         LW_nf_logmessage "NOTE, setting 'Gopher Proxy' to ${sv_GopherProxyServer}:${iv_GopherProxyPort}"
@@ -211,7 +216,7 @@ else
     fi
   fi
 
-  sv_ProxyBypassDomains="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:ProxyBypassDomains" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
+  sv_ProxyBypassDomains="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ProxyBypassDomains" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
   if test -n "${sv_ProxyBypassDomains}"
   then
     LW_nf_logmessage "NOTE, setting Proxy Bypass Domains"

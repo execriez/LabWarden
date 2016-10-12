@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 21-Sep-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 
 # ---
@@ -1137,20 +1137,20 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:URI" ""
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:2:Label" "AirDrop"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:0:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:0:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR/Desktop"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:URI" "file://HOMEDIR/Desktop"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:URI" "file://HOMEDIR/Documents"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:3:URI" "file://HOMEDIR/Documents"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:3:URI" "file://HOMEDIR/Downloads"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:3:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:4:URI" "file://HOMEDIR/Downloads"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:4:URI" "file://HOMEDIR/Movies"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:4:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:5:URI" "file://HOMEDIR/Movies"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:5:URI" "file://HOMEDIR/Music"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:5:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:6:URI" "file://HOMEDIR/Music"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:6:URI" "file://HOMEDIR/Pictures"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:6:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:7:URI" "file://HOMEDIR/Pictures"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:7:Label" ""
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 
@@ -1193,10 +1193,10 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:7:URI" ""
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Remove:7:Label" "App Store"
 
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:0:URI" "file://HOMEDIR"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:0:Label" ""
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:URI" "file://HOMEDIR/Downloads"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:1:Label" ""
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:URI" "file://HOMEDIR/Downloads"
-LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Add:2:Label" ""
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 

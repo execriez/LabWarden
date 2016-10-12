@@ -2,19 +2,19 @@
 #
 # Short:    Policy script - Set system sleep options
 # Author:   Mark J Swift
-# Version:  1.0.92
-# Modified: 21-Jul-2016
+# Version:  1.0.98
+# Modified: 11-Oct-2016
 #
 # Triggered by the following events:
 #   LoginWindow (as root)
 #   LoginBegin  (as root)
 #
 # Called as follows:    
-#   SystemSleepSettings <ConfigDir> <EventHistory> <LoggedInUser> <OptionalParam>
+#   SystemSleepSettings <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="1.0.92"
+sv_CodeVersion="1.0.98"
 
 if [ $# -eq 0 ]
 then
@@ -43,11 +43,16 @@ then
   exit 0
 fi
 
-# Get optional user
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
 LW_sv_LoggedInUserName="${3}"
 
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
 # Get optional parameter
-sv_OptionalParam="${4}"
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
 
 # ---
 
@@ -84,37 +89,37 @@ Nf_SetSystemSleepSettings() # Trigger
   # Turn logging off
   LW_bv_LogIsActiveStatus="false"
 
-  iv_PowerSystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:SystemSleep")"
+  iv_PowerSystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Power:SystemSleep")"
   if test -n "${iv_PowerSystemSleepSecs}"
   then
     /usr/bin/pmset -a sleep "${iv_PowerSystemSleepSecs}"
   fi
   
-  iv_PowerDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:DisplaySleep")"
+  iv_PowerDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Power:DisplaySleep")"
   if test -n "${iv_PowerDisplaySleepSecs}"
   then
     /usr/bin/pmset -a displaysleep "${iv_PowerDisplaySleepSecs}"
   fi
   
-  iv_PowerDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Power:DiskSleep")"
+  iv_PowerDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Power:DiskSleep")"
   if test -n "${iv_PowerDiskSleepSecs}"
   then
     /usr/bin/pmset -a disksleep "${iv_PowerDiskSleepSecs}"
   fi
   
-  iv_BatterySystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:SystemSleep")"
+  iv_BatterySystemSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Battery:SystemSleep")"
   if test -n "${iv_BatterySystemSleepSecs}"
   then
     /usr/bin/pmset -b sleep "${iv_BatterySystemSleepSecs}"
   fi
   
-  iv_BatteryDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:DisplaySleep")"
+  iv_BatteryDisplaySleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Battery:DisplaySleep")"
   if test -n "${iv_BatteryDisplaySleepSecs}"
   then
     /usr/bin/pmset -b displaysleep "${iv_BatteryDisplaySleepSecs}"
   fi
   
-  iv_BatteryDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:${sv_Trigger}:Battery:DiskSleep")"
+  iv_BatteryDiskSleepSecs="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:${sv_Trigger}:Battery:DiskSleep")"
   if test -n "${iv_BatteryDiskSleepSecs}"
   then
     /usr/bin/pmset -b disksleep "${iv_BatteryDiskSleepSecs}"

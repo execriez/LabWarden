@@ -303,11 +303,11 @@ def main():
                         # join and print relevant data into a string separated by tabs
                         print '\t'.join((item['tile-data']['file-label'], item['tile-data']['file-data']['_CFURLString'], section, plist_path))
                     except:
-                    	try:
-                    		# join and print relevant data into a string separated by tabs
-                    	    print '\t'.join((item['tile-data']['label'], item['tile-data']['url']['_CFURLString'], section, plist_path))
-                    	except:
-                     		pass
+                        try:
+                            # join and print relevant data into a string separated by tabs
+                            print '\t'.join((item['tile-data']['label'], item['tile-data']['url']['_CFURLString'], section, plist_path))
+                        except:
+                            pass
 
         elif find_label != None: # --find action
             # since we are only reading the plist, make a copy before converting it to be read
@@ -322,12 +322,12 @@ def main():
                             item_found = True
                             print find_label, "was found in", section, "at slot", item_offset+1, "in", plist_path
                     except:
-                    	try:
-                    	    if pl[section][item_offset]['tile-data']['label'] == find_label:
-                    	        item_found = True
-                    	        print find_label, "was found in", section, "at slot", item_offset+1, "in", plist_path
-                    	except:
-                    	    pass
+                        try:
+                            if pl[section][item_offset]['tile-data']['label'] == find_label:
+                                item_found = True
+                                print find_label, "was found in", section, "at slot", item_offset+1, "in", plist_path
+                        except:
+                            pass
             if not item_found:
                 print find_label, "was not found in", plist_path
                 if not all_homes:  # only exit non-zero if we aren't processing all homes, because for allhomes, exit status for find would be irrelevant
@@ -345,7 +345,7 @@ def main():
                 print 'move failed for', move_label, 'in', plist_path
 
         elif add_path != None:  # --add action
-            if add_path.startswith('file://'): # remove 'file://' from any paths so they don't get mixed up with urls
+            if add_path.startswith('file://'): # remove 'file://' from start of path, so its not treated as a url
                 add_path = re.sub('^file://', '', add_path)
 
             if add_path.startswith('~'): # we've got a relative path and relative paths need to be processed by using a path relative to this home directory
@@ -374,7 +374,6 @@ def main():
 
             if tile_type != 'url-tile': # paths can't be relative in dock items
                 real_add_path = os.path.realpath(real_add_path)
-                real_add_path = re.sub('^/', 'file:///', real_add_path) # add 'file://' to paths because this is what the dock does
 
 
             pl = readPlist(plist_path)
@@ -575,13 +574,13 @@ def addItem(pl, add_path, replace_label=None, position=None, before_item=None, a
 
     new_guid = generate_guid()
     if tile_type == 'file-tile':
-        new_item = {'GUID': new_guid, 'tile-data': {'file-data': {'_CFURLString': add_path, '_CFURLStringType': 15},'file-label': label_name, 'file-type': 32}, 'tile-type': tile_type}
+        new_item = {'GUID': new_guid, 'tile-data': {'file-data': {'_CFURLString': add_path, '_CFURLStringType': 0},'file-label': label_name, 'file-type': 32}, 'tile-type': tile_type}
     elif tile_type == 'directory-tile':
         if subprocess.Popen(['/usr/bin/sw_vers', '-productVersion'],
                 stdout=subprocess.PIPE).stdout.read().rstrip().split('.')[1] == '4': # gets the decimal after 10 in sw_vers; 10.4 does not use 10.5 options for stacks
-            new_item = {'GUID': new_guid, 'tile-data': {'directory': 1, 'file-data': {'_CFURLString': add_path, '_CFURLStringType': 15}, 'file-label': label_name, 'file-type': 2 }, 'tile-type': tile_type}
+            new_item = {'GUID': new_guid, 'tile-data': {'directory': 1, 'file-data': {'_CFURLString': add_path, '_CFURLStringType': 0}, 'file-label': label_name, 'file-type': 2 }, 'tile-type': tile_type}
         else:
-            new_item = {'GUID': new_guid, 'tile-data': {'arrangement': arrangement, 'directory': 1, 'displayas': displayas, 'file-data': {'_CFURLString': add_path, '_CFURLStringType': 15}, 'file-label': label_name, 'file-type': 2, 'showas': showas}, 'tile-type': tile_type}
+            new_item = {'GUID': new_guid, 'tile-data': {'arrangement': arrangement, 'directory': 1, 'displayas': displayas, 'file-data': {'_CFURLString': add_path, '_CFURLStringType': 0}, 'file-label': label_name, 'file-type': 2, 'showas': showas}, 'tile-type': tile_type}
 
     elif tile_type == 'url-tile':
         new_item = {'GUID': new_guid, 'tile-data': {'label': label_name, 'url': {'_CFURLString': add_path, '_CFURLStringType': 15}}, 'tile-type': tile_type}
