@@ -2,8 +2,8 @@
 #
 # Short:    Policy script - Set User Experience
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  1.0.99
+# Modified: 13-Oct-2016
 #
 # Triggered by the following events:
 #   Boot (as root)
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.98"
+sv_CodeVersion="1.0.99"
 
 if [ $# -eq 0 ]
 then
@@ -156,6 +156,8 @@ else
   if test -n "${sv_OPTpreferredserver}"
   then
     dsconfigad -preferred ${sv_OPTpreferredserver}
+  else
+    dsconfigad -nopreferred
   fi
 
   dsconfigad -alldomains ${sv_OPTallomains}

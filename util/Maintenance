@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a maintenance action (workstation update)
 # Author:   Mark J Swift
-# Version:  1.0.95
-# Modified: 01-Sep-2016
+# Version:  1.0.99
+# Modified: 13-Oct-2016
 #
 # Called as follows:    
 #   /usr/local/LabWarden/util/Maintenance
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.95"
+sv_CodeVersion="1.0.99"
 
 # ---
 
@@ -82,13 +82,43 @@ sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerNa
 
 # ---
 
-iv_UpdateArgCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments")"
+if test -z "${sv_ConfigEntryName}"
+then
+  # Need to find the config entry name - as this has been called outside a Policy execution
+  
+  # We check for policies that are triggered by the LoginWindowIdle event
+  sv_EventName="LoginWindowIdle"
+  iv_DoesTriggerCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger")"
+  for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
+  do
+    sv_ConfigEntryName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+    if test -n "${sv_ConfigEntryName}"
+    then
+      sv_PolicyName=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Name")
+      if test -n "${sv_PolicyName}"
+      then
+        if [ "${sv_PolicyName}" = "Maintenance" ]
+        then
+          break
+        fi
+      fi
+    fi
+  done
+  
+fi
+
+if [ "${sv_PolicyName}" != "Maintenance" ]
+then
+  LW_nf_logmessage "ATTENTION, sorry, I can't find the Maintenance settings."
+fi
+
+iv_UpdateArgCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:UpdateMethodArguments")"
 if [ ${iv_UpdateArgCount} -eq 0 ]
 then
   LW_nf_logmessage "ATTENTION, there are no defined update arguments."
 
 else
-  sv_UpdateExeURI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments:0")"
+  sv_UpdateExeURI="$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:UpdateMethodArguments:0")"
   if test -n "${sv_UpdateExeURI}"
   then
     sv_UpdateExeFilePath=$(LW_sf_ResolveFilename "${sv_UpdateExeURI}")
@@ -110,7 +140,7 @@ else
       fi
       for (( iv_UpdateArgIndex=1; iv_UpdateArgIndex<${iv_UpdateArgCount}; iv_UpdateArgIndex++ ))
       do
-        sv_UpdateExeFilePath="${sv_UpdateExeFilePath} '""$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:Config:UpdateMethodArguments:${iv_UpdateArgIndex}")""'"
+        sv_UpdateExeFilePath="${sv_UpdateExeFilePath} '""$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:UpdateMethodArguments:${iv_UpdateArgIndex}")""'"
       done
 
       # Do a software update
@@ -121,7 +151,7 @@ else
 fi
 
 # Take a note of when we ran the maintenance
-LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_PolicyName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
+LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
 
 # Do a full group policy update
 LW_nf_logmessage "ATTENTION, force updating workstation group policies (via gpupdate)."
