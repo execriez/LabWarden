@@ -2,8 +2,8 @@
 #
 # Short:    Common library used by almost all the LabWarden scripts
 # Author:   Mark J Swift
-# Version:  1.0.99
-# Modified: 13-Oct-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 # 'CommonLib' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/CommonLib
@@ -15,17 +15,14 @@
 #  LW_sv_LoggedInUserName                - The name of the logged-in user, a null string signifies no-one is logged in
 #                                        - The logged-in user may or may not be the user who is running the script
 #
+
+# Only run the code if it hasn't already been run
+if test -z "${LW_sv_BuildVersionStampAsString}"
+then
+
 # 'CommonLib' calculates the following LabWarden globals:
 #
-#  LW_sv_LabWardenVersion                - Main code version
-#  LW_sv_LabWardenSignature              - LabWarden signature (com.github.execriez.LabWarden)
-#
-#  LW_iv_LogMaxLength                    - Maximum length of LabWarden log(s)
-#  LW_bv_LogIsActiveDefault              - Whether we should log by default (true/false)
 #  LW_bv_LogIsActiveStatus               - Whether the log is currently active (true/false)
-#
-#  LW_sv_BinDirPath                      - Path to binaries such as rsync or CocoaDialog
-#  LW_sv_SettingsDirPath                 - Path to main LabWarden settings files
 #
 #  LW_iv_ThisScriptStartEpoch            - When the script started running
 #  LW_sv_ThisScriptFilePath              - Full source path of running script
@@ -103,17 +100,14 @@
 
 # ---
 
-LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
-
-LW_sv_LabWardenVersion="1.0.99"
-
-# ---
-
-LW_iv_LogMaxLength=250000
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . /usr/local/LabWarden/lib/Constants
+fi
 
 # ---
 
-LW_bv_LogIsActiveDefault="true"
 LW_bv_LogIsActiveStatus=${LW_bv_LogIsActiveDefault}
 
 # ---
@@ -879,11 +873,6 @@ fi
 
 # -- Decide various folder locations
 
-# Path to useful binaries
-LW_sv_BinDirPath=/usr/local/LabWarden/bin
-
-# ---
-
 # Create a temporary directory private to this user (and admins)
 LW_sv_ThisUserTempDirPath=/tmp/${LW_sv_ThisUserName}
 if ! test -d "${LW_sv_ThisUserTempDirPath}"
@@ -901,23 +890,15 @@ LW_sv_ThisScriptTempDirPath="$(mktemp -dq ${LW_sv_ThisUserTempDirPath}/${LW_sv_T
 # Get Computer AD trust account - i.e. yourcomputername$
 LW_sv_ADTrustAccount="$(dsconfigad 2>/dev/null -show | grep "Computer Account" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
 
-# Get Computer AD domain - i.e. your.domain.com
-LW_sv_ADDomainNameDNS="$(dsconfigad 2>/dev/null -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
-
-LW_sv_ADDomainNameFlat=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameFlat" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
-if test -n "${LW_sv_ADDomainNameFlat}"
-then
-  LW_sv_ADTrustPassword=$(security find-generic-password -w -s "/Active Directory/${LW_sv_ADDomainNameFlat}" /Library/Keychains/System.keychain)
-fi
-
 # AD computer name (without the trailing dollar sign)
 LW_sv_ADComputerName=$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||")
+
+# Get Computer full AD domain - i.e. yourdomain.yourcompany.com
+LW_sv_ADDomainNameDNS="$(dsconfigad 2>/dev/null -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
 
 # ---
 
 # Decide where the config/pref/log files go
-LW_sv_SettingsDirPath="/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}"
-
 if [ "${LW_sv_ThisUserName}" = "root" ]
 then
   mkdir -p "${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
@@ -932,6 +913,37 @@ fi
 
 mkdir -p "${LW_sv_ThisUserPrefDirPath}"
 mkdir -p "${LW_sv_ThisUserLogDirPath}"
+
+# ---
+
+# Get Computer short AD domain - i.e. YOURDOMAIN
+if test -n "${LW_sv_ADDomainNameDNS}"
+then
+  # If we have just booted up, we may need to wait a short time while the system populates the scutil vars
+  iv_DelayCount=0
+  while [ ${iv_DelayCount} -lt 5 ]
+  do
+    LW_sv_ADDomainNameFlat=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameFlat" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+    if test -n "${LW_sv_ADDomainNameFlat}"
+    then
+      break
+    fi
+
+    # we don't want to hog the CPU - so lets sleep a while
+    LW_nf_logmessage "ATTENTION, waiting around until the scutil ActiveDirectory vars are populated"
+    sleep 1
+      
+    iv_DelayCount=$((${iv_DelayCount}+1))
+  done
+fi
+
+# --
+
+# Get Computer AD trust account password
+if test -n "${LW_sv_ADTrustAccount}"
+then
+  LW_sv_ADTrustPassword=$(security find-generic-password -w -s "/Active Directory/${LW_sv_ADDomainNameFlat}" /Library/Keychains/System.keychain)
+fi
 
 # -- Get Network info
 
@@ -949,4 +961,8 @@ then
 
   # Get device hardware - e.g. Airport
   LW_sv_NetworkServiceInterfaceHardware=$(echo "show Setup:/Network/Service/${LW_sv_IPv4PrimaryService}/Interface" | scutil | grep "Hardware" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+fi
+
+# ---
+
 fi

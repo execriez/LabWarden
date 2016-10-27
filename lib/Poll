@@ -27,8 +27,13 @@ fi
 
 # ---
 
-# The point at which we trigger an idle event (7 minutes)
-iv_IdleTriggerSecs=421
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . /usr/local/LabWarden/lib/Constants
+fi
+
+# ---
 
 # Get seconds that mac mouse/keyboard is idle - thanks to https://github.com/CLCMacTeam/IdleLogout
 LW_if_UserInteractionIdleSecs()
@@ -39,7 +44,7 @@ LW_if_UserInteractionIdleSecs()
 # If there has been no recent input, trigger an idle event 
 # If there continues to be no input, the idle event will continue to be triggered with every subsequent poll event
 iv_IdleSecs=$(LW_if_UserInteractionIdleSecs)
-if [ ${iv_IdleSecs} -gt ${iv_IdleTriggerSecs} ]
+if [ ${iv_IdleSecs} -gt ${LW_iv_IdleTriggerSecs} ]
 then
   # Trigger an Idle event
   /usr/local/LabWarden/lib/Trigger "${sv_PollName}Idle" &

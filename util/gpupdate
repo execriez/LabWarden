@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,12 +13,12 @@
 
 # ---
 
-sv_CodeVersion="1.0.98"
+sv_CodeVersion="1.0.100"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_LabWardenVersion}"
+if test -z "${LW_sv_BuildVersionStampAsString}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
@@ -40,8 +40,8 @@ fi
 
 case "${sv_GPoption}" in
 -force)
-  # Update all (Computer and User) policies older than 1 minute
-  iv_GPCacheMaxAgeMinutes=1
+  # Update if policy doesn't exist or is older than this (1 minute)
+  iv_GPCacheMaxAgeMinutes=${LW_iv_GPforceAgeMinutes}
   sv_GPOuser=${2}
   
   if test -z "${sv_GPOuser}"
@@ -57,14 +57,14 @@ case "${sv_GPoption}" in
   ;;
 
 -quick)
-  # Only update if policy older than 180 days (or doesn't yet exist)
-  iv_GPCacheMaxAgeMinutes=259200
+  # Update if policy doesn't exist or is older than this (180 days)
+  iv_GPCacheMaxAgeMinutes=${LW_iv_GPquickAgeMinutes}
   sv_GPOuser=${2}
   ;;
     
 *)
-  # Update if policy older than 1 day old (or doesn't yet exist)
-  iv_GPCacheMaxAgeMinutes=1440
+  # Update if policy doesn't exist or is older than this (1 day old)
+  iv_GPCacheMaxAgeMinutes=${LW_iv_GPdefaultAgeMinutes}
   sv_GPOuser=${1}
   ;;
     
@@ -279,6 +279,12 @@ then
     iv_ObjectEpoch=$(stat -f "%m" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
   fi
   
+  if test -z "${LW_sv_ADDomainNameDNS}"
+  then
+    LW_nf_logmessage "ERROR, this workstation is not bound to AD"
+    exit 0
+  fi
+  
   if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_ObjectEpoch})) -gt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
   then
     LW_nf_logmessage "ATTENTION, Rebuilding cache for ${sv_ObjectContext} ${sv_ObjectName}"
@@ -302,6 +308,18 @@ then
           # the object needs to exist in AD
           LW_nf_logmessage "ERROR, cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD."
           
+          # If we have failed to find this Computer in AD, then the computer probably needs to be re-bound to AD
+          if [ "${sv_ObjectContext}" = "Computers" ]
+          then
+            sv_Error="ERROR - workstation needs to be rebound to AD (trust relationship failure)"
+            LW_nf_logmessage "${sv_Error}"
+            
+            # Update the loginWindow Text
+            sv_LoginWindowText="${LW_sv_ADComputerName}:This workstation is in an error state, please inform IT Services:${sv_Error}"
+            sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ":" "\n")
+            /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
+          fi
+          
         else
           # If we are updating the Computer policies, update the LoginWindow Message and Remote Management strings
           if [ "${sv_ObjectContext}" = "Computers" ]
@@ -313,9 +331,6 @@ then
               sv_LoginWindowText="$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||"):$(echo ${sv_ADpath} | sed "s|,| - |g")"
               sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ":" "\n")
               /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
-
-              # Update the RemoteDesktop Computer Info Fields #1-3
-              /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "$(echo "${sv_ADpath}" | cut -d"," -f1)" -set2 -2 "$(echo "${sv_ADpath}" | cut -d"," -f2)" -set3 -3 "$(echo "${sv_ADpath}" | cut -d"," -f3-)"
             fi
           fi
 

@@ -1390,6 +1390,122 @@ The config contains the usual proxy options.
 	</plist>
 
 
+###SystemRemoteManagement
+
+This policy sets up remote user access via Apple's "Remote Desktop" application and via screen sharing using the Finder menu's "connect to Server..." with the address "vnc://someworkstation.local". 
+
+It can set up access for local users, and for directory users.
+
+It is called as root and triggered by the **Boot** and **NetworkUp** events.
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>Config</key>
+		<dict>
+			<key>Groups</key>
+			<array>
+				<dict>
+					<key>Access</key>
+					<string>admin</string>
+					<key>Name</key>
+					<string>dirgroup1</string>
+				</dict>
+				<dict>
+					<key>Access</key>
+					<string>interact</string>
+					<key>Name</key>
+					<string>dirgroup2</string>
+				</dict>
+			</array>
+			<key>LocalUsers</key>
+			<array>
+				<dict>
+					<key>Name</key>
+					<string>localuser1</string>
+					<key>Privs</key>
+					<array>
+						<string>all</string>
+					</array>
+				</dict>
+				<dict>
+					<key>Name</key>
+					<string>localuser2</string>
+					<key>Privs</key>
+					<array>
+						<string>DeleteFiles</string>
+						<string>ControlObserve</string>
+						<string>TextMessages</string>
+						<string>ShowObserve</string>
+						<string>OpenQuitApps</string>
+						<string>GenerateReports</string>
+						<string>RestartShutDown</string>
+						<string>SendFiles</string>
+						<string>ChangeSettings</string>
+						<string>ObserveOnly</string>
+					</array>
+				</dict>
+			</array>
+			<key>Users</key>
+			<array>
+				<dict>
+					<key>Access</key>
+					<string>admin</string>
+					<key>Name</key>
+					<string>diruser1</string>
+				</dict>
+				<dict>
+					<key>Access</key>
+					<string>reports</string>
+					<key>Name</key>
+					<string>diruser4</string>
+				</dict>
+			</array>
+		</dict>
+		<key>Name</key>
+		<string>SystemRemoteManagement</string>
+		<key>TriggeredBy</key>
+		<array>
+			<string>Boot</string>
+			<string>NetworkUp</string>
+		</array>
+		<key>Type</key>
+		<string>Policy</string>
+	</dict>
+	</plist>
+
+The **LocalUsers** array holds a list of local users who have access to ARD. This list contains a **Name** key and a **Privs** array. 
+
+The **Name** key holds the name of the local user. 
+
+**Privs** can be any comination of the following values: all, DeleteFiles, ControlObserve, TextMessages, ShowObserve, OpenQuitApps, GenerateReports, RestartShutDown, SendFiles, ChangeSettings, ObserveOnly, none. 
+
+The meaning of these keys is explained in the ARD kickstart help page, which can be found by typing the following in a shell: 
+
+	/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -help
+	
+The **Users** key holds a list of directory users who have access to ARD. This contains a **Name** key and a **Access** key. **Name** is the name of the directory user. **Access** can be one of the following values: admin, interact, manage, reports.
+
+The **Groups** key holds a list of directory groups who have access to ARD. This contains a **Name** key and a **Access** key. **Name** is the name of the directory group. **Access** can be one of the following values: admin, interact, manage, reports.
+
+The 'Access' values are equivalent to the following 'Privs' values:
+
+**admin**: GenerateReports, OpenQuitApps, ChangeSettings, SendFiles, DeleteFiles, TextMessages, RestartShutDown, ControlObserve, ShowObserve (all)
+
+**interact**: TextMessages, ControlObserve, ShowObserve
+
+**manage**: GenerateReports, OpenQuitApps, ChangeSettings, SendFiles, DeleteFiles, TextMessages, RestartShutDown
+
+**reports**: GenerateReports
+
+This policy is also useful for setting up ARD screen sharing.
+
+If you have some directory users who need to remotely view and control other peoples screens - add them via the Users or Groups key, and give them **interact** access. 
+
+They will then be able to connect to the remote screens of affected workstations via the Finder menu "connect to Server..." with the address "vnc://someworkstation.local".
+
+
 ###SystemRestartIfNetMount
 This policy reboots if the workstation is at the LoginWindow and the system detects that there is a network drive mounted. This could indicate that a user has not been logged out properly - or that a screen is locked and someone has clicked "Switch User". It is called as root and triggered by the **LoginWindow** event.
 
@@ -2170,6 +2286,19 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.100 - 27-Oct-2016
+
+* Created the file '/usr/local/LabWarden/lib/Constants' that holds common LabWarden constants. Moved these constants out of 'ComonLib'. This allows me to keep track of LabWarden hard coded values.
+
+* gpupdate now sets an error message on the loginwindow if the workstation gets an AD trust relationship failure that requires the workstation to be rebound to AD.
+
+* Added the 'SystemRemoteManagement' policy. This policy sets up remote user access via Apple's "Remote Desktop" application and via screen sharing using the Finder menu's "connect to Server..." with the address "vnc://someworkstation.local". ARD access can be set for local users and directory users.
+
+* gpupdate no longer updates the RemoteDesktop Computer Info Fields, this is handled by the 'SystemRemoteManagement' policy.
+
+* Fixed bug in CommonLib that sometimes set 'LW_sv_ADDomainNameFlat' to null - causing the 'SystemUserExperience' policy to incorrectly set the Search and Contacts path - which in turn prevented network users from logging in.
+
 
 1.0.99 - 13-Oct-2016
 

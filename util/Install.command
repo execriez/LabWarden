@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.97
-# Modified: 19-Sep-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 #
 # Called as follows:    
@@ -25,6 +25,14 @@ sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
 sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
+
+# ---
+
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . "$(dirname "${sv_ThisScriptDirPath}")"/lib/Constants
+fi
 
 # ---
 
@@ -74,6 +82,7 @@ then
   sudo "${sv_ThisScriptFilePath}" "${sv_RootDirPath}"
 
 else
+
   # Initial warning
   sv_ADDomainNameDNS=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameDns" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
   if test -z "${sv_ADDomainNameDNS}"
@@ -87,9 +96,6 @@ else
 
   echo "Installing LabWarden."
   echo ""
-
-  # Set the signature for the LabWarden installation
-  sv_LabWardenSignature="com.github.execriez.LabWarden"
 
   # Create a temporary directory private to this script
   sv_ThisScriptTempDirPath="$(mktemp -dq /tmp/Install-XXXXXXXX)"
@@ -116,9 +122,9 @@ else
 
   if test -z "${sv_RootDirPath}"
   then
-    mkdir -p "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${sv_LabWardenSignature}
-    chown root:wheel "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${sv_LabWardenSignature}
-    chmod 755 "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${sv_LabWardenSignature}
+    mkdir -p "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
+    chown root:wheel "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
+    chmod 755 "${sv_RootDirPath}"/Library/Preferences/SystemConfiguration/${LW_sv_LabWardenSignature}
   fi
 
   if test -f "${sv_ThisScriptTempDirPath}/LabWarden/LICENSE"
@@ -162,13 +168,13 @@ else
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/bin/appwarden"
     then
-      cat << EOF > "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
+      cat << EOF > "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.appwarden</string>
+	<string>${LW_sv_LabWardenSignature}.appwarden</string>
 	<key>Program</key>
 	<string>/usr/local/LabWarden/bin/appwarden</string>
 	<key>RunAtLoad</key>
@@ -178,20 +184,20 @@ else
 </dict>
 </plist>
 EOF
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
 
     fi
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/bin/NetworkStateWarden"
     then
-      cat << EOF > "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.NetworkStateWarden.plist
+      cat << EOF > "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.NetworkStateWarden</string>
+	<string>${LW_sv_LabWardenSignature}.NetworkStateWarden</string>
 	<key>Program</key>
 	<string>/usr/local/LabWarden/bin/NetworkStateWarden</string>
 	<key>RunAtLoad</key>
@@ -201,8 +207,8 @@ EOF
 </dict>
 </plist>
 EOF
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.NetworkStateWarden.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.NetworkStateWarden.plist
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.NetworkStateWarden.plist
 
     fi
 
@@ -261,13 +267,13 @@ EOF
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/lib/Trigger"
     then
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.Boot.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Boot.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.Boot</string>
+	<string>${LW_sv_LabWardenSignature}.Boot</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -278,40 +284,40 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.Boot.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.Boot.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.SystemPoll.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.SystemPoll.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.SystemPoll</string>
+	<string>${LW_sv_LabWardenSignature}.SystemPoll</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Poll</string>
 		<string>System</string>
 	</array>
 	<key>StartInterval</key>
-	<integer>241</integer>
+	<integer>${LW_iv_SystemPollTriggerSecs}</integer>
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.SystemPoll.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.SystemPoll.plist "${sv_RootDirPath}"/Library/LaunchDaemons/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.SystemPoll.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}.SystemPoll.plist
 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindow.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindow.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.LoginWindow</string>
+	<string>${LW_sv_LabWardenSignature}.LoginWindow</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -324,9 +330,9 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindow.plist "${sv_RootDirPath}"/Library/LaunchAgents/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindow.plist "${sv_RootDirPath}"/Library/LaunchAgents/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
       
       
       if test -z "${sv_RootDirPath}"
@@ -337,13 +343,13 @@ EOF
       fi
       # Note, the Trigger handler re-installs the Login and Logout Hooks 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowPoll.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.LoginWindowPoll</string>
+	<string>${LW_sv_LabWardenSignature}.LoginWindowPoll</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Poll</string>
@@ -352,22 +358,22 @@ EOF
 	<key>LimitLoadToSessionType</key>
 	<string>LoginWindow</string>
 	<key>StartInterval</key>
-	<integer>307</integer>
+	<integer>${LW_iv_LoginWindowPollTriggerSecs}</integer>
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.LoginWindowPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist
 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserAtDesktop.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.UserAtDesktop</string>
+	<string>${LW_sv_LabWardenSignature}.UserAtDesktop</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Trigger</string>
@@ -380,18 +386,18 @@ EOF
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserAtDesktop.plist "${sv_RootDirPath}"/Library/LaunchAgents/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserAtDesktop.plist "${sv_RootDirPath}"/Library/LaunchAgents/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
 
 
-      cat << EOF > ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserPoll.plist
+      cat << EOF > ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserPoll.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>${sv_LabWardenSignature}.UserPoll</string>
+	<string>${LW_sv_LabWardenSignature}.UserPoll</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/usr/local/LabWarden/lib/Poll</string>
@@ -400,13 +406,13 @@ EOF
 	<key>LimitLoadToSessionType</key>
 	<string>Aqua</string>
 	<key>StartInterval</key>
-	<integer>181</integer>
+	<integer>${LW_iv_UserPollTriggerSecs}</integer>
 </dict>
 </plist>
 EOF
-      cp ${sv_ThisScriptTempDirPath}/${sv_LabWardenSignature}.UserPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
-      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
-      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
+      cp ${sv_ThisScriptTempDirPath}/${LW_sv_LabWardenSignature}.UserPoll.plist "${sv_RootDirPath}"/Library/LaunchAgents/
+      chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
+      chmod 644 "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
 
     fi
 

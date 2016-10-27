@@ -2,19 +2,13 @@
 #
 # Short:    Utility script - Build LabWarden installation package
 # Author:   Mark J Swift
-# Version:  1.0.99
-# Modified: 13-Oct-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 # Called as follows:    
 #   MakePackage.command
 #
 # Note, the contents of any directory called "custom" is not included in the package
-
-# ---
-
-sv_LabWardenSignature="com.github.execriez.LabWarden"
-
-sv_LabWardenVersion="1.0.99"
 
 # ---
 
@@ -45,6 +39,14 @@ sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
 sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
+
+# ---
+
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . "$(dirname "${sv_ThisScriptDirPath}")"/lib/Constants
+fi
 
 # ---
 
@@ -109,7 +111,7 @@ cp -p "${sv_PayloadDirPath}/images/background.jpg" "${sv_PkgResourceDirPath}/"
 # Create the uninstall package
 
 sv_PkgTitle="LabWarden Uninstaller"
-sv_PkgID="${sv_LabWardenSignature}.uninstall"
+sv_PkgID="${LW_sv_LabWardenSignature}.uninstall"
 sv_PkgName="LabWarden-Uninstaller"
 
 # -- Copy the uninstaller
@@ -133,13 +135,13 @@ EOF
 cat << EOF > "${sv_PkgResourceDirPath}"/ReadMe.txt
 This package deletes the following files an directories (if they exist):
 
-* /Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
+* /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
+* /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.SystemPoll.plist
 * /usr/LabWarden/
 
 Also, the Login and Logout hooks will be cleared if LabWarden has set them.
@@ -149,7 +151,7 @@ A restart is required to complete the un-installation.
 EOF
 
 # -- build an empty package
-pkgbuild --identifier "${sv_PkgID}" --version "${sv_LabWardenVersion}" --nopayload "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg --scripts ${sv_PkgScriptDirPath}
+pkgbuild --identifier "${sv_PkgID}" --version "${LW_sv_LabWardenVersion}" --nopayload "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg --scripts ${sv_PkgScriptDirPath}
       
 # -- Synthesise a temporary distribution.plist file --
 productbuild --synthesize --package "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg "${sv_ThisScriptTempDirPath}"/synthdist.plist
@@ -159,14 +161,14 @@ awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${sv_PkgTitle}
 
 # -- build the final package --
 cd "${sv_ThisScriptTempDirPath}"
-productbuild --identifier "${sv_PkgID}" --version "${sv_LabWardenVersion}" --distribution "${sv_ThisScriptTempDirPath}"/distribution.plist --resources "${sv_PkgResourceDirPath}" ~/Desktop/${sv_PkgName}.pkg
+productbuild --identifier "${sv_PkgID}" --version "${LW_sv_LabWardenVersion}" --distribution "${sv_ThisScriptTempDirPath}"/distribution.plist --resources "${sv_PkgResourceDirPath}" ~/Desktop/${sv_PkgName}.pkg
 
 # ---
 
 # Create the install package
 
 sv_PkgTitle="LabWarden"
-sv_PkgID="${sv_LabWardenSignature}"
+sv_PkgID="${LW_sv_LabWardenSignature}"
 sv_PkgName="LabWarden"
 
 # -- Create the main payload
@@ -182,7 +184,7 @@ cp -p "${sv_PayloadDirPath}/LICENSE" "${sv_PkgResourceDirPath}"/License.txt
 
 # -- create the Welcome text
 cat << EOF > "${sv_PkgResourceDirPath}"/Welcome.txt
-LabWarden ${sv_LabWardenVersion}
+LabWarden ${LW_sv_LabWardenVersion}
 
 LabWarden applies Mac policies to users and workstations.
 
@@ -201,13 +203,13 @@ EOF
 cat << EOF > "${sv_PkgResourceDirPath}"/ReadMe.txt
 This package installs the following files an directories:
 
-* /Library/LaunchAgents/${sv_LabWardenSignature}.appwarden.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindow.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.LoginWindowPoll.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.UserAtDesktop.plist
-* /Library/LaunchAgents/${sv_LabWardenSignature}.UserPoll.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.Boot.plist
-* /Library/LaunchDaemons/${sv_LabWardenSignature}.SystemPoll.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.appwarden.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindow.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.LoginWindowPoll.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserAtDesktop.plist
+* /Library/LaunchAgents/${LW_sv_LabWardenSignature}.UserPoll.plist
+* /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.Boot.plist
+* /Library/LaunchDaemons/${LW_sv_LabWardenSignature}.SystemPoll.plist
 * /usr/LabWarden/
 
 You should note that the software overwrites any existing Login and Logout hooks.
@@ -226,7 +228,7 @@ do
 done
 
 # -- build a deployment package
-pkgbuild --component-plist "${sv_ThisScriptTempDirPath}"/component.plist --root ${sv_PkgRootDirPath} --identifier "${sv_PkgID}" --version "${sv_LabWardenVersion}" --ownership preserve --install-location / "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg --scripts ${sv_PkgScriptDirPath}
+pkgbuild --component-plist "${sv_ThisScriptTempDirPath}"/component.plist --root ${sv_PkgRootDirPath} --identifier "${sv_PkgID}" --version "${LW_sv_LabWardenVersion}" --ownership preserve --install-location / "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg --scripts ${sv_PkgScriptDirPath}
 
 # -- Synthesise a temporary distribution.plist file --
 productbuild --synthesize --package "${sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg "${sv_ThisScriptTempDirPath}"/synthdist.plist
@@ -236,7 +238,7 @@ awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${sv_PkgTitle}
 
 # -- build the final package --
 cd "${sv_ThisScriptTempDirPath}"
-productbuild --identifier "${sv_PkgID}" --version "${sv_LabWardenVersion}" --distribution "${sv_ThisScriptTempDirPath}"/distribution.plist --resources "${sv_PkgResourceDirPath}" ~/Desktop/${sv_PkgName}.pkg
+productbuild --identifier "${sv_PkgID}" --version "${LW_sv_LabWardenVersion}" --distribution "${sv_ThisScriptTempDirPath}"/distribution.plist --resources "${sv_PkgResourceDirPath}" ~/Desktop/${sv_PkgName}.pkg
 
 # ---
 

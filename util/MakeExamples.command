@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 
 # ---
@@ -14,7 +14,7 @@ cd "$(dirname "${0}")"
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_LabWardenVersion}"
+if test -z "${LW_sv_BuildVersionStampAsString}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi
@@ -597,6 +597,57 @@ LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.p
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:ExampleArray:0" "First"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:ExampleArray:1" "Second"
 LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:ExampleArray:2" "Third"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+# ---
+sv_PolicyName="SystemRemoteManagement"
+sv_Tag=""
+
+if test -z "${sv_Tag}"
+then
+  sv_PayloadFileName="${sv_PolicyName}"
+else
+  sv_PayloadFileName="${sv_PolicyName}-${sv_Tag}"
+fi
+
+sv_PayloadUUID=$(uuidgen)
+rm -f "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Name" "${sv_PolicyName}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":UUID" "${sv_PayloadUUID}"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Type" "Policy"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:0" "Boot"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":TriggeredBy:1" "NetworkUp"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Groups:0:Name" "dirgroup1"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Groups:0:Access" "admin"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Groups:1:Name" "dirgroup2"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Groups:1:Access" "interact"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:0:Name" "diruser1"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:0:Access" "admin"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Name" "diruser2"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Access" "interact"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Name" "diruser3"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Access" "manage"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Name" "diruser4"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:Users:1:Access" "reports"
+
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:0:Name" "localuser1"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:0:Privs:0" "all"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Name" "localuser2"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:0" "DeleteFiles"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:1" "ControlObserve"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:2" "TextMessages"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:3" "ShowObserve"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:4" "OpenQuitApps"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:5" "GenerateReports"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:6" "RestartShutDown"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:7" "SendFiles"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:8" "ChangeSettings"
+LW_nf_SetPlistProperty "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist" ":Config:LocalUsers:1:Privs:9" "ObserveOnly"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigLabDirPath}/${sv_PayloadFileName}.LabWarden.plist"
 

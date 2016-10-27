@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .rtf payload
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 # Called as follows:    
 #   rtf-install <somefile.rtf> [user]
@@ -17,7 +17,7 @@
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_LabWardenVersion}"
+if test -z "${LW_sv_BuildVersionStampAsString}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi

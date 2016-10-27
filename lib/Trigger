@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  1.0.96
-# Modified: 05-Sep-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -60,7 +60,7 @@ fi
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_LabWardenVersion}"
+if test -z "${LW_sv_BuildVersionStampAsString}"
 then
   . /usr/local/LabWarden/lib/CommonLib
 fi

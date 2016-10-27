@@ -2,8 +2,8 @@
 #
 # Short:    Uninstall LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.91
-# Modified: 03-Jul-2016
+# Version:  1.0.100
+# Modified: 27-Oct-2016
 #
 #
 # Called as follows:    
@@ -28,6 +28,14 @@ sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
 sv_ThisScriptName="$(echo ${sv_ThisScriptFileName} | sed 's|\.[^.]*$||')"
+
+# ---
+
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . "$(dirname "${sv_ThisScriptDirPath}")"/lib/Constants
+fi
 
 # ---
 
@@ -70,15 +78,12 @@ else
   echo "Uninstalling LabWarden."
   echo ""
   
-  # Set the signature for the LabWarden installation
-  sv_LabWardenSignature="com.github.execriez.LabWarden"
-
   # Remove old install
   find 2>/dev/null "${sv_RootDirPath}"/usr/local/LabWarden -iname .DS_Store -exec rm -f {} \;
   find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
   find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
-  rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LabWardenSignature}*
-  rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LabWardenSignature}*
+  rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}*
+  rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}*
   
   if test -n "$(defaults 2>/dev/null read "${sv_RootDirPath}"/private/var/root/Library/Preferences/com.apple.loginwindow LoginHook | grep -i "LabWarden")"
   then
@@ -92,12 +97,12 @@ else
   
   if test -z "${sv_RootDirPath}"
   then
-    pkgutil 2>/dev/null --forget "${sv_LabWardenSignature}"
+    pkgutil 2>/dev/null --forget "${LW_sv_LabWardenSignature}"
 
     echo "PLEASE REBOOT."
     echo ""
   else
-    pkgutil 2>/dev/null --forget "${sv_LabWardenSignature}" --volume "${sv_RootDirPath}"
+    pkgutil 2>/dev/null --forget "${LW_sv_LabWardenSignature}" --volume "${sv_RootDirPath}"
   fi
 
 fi

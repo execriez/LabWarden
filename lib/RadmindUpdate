@@ -240,6 +240,8 @@ Nf_showmessage "NOTE, Applying $((${iv_Additions} - ${iv_Removals})) changes…(
 /usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
 iv_ErrCode="$?"
 
+launchctl stop org.cups.cupsd
+
 launchctl start org.cups.cupsd
 
 case "${iv_ErrCode}" in
