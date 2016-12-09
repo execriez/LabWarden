@@ -2,8 +2,8 @@
 #
 # Short:    Constants
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # 'Constants' should be included into scripts as follows:
 #   . /usr/local/LabWarden/lib/Constants
@@ -49,7 +49,7 @@ then
 # ---
 
 LW_sv_LabWardenSignature="com.github.execriez.LabWarden"
-LW_sv_LabWardenVersion="1.0.100"
+LW_sv_LabWardenVersion="1.0.101"
 
 # ---
 
@@ -74,9 +74,6 @@ LW_iv_SystemPollTriggerSecs=241
 
 # The point at which we trigger a LoginWindowPoll event (5 minutes)
 LW_iv_LoginWindowPollTriggerSecs=307
-
-# The point at which we trigger a UserIdle, SystemIdle and LoginWindowIdle event (7 minutes)
-LW_iv_IdleTriggerSecs=421
 
 # ---
 

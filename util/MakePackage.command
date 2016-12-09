@@ -8,7 +8,7 @@
 # Called as follows:    
 #   MakePackage.command
 #
-# Note, the contents of any directory called "custom" is not included in the package
+# Note, the contents of any directory called "Custom" is not included in the package
 
 # ---
 

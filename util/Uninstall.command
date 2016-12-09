@@ -2,14 +2,14 @@
 #
 # Short:    Uninstall LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 #
 # Called as follows:    
 #   Uninstall.command [<root_dirpath>]
 #
-# Note, the contents of any directory called "custom" is not uninstalled
+# Note, the contents of any directory called "Custom" is not uninstalled
 #
 
 # ---
@@ -78,10 +78,30 @@ else
   echo "Uninstalling LabWarden."
   echo ""
   
+  # relocate old locations
+  if test -d "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
+  then
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Custom/Policies
+    cp -pR "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom/ "${sv_RootDirPath}"/usr/local/LabWarden/Custom/Policies
+    chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    rm -fR "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
+  fi
+
+  # relocate old locations
+  if test -d "${sv_RootDirPath}"/usr/local/LabWarden/PayloadHandlers/custom
+  then
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Custom/PayloadHandlers
+    cp -pR "${sv_RootDirPath}"/usr/local/LabWarden/PayloadHandlers/custom/ "${sv_RootDirPath}"/usr/local/LabWarden/Custom/PayloadHandlers
+    chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    rm -fR "${sv_RootDirPath}"/usr/local/LabWarden/PayloadHandlers/custom
+  fi
+  
   # Remove old install
   find 2>/dev/null "${sv_RootDirPath}"/usr/local/LabWarden -iname .DS_Store -exec rm -f {} \;
-  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom -iname "*ExamplePolicy" -exec rm -fd {} \;
-  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden ! -ipath "*/custom/*" -exec rm -fd {} \;
+  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden/Custom/Policies -iname "*ExamplePolicy" -exec rm -fd {} \;
+  find 2>/dev/null -d "${sv_RootDirPath}"/usr/local/LabWarden ! -ipath "*/Custom/*" -exec rm -fd {} \;
   rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${LW_sv_LabWardenSignature}*
   rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${LW_sv_LabWardenSignature}*
   

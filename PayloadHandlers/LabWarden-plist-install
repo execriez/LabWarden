@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .LabWarden.plist payload
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # Called as follows:    
 #   LabWarden-plist-install <somefile.LabWarden.plist> [user]
@@ -75,13 +75,13 @@ then
       # check if we know what to do with the config object type
       case "${sv_ObjectType}" in
       Policy)
-        sv_PolicyFilePath="/usr/local/LabWarden/Policies/custom/${sv_ObjectName}"
+        sv_PolicyFilePath="/usr/local/LabWarden/Custom/Policies/${sv_ObjectName}"
         if ! test -e "${sv_PolicyFilePath}"
         then
           sv_PolicyFilePath="/usr/local/LabWarden/Policies/${sv_ObjectName}"
           if ! test -e "${sv_PolicyFilePath}"
           then
-            sv_PolicyFilePath="/usr/local/LabWarden/Policies/legacy/${sv_ObjectName}"
+            sv_PolicyFilePath="/usr/local/LabWarden/Legacy/Policies/${sv_ObjectName}"
             if ! test -e "${sv_PolicyFilePath}"
             then
               sv_PolicyFilePath=""
@@ -176,7 +176,7 @@ then
 
                 else
                   # If there's a setup tool call it. It copies a modified PPD to stdout
-                  sv_SetuptoolFilePath=$(cat ${sv_PrinterPPDFilePath} | grep "APAutoSetupTool" | cut -d'"' -f2)
+                  sv_SetuptoolFilePath=$(cat "${sv_PrinterPPDFilePath}" | grep "APAutoSetupTool" | cut -d'"' -f2)
                   if test -n "${sv_SetuptoolFilePath}"
                   then
                     "${sv_SetuptoolFilePath}" "${sv_PrinterURI}" "${sv_PrinterPPDFilePath}" > "${LW_sv_ThisScriptTempDirPath}/TEMP.ppd"

@@ -2,8 +2,8 @@
 #
 # Short:    Install LabWarden
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 #
 # Called as follows:    
@@ -107,11 +107,14 @@ else
   # -- Remove any unwanted files
   rm -fR "${sv_ThisScriptTempDirPath}/LabWarden/SupportFiles"
   rm -fR "${sv_ThisScriptTempDirPath}/LabWarden/.git"
-  find -d "${sv_ThisScriptTempDirPath}/LabWarden" -ipath "*/custom/*" -exec rm -fd {} \;
+  find -d "${sv_ThisScriptTempDirPath}/LabWarden" -ipath "*/Custom/*" -exec rm -fd {} \;
   find "${sv_ThisScriptTempDirPath}/LabWarden" -iname .DS_Store -exec rm -f {} \;
 
-  # -- Copy the example custom policies
-  find -d "${sv_PayloadDirPath}/Policies/custom/" -iname "*ExamplePolicy" -exec cp "{}" ${sv_ThisScriptTempDirPath}/LabWarden/Policies/custom/ \;
+  # -- Copy the example Custom policies
+  mkdir -p "${sv_ThisScriptTempDirPath}/LabWarden/Custom/Policies/"
+  mkdir -p "${sv_ThisScriptTempDirPath}/LabWarden/Custom/PayloadHandlers/"
+  find -d "${sv_PayloadDirPath}/Custom/Policies/" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/LabWarden/Custom/Policies/ \;
+  find -d "${sv_PayloadDirPath}/Custom/PayloadHandlers/" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/LabWarden/Custom/PayloadHandlers/ \;
 
   # Lets begin
   # Note, most of the tests on the payload content could be removed (legacy debug stuff)
@@ -162,9 +165,9 @@ else
     chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/bin
     chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/bin
 
-    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/bin/custom
-    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/bin/custom
-    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/bin/custom
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/bin/Custom
+    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/bin/Custom
+    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/bin/Custom
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/bin/appwarden"
     then
@@ -247,6 +250,28 @@ EOF
     chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/PayloadHandlers
   fi
     
+  if test -d "${sv_ThisScriptTempDirPath}/LabWarden/Custom"
+  then
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+
+    cp -pR "${sv_ThisScriptTempDirPath}/LabWarden/Custom/" "${sv_RootDirPath}"/usr/local/LabWarden/Custom/
+    chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+    chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/Custom
+  fi
+    
+  if test -d "${sv_ThisScriptTempDirPath}/LabWarden/Legacy"
+  then
+    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Legacy
+    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Legacy
+    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Legacy
+
+    cp -pR "${sv_ThisScriptTempDirPath}/LabWarden/Legacy/" "${sv_RootDirPath}"/usr/local/LabWarden/Legacy/
+    chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Legacy
+    chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/Legacy
+  fi
+    
   if test -d "${sv_ThisScriptTempDirPath}/LabWarden/Policies"
   then
     mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Policies
@@ -256,14 +281,6 @@ EOF
     cp -pR "${sv_ThisScriptTempDirPath}/LabWarden/Policies/" "${sv_RootDirPath}"/usr/local/LabWarden/Policies/
     chown -R root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Policies
     chmod -R 755 "${sv_RootDirPath}"/usr/local/LabWarden/Policies
-
-    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
-    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
-    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Policies/custom
-
-    mkdir -p "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
-    chown root:wheel "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
-    chmod 755 "${sv_RootDirPath}"/usr/local/LabWarden/Policies/legacy
 
     if test -f "${sv_ThisScriptTempDirPath}/LabWarden/lib/Trigger"
     then

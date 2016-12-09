@@ -117,7 +117,7 @@ Click "OK"
 
 There is generally a delay (typically 10 minutes) between updating AD and experiencing the changes.
 
-Also, LabWarden generally only updates policies during the Maintenance sequence (see later). If you want to see the changes applied to a workstation immediately - do the following:
+Also, LabWarden generally only updates it's policies at defined intervals. If you want to see the changes applied to a workstation immediately - do the following:
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
@@ -186,7 +186,7 @@ Click "OK"
 
 There is generally a delay (typically 10 minutes) between updating AD and experiencing the changes.
 
-Also, LabWarden generally only updates policies during the Maintenance sequence (see later). If you want to see the changes applied to a workstation immediately - do the following:
+Also, LabWarden generally only updates it's policies at defined intervals. If you want to see the changes applied to a workstation immediately - do the following:
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
@@ -273,7 +273,7 @@ Click "OK"
 
 There is generally a delay (typically 10 minutes) between updating AD and experiencing the changes.
 
-Also, LabWarden generally only updates policies during the Maintenance sequence (see later). If you want to see the changes applied to a workstation immediately - do the following:
+Also, LabWarden generally only updates it's policies at defined intervals. If you want to see the changes applied to a workstation immediately - do the following:
 
 	Wait 10 minutes (typically)
 	In a Terminal, type the following:
@@ -480,107 +480,6 @@ Each policy has a line that includes the common library. This library (/usr/loca
 	#    if_ - integer function (returns an integer value)
 	#    sf_ - string function  (returns a string value)
 
-
-## Maintenance Sequence
-The maintenance policy is responsible for scheduling and running the maintenance sequence out-of-hours.
-
-The workstation maintenance sequence consists of running the maintenance policy, followed by a gpupdate.
-
-Modify the example "Maintenance.LabWarden.plist" file to your own needs, then use "PackForDeployment" in order to create text to copy into the Notes field of a group - as in the previous examples.
-
-The Maintenance policy config includes an office hours schedule.
-
-		<key>OpeningHours</key>
-		<array>
-			<dict>
-				<key>CloseTime</key>
-				<string></string>
-				<key>OpenTime</key>
-				<string></string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>20:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>20:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>20:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>20:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>16:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-			<dict>
-				<key>CloseTime</key>
-				<string>15:50</string>
-				<key>OpenTime</key>
-				<string>6:00</string>
-			</dict>
-		</array>
-
-The **OpeningHours** array specifies opening times for Sunday through Saturday. In this example, the lab is closed on a Sunday, open 6:00am until 8:50pm Mon-Fri, and open 6:00am until 3:50pm on Saturday.
-
-The **LogoutWarningSecs**, and **StrictWorkingHours** keys specify what to do when we are approaching closing time.
-
-		<key>LogoutWarningSecs</key>
-		<integer>600</integer>
-		<key>StrictWorkingHours</key>
-		<true/>
-
-The StrictWorkingHours key above states that we should be strict about office hours - meaning that users will be logged off at closing time. The LogoutWarningSecs key above states that users should get warnings beginning 10 minutes before closing.
-
-The **IdleShutdownInWorkingHours** key defines whether we shut the workstation down if left idle at the LoginWindow. The **IdleShutdownSecs** key specifies how long we can be idle at the LoginWindow before performing the shutdown.
-
-		<key>IdleShutdownInWorkingHours</key>
-		<true/>
-		<key>IdleShutdownSecs</key>
-		<integer>900</integer>
-		
-The value above will shutdown after 15 minutes if a workstation is left at the LoginWindow and no-one logs in.
-
-The maintenance script uses the opening and closing times to schedule each Mac to switch itself on at a random time out-of-hours (for example between 8:50pm Mon and 6:00am Tue).
-
-If a Mac is switched on out-of-hours, and then left idle at the log in screen - a maintenance sequence will be performed. This consists of a **software update** followed by a **group policy update**.
- 
-The **software update** mechanism is read from the UpdateMethodArguments array.
-
-		<key>UpdateMethodArguments</key>
-		<array>
-			<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
-			<string>192.168.0.3,sha1,0,-I,30000</string>
-		</array>
-
-The array consists of a script location, followed by script arguments. In the example above, software update will execute the following command:
-
-		/usr/local/LabWarden/lib/RadmindUpdate "192.168.0.3,sha1,0,-I,30000"
-
-The purpose of the **UpdateMethodArguments** script is to deploy software to the workstation. There is no fixed mechanism imposed by LabWarden. You may use munki or you may use Radmind. This is all left to you and your own custom update script.
-
-In order to get Maintenance working for you, you should:
-
-* Create a custom software update script and make it available to the workstation.
-* Customise the Maintenance config.
-* Use PackForDeployment on the config.
-* Create a group, then copy the packed text to the group Notes field
-* Make your workstation(s) a member of the group
 
 ## Example mobileconfig files
 
@@ -951,11 +850,9 @@ You can also optionally define **IsAdmin**, **IsLocalAccount** and **IsLocalHome
 
 The example policy config should be configured to your own needs.
 
-###Maintenance
+###SystemUpdate
 
-This policy script handles maintenance tasks. The script schedules the workstation to switch on out-of-hours, in order to perform software updates and group policy updates.
-
-This policy was explained earlier in the section "Maintenance Sequence"
+This policy script handles software updates. It is called as root and triggered by the **LoginWindowIdle** and **ManualUpdate** events.
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -963,85 +860,80 @@ This policy was explained earlier in the section "Maintenance Sequence"
 	<dict>
 		<key>Config</key>
 		<dict>
-			<key>IdleShutdownInWorkingHours</key>
-			<true/>
-			<key>IdleShutdownSecs</key>
+			<key>LoginWindowIdleShutdownSecs</key>
 			<integer>1200</integer>
-			<key>LogoutWarningSecs</key>
-			<integer>600</integer>
-			<key>MaintenanceAgeMaxDays</key>
-			<integer>10</integer>
-			<key>OpeningHours</key>
-			<array>
-				<dict>
-					<key>CloseTime</key>
-					<string></string>
-					<key>OpenTime</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>20:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>20:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>20:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>20:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>16:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-				<dict>
-					<key>CloseTime</key>
-					<string>15:50</string>
-					<key>OpenTime</key>
-					<string>6:30</string>
-				</dict>
-			</array>
-			<key>SafetyNetMinutes</key>
-			<integer>150</integer>
-			<key>StrictWorkingHours</key>
+			<key>OutOfHoursEndTime</key>
+			<string>05:00</string>
+			<key>OutOfHoursPowerOn</key>
 			<true/>
-			<key>UpdateMethodArguments</key>
-			<array>
-				<string>YourUpdateScriptURI</string>
-				<string>Param1</string>
-				<string>Param2</string>
-				<string>Param3</string>
-				<string>Param4</string>
-			</array>
+			<key>OutOfHoursStartTime</key>
+			<string>22:00</string>
+			<key>Script</key>
+			<dict>
+				<key>Exe</key>
+				<array>
+					<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+					<string>192.168.0.3,sha1,0,-I,42000</string>
+				</array>
+			</dict>
 		</dict>
 		<key>Name</key>
-		<string>Maintenance</string>
+		<string>SystemUpdate</string>
 		<key>TriggeredBy</key>
 		<array>
-			<string>LoginWindow</string>
 			<string>LoginWindowIdle</string>
-			<string>UserAtDesktop</string>
-			<string>UserPoll</string>
+			<string>ManualUpdate</string>
 		</array>
 		<key>Type</key>
 		<string>Policy</string>
 	</dict>
 	</plist>
+
+Updates are generally done out-of-hours. The policy config defines the start and end of the out-of-hours period via **OutOfHoursStartTime** and **OutOfHoursEndTime**.
+
+	<key>OutOfHoursStartTime</key>
+	<string>22:00</string>
+	<key>OutOfHoursEndTime</key>
+	<string>05:00</string>
+	
+The **OutOfHoursPowerOn** variable defines whether or not we the policy schedules a power-on during the out-of hours period. If true, the workstation will power-on at a random time between the start and end of out-of-hours.
+
+	<key>OutOfHoursPowerOn</key>
+	<true/>
+	
+When a Mac is switched on out-of-hours, and then left idle at the log in screen - a software update will be performed. If a workstation is never switched on out-of-hours, then software updates will never be performed.
+
+The software update mechanism is determined from the **Script** key. This key holds an **Exe** array that consists of a script location, followed by script arguments.
+
+	<key>Script</key>
+	<dict>
+		<key>Exe</key>
+		<array>
+			<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+			<string>192.168.0.3,sha1,0,-I,42000</string>
+		</array>
+	</dict>
+
+In the example above, a scheduled update will execute the following command:
+
+	/usr/local/LabWarden/lib/RadmindUpdate "192.168.0.3,sha1,0,-I, 42000"
+
+The purpose of the **Script** key is to define a script that deploys software to the workstation. There is no fixed mechanism imposed by LabWarden. You may use munki or you may use Radmind. This is all left to you and your own custom script.
+
+Finally, the **LoginWindowIdleShutdownSecs** key specifies how long we can be idle at the LoginWindow before performing the shutdown. You should note that a **gpupdate -force** will be performed before an idle shut-down.  
+
+	<key>LoginWindowIdleShutdownSecs</key>
+	<integer>1200</integer>
+
+A value of 0, indicates that we should not power off when idle.
+
+In order to get the SystemUpdate policy working for you, you should:
+
+* Create a custom software update script and make it available on the workstation.
+* Customise the SystemUpdate config.
+* Use PackForDeployment on the config.
+* Create a group, then copy the packed text to the group Notes field
+* Make your workstation(s) a member of the group
 
 The example policy config should be configured to your own needs.
 
@@ -1389,6 +1281,293 @@ The config contains the usual proxy options.
 	</dict>
 	</plist>
 
+
+##SystemOfficeHours
+This policy can restrict user logins to defined office-hours. It can also produce some simple stats that show how much a workstation is used during those hours. 
+
+![AD Group Members Tab, Members](images/OfficeHours.jpg "Office Hours")
+
+This policy is useful to force log-outs at the end of the day, and to determine which are your most and least used machines.
+
+To use this policy, you need to define normal office-hours, office-hours during breaks, and dates when the office is not open at all.
+
+The **ActiveForDates** key determines the dates for which the policy is active. 
+
+The ActiveForDates **Start** key defines the day/month/year on which to activate the policy. Once the policy is activated, it begins restricting logins and collecting usage data. 
+
+Once deployed, if you change the 'Start' key, all data collection will be reset to zero.
+
+The ActiveForDates **End** key defines the day/month/year on which to de-activate the policy. Once the policy is de-activated, it stops restricting logins and collecting usage data.
+
+You should change the 'End' key whenever you update the info for breaks and closed periods. It should match the last known date at which your office-hours info is valid.
+
+Defining an 'End' key prevents users from being logged out in error, and makes the stats more accurate - should you forget to update the office-hours info on time. 
+
+	<key>ActiveForDates</key>
+	<dict>
+		<key>Start</key>
+		<dict>
+			<key>Day</key>
+			<integer>25</integer>
+			<key>Month</key>
+			<integer>11</integer>
+			<key>Year</key>
+			<integer>2016</integer>
+		</dict>
+		<key>End</key>
+		<dict>
+			<key>Day</key>
+			<integer>28</integer>
+			<key>Month</key>
+			<integer>8</integer>
+			<key>Year</key>
+			<integer>2017</integer>
+		</dict>
+	</dict>
+
+The **LogoutUserOutOfHours** key specifies whether or not we should restrict usage to office-hours.
+
+		<key>LogoutUserOutOfHours</key>
+		<true/>
+
+The **LogoutWarningSecs** specifies what to do when we are approaching closing time. A value of 600 means that users will get warnings about being logged-off, 10 minutes before closing.
+
+		<key>LogoutWarningSecs</key>
+		<integer>600</integer>
+
+The **ForceLogoutExceptionGroup** array contains a list of user groups that will never be logged off.
+
+		<key>ForceLogoutExceptionGroup</key>
+		<array>
+			<string>All-Staff</string>
+		</array>
+
+The **LoginEarlySecs** key specifiies how many seconds before office opening we should allow user logins. The **LogoutEarlySecs** key specifies how many seconds before office closing, we should log users out. 
+
+In the example below, we allow logins an hour before opening time - and we log users out 10 minutes before closing time.
+
+		<key>LoginEarlySecs</key>
+		<integer>3600</integer>
+		<key>LogoutEarlySecs</key>
+		<integer>600</integer>
+
+The **UnrestrictedHoursOnClosedDays** key specifies whether we should relax all restrictions on days when the office is defined as closed. This is useful during long closed periods to allow occasional drop-in sessions.
+
+		<key>UnrestrictedHoursOnClosedDays</key>
+		<true/>
+
+The **LogoutUserIdleSecs** key specifies how long a user is allowed to be idle before being logged out. The value 1800 below means that users will be logged out after 30 mins of idleness. A value of 0 means that users will never be logged out. Users that are members of a group defined in the ForceLogoutExceptionGroup array will not be logged out.
+
+		<key>LogoutUserIdleSecs</key>
+		<integer>1800</integer>
+
+You should note that idle user logout can also be achieved via a mobileconfig.
+
+The **AuditHideUntilAgeSecs** key specifies how long we should collect data before displaying stats in the LoginWindow. The value below means that we collect data for 7 days before displaying 'Avg Use' percentages.
+
+		<key>AuditHideUntilAgeSecs</key>
+		<integer>604800</integer>
+
+The **NormalHours** dict specifies opening times for Monday (Day1) through Sunday (Day7). In this example, the lab is open 8:30 until 21:00 Mon-Thu, 8:30 until 17:00 on Fri, and closed on Saturday and Sunday.
+
+	<key>NormalHours</key>
+	<dict>
+		<key>Day1</key>
+		<dict>
+			<key>CloseTime</key>
+			<string>21:00</string>
+			<key>OpenTime</key>
+			<string>8:30</string>
+		</dict>
+		<key>Day2</key>
+		<dict>
+			<key>CloseTime</key>
+			<string>21:00</string>
+			<key>OpenTime</key>
+			<string>8:30</string>
+		</dict>
+		<key>Day3</key>
+		<dict>
+			<key>CloseTime</key>
+			<string>21:00</string>
+			<key>OpenTime</key>
+			<string>8:30</string>
+		</dict>
+		<key>Day4</key>
+		<dict>
+			<key>CloseTime</key>
+			<string>21:00</string>
+			<key>OpenTime</key>
+			<string>8:30</string>
+		</dict>
+		<key>Day5</key>
+		<dict>
+			<key>CloseTime</key>
+			<string>17:00</string>
+			<key>OpenTime</key>
+			<string>8:30</string>
+		</dict>
+		<key>Day6</key>
+		<dict>
+			<key>CloseTime</key>
+			<string></string>
+			<key>OpenTime</key>
+			<string></string>
+		</dict>
+		<key>Day7</key>
+		<dict>
+			<key>CloseTime</key>
+			<string></string>
+			<key>OpenTime</key>
+			<string></string>
+		</dict>
+	</dict>
+
+The **ClosedDays** array specifies periods when a lab is closed. The array contains a list of **start** days and **end** days.
+
+	<key>ClosedDays</key>
+	<array>
+		<dict>
+			<key>Start</key>
+			<dict>
+				<key>Day</key>
+				<integer>23</integer>
+				<key>Month</key>
+				<integer>12</integer>
+				<key>Year</key>
+				<integer>2016</integer>
+			</dict>
+			<key>End</key>
+			<dict>
+				<key>Day</key>
+				<integer>8</integer>
+				<key>Month</key>
+				<integer>1</integer>
+				<key>Year</key>
+				<integer>2017</integer>
+			</dict>
+		</dict>
+		<dict>
+			<key>Start</key>
+			<dict>
+				<key>Day</key>
+				<integer>14</integer>
+				<key>Month</key>
+				<integer>4</integer>
+				<key>Year</key>
+				<integer>2017</integer>
+			</dict>
+			<key>End</key>
+			<dict>
+				<key>Day</key>
+				<integer>14</integer>
+				<key>Month</key>
+				<integer>4</integer>
+				<key>Year</key>
+				<integer>2017</integer>
+			</dict>
+		</dict>
+	</array>	
+
+The **HolidayHours** array specifies periods when a lab has modified opening times. The array contains one or more dicts that contain a **Daterange** array followed by alternate opening hours. In the example below, on the dates 29 Oct 2016 to 6 Nov 2016, and 14 Jan 2017 to 22 Jan 2017, the lab is open Mon-Fri 8:30-16:00.
+
+	<key>HolidayHours</key>
+	<array>
+		<dict>
+			<key>DateRange</key>
+			<array>
+				<dict>
+					<key>Start</key>
+					<dict>
+						<key>Day</key>
+						<integer>29</integer>
+						<key>Month</key>
+						<integer>10</integer>
+						<key>Year</key>
+						<integer>2016</integer>
+					</dict>
+					<key>End</key>
+					<dict>
+						<key>Day</key>
+						<integer>6</integer>
+						<key>Month</key>
+						<integer>11</integer>
+						<key>Year</key>
+						<integer>2016</integer>
+					</dict>
+				</dict>
+				<dict>
+					<key>Start</key>
+					<dict>
+						<key>Day</key>
+						<integer>14</integer>
+						<key>Month</key>
+						<integer>1</integer>
+						<key>Year</key>
+						<integer>2017</integer>
+					</dict>
+					<key>End</key>
+					<dict>
+						<key>Day</key>
+						<integer>22</integer>
+						<key>Month</key>
+						<integer>1</integer>
+						<key>Year</key>
+						<integer>2017</integer>
+					</dict>
+				</dict>
+			</array>
+			<key>Day1</key>
+			<dict>
+				<key>CloseTime</key>
+				<string>16:00</string>
+				<key>OpenTime</key>
+				<string>8:30</string>
+			</dict>
+			<key>Day2</key>
+			<dict>
+				<key>CloseTime</key>
+				<string>16:00</string>
+				<key>OpenTime</key>
+				<string>8:30</string>
+			</dict>
+			<key>Day3</key>
+			<dict>
+				<key>CloseTime</key>
+				<string>16:00</string>
+				<key>OpenTime</key>
+				<string>8:30</string>
+			</dict>
+			<key>Day4</key>
+			<dict>
+				<key>CloseTime</key>
+				<string>16:00</string>
+				<key>OpenTime</key>
+				<string>8:30</string>
+			</dict>
+			<key>Day5</key>
+			<dict>
+				<key>CloseTime</key>
+				<string>16:00</string>
+				<key>OpenTime</key>
+				<string>8:30</string>
+			</dict>
+			<key>Day6</key>
+			<dict>
+				<key>CloseTime</key>
+				<string></string>
+				<key>OpenTime</key>
+				<string></string>
+			</dict>
+			<key>Day7</key>
+			<dict>
+				<key>CloseTime</key>
+				<string></string>
+				<key>OpenTime</key>
+				<string></string>
+			</dict>
+		</dict>
+	</array>
 
 ###SystemRemoteManagement
 
@@ -2286,6 +2465,28 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+1.0.101 - 09-Dec-2016
+
+* The 'Legacy' and 'custom' folders have been moved into the root of the Labwarden folder.
+
+* The 'Maintenance' policy has been split in two, to form a 'SystemUpdate' policy and a 'SystemOfficeHours' policy. The now legacy 'Maintenance' policy has been moved into the legacy folder. 
+
+* Created a new 'SystemUpdate' policy that handles software updates. If you have deployed the older 'Maintenance' policy you should consider deploying the 'SystemUpdate' policy instead.
+
+* Replaced /usr/local/LabWarden/util/Maintenance with /usr/local/LabWarden/util/Update. The code  simply triggers a 'ManualUpdate' event which the new 'SystemUpdate' policy handles.
+
+* Updated RadmindUpdate, which is currently the only example software update script.
+
+* Created the 'SystemOfficeHours' policy. This policy can restrict logins to defined office-hours, and can also do some simple auditing of usage - which is displayed as a percentage at the LoginWindow. This policy is useful to force log-outs at the end of the day, and to determine which are your most and least used machines
+
+* The 'UserKeyChainFix' policy is changed slightly. It now logs off after deleting the keychain if it is found that the users keychain is locked due to password issues. Previously it did not log off. When a user logs in again, the system will create a new keychain.
+
+* Updated the documentation to include entries for the new 'SystemUpdate' and 'SystemOfficeHours' policies.
+
+* Updated 'CommonLib' to prevent policies being called more than once, should a 'TriggeredBy' entry in the main LabWarden config have duplicate entries (in error).
+
+* Updated 'LabWarden-plist-install' to fix an error that could happen when installing a printer. The error prevented any setuptool defined in a PPD from running when there were spaces in a PPD filename. If there was no setuptool, the error was not noticable (except in the logs). (Reported by Lawrence Howlett)
 
 1.0.100 - 27-Oct-2016
 

@@ -2,20 +2,22 @@
 #
 # Short:    Utility Script - Perform a maintenance action (workstation update)
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # Called as follows:    
-#   /usr/local/LabWarden/util/Maintenance
+#   /usr/local/LabWarden/legacy/util/Maintenance
 
 # Reads the software update method from the maintenance settings
 # then calls the appropriate update script. Afterwards it performs a gpupdate.
 #
 # Convenient when you want to perform a manual software update.
+#
+# This is a legacy utility that is replaced by the "Update" utility.
 
 # ---
 
-sv_CodeVersion="1.0.100"
+sv_CodeVersion="1.0.101"
 
 # ---
 
@@ -31,33 +33,6 @@ if [ "${sv_ThisUserName}" != "root" ]
 then
   # we only like root
   exit 0
-fi
-
-# ---
-
-# If we are not running from a remote shell, and iHook is available - then use it
-if test -z "$(who am i | grep -E ".*\([^(]*\)$")"
-then
-  if test -e "/usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook"
-  then
-    iv_MyParentProcess="$(ps -o comm= $PPID | tr "/" "\n" | tail -n1)"
-    if [ "${iv_MyParentProcess}" != "iHook" ]
-    then
-      /usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}"
-      exit 0
-    else
-      echo "%WINDOWSIZE 640 456"
-      if test -f "/usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
-      then
-        echo "%BACKGROUND /usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
-        echo "%TEXTCOLOR WHITE"
-      fi
-      echo "%UIMODE AUTOCRATIC"
-      echo "%WINDOWZOOM DISABLE"
-      echo "%SHOWTIMER"
-      echo "%TITLE ${sv_ThisScriptFileName}"
-    fi
-  fi
 fi
 
 # ---

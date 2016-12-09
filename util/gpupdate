@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="1.0.100"
+sv_CodeVersion="1.0.101"
 
 # ---
 
@@ -306,20 +306,8 @@ then
         if [ "$?" != "0" ]
         then
           # the object needs to exist in AD
-          LW_nf_logmessage "ERROR, cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD."
-          
-          # If we have failed to find this Computer in AD, then the computer probably needs to be re-bound to AD
-          if [ "${sv_ObjectContext}" = "Computers" ]
-          then
-            sv_Error="ERROR - workstation needs to be rebound to AD (trust relationship failure)"
-            LW_nf_logmessage "${sv_Error}"
-            
-            # Update the loginWindow Text
-            sv_LoginWindowText="${LW_sv_ADComputerName}:This workstation is in an error state, please inform IT Services:${sv_Error}"
-            sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ":" "\n")
-            /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
-          fi
-          
+          LW_nf_logmessage "ERROR, cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD. Might be too soon after reboot."
+                    
         else
           # If we are updating the Computer policies, update the LoginWindow Message and Remote Management strings
           if [ "${sv_ObjectContext}" = "Computers" ]
@@ -327,9 +315,11 @@ then
             sv_ADpath=$(dscl 2>/dev/null localhost -read "/Search/Computers/${LW_sv_ADTrustAccount}" distinguishedName | sed 's|^.*distinguishedName:||;/^\s*$/d' | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${LW_sv_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
             if test -n "${sv_ADpath}"
             then
+              # Get line 3 of the LoginWindow text which we dont want to overwrite
+              sv_LoginWindowText=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 3)
+
               # Update the loginWindow Text
-              sv_LoginWindowText="$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||"):$(echo ${sv_ADpath} | sed "s|,| - |g")"
-              sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ":" "\n")
+              sv_LoginWindowText=$(echo "$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||"):$(echo ${sv_ADpath} | sed "s|,| - |g"):${sv_LoginWindowText}" | tr ":" "\n")
               /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
             fi
           fi
@@ -393,6 +383,7 @@ then
           mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
           chmod 755 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
 
+          rm -fR "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
           mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
           chmod 755 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
 
@@ -461,7 +452,7 @@ then
       
     fi
     
-    sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-uninstall"
+    sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
     if ! test -e "${sv_HandlerFilePath}"
     then
       sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
@@ -499,7 +490,7 @@ then
       
     fi
     
-    sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-verify"
+    sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-verify"
     if ! test -e "${sv_HandlerFilePath}"
     then
       sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify"
@@ -519,7 +510,7 @@ then
         
       else
       
-        sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-uninstall"
+        sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
         if ! test -e "${sv_HandlerFilePath}"
         then
           sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
@@ -533,7 +524,7 @@ then
           # Uninstall the payload
           "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
 
-          sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/custom/${sv_PayloadFileExt}-install"
+          sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-install"
           if ! test -e "${sv_HandlerFilePath}"
           then
             sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install"

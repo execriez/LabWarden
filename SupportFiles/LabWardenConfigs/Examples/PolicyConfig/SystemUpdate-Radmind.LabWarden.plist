@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Config</key>
+	<dict>
+		<key>LoginWindowIdleShutdownSecs</key>
+		<integer>1200</integer>
+		<key>OutOfHoursEndTime</key>
+		<string>05:00</string>
+		<key>OutOfHoursPowerOn</key>
+		<true/>
+		<key>OutOfHoursStartTime</key>
+		<string>22:00</string>
+		<key>Script</key>
+		<dict>
+			<key>Exe</key>
+			<array>
+				<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+				<string>192.168.0.3,sha1,0,-I,42000</string>
+			</array>
+		</dict>
+	</dict>
+	<key>Name</key>
+	<string>SystemUpdate</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>LoginWindowIdle</string>
+		<string>ManualUpdate</string>
+	</array>
+	<key>Type</key>
+	<string>Policy</string>
+	<key>UUID</key>
+	<string>E3C241FC-49E1-4989-AF57-47EC11138666</string>
+</dict>
+</plist>

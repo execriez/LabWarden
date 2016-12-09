@@ -2,10 +2,11 @@
 #
 # Short:    Policy script - Run a system Maintenance
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # Triggered by the following events:
+#   ManualUpdate    (as root)
 #   LoginWindow     (as root)
 #   LoginWindowIdle (as root)
 #   UserAtDesktop   (as user)
@@ -14,10 +15,11 @@
 # Called as follows:    
 #   Maintenance <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
 # 
+# This is a legacy policy that is replaced by the "SystemUpdate" policy.
 
 # ---
 
-sv_CodeVersion="1.0.100"
+sv_CodeVersion="1.0.101"
 
 if [ $# -eq 0 ]
 then
@@ -348,6 +350,21 @@ LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam}
 
 case ${sv_EventName} in
     
+ManualUpdate)
+  # Perform the Maintenance
+  if test -e "/usr/local/LabWarden/util/Maintenance"
+  then
+    /usr/local/LabWarden/util/Maintenance
+  else
+    if test -e "/usr/local/LabWarden/legacy/util/Maintenance"
+    then
+      /usr/local/LabWarden/legacy/util/Maintenance
+    else
+      LW_nf_RestartNow "ERROR, cannot find maintenance utility."
+    fi
+  fi
+  ;;
+
 LoginWindow)
   # Setup Maintenance options
   LW_nf_logmessage "NOTE, calculating out of hours restrictions and next update time."
@@ -439,7 +456,17 @@ LoginWindowIdle)
     LW_nf_SetPlistProperty "${LW_sv_ThisUserPrefDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:LocalPrefs:LastMaintenanceEpoch" "${LW_iv_ThisScriptStartEpoch}"
           
     # Perform the Maintenance
-    /usr/local/LabWarden/util/Maintenance
+    if test -e "/usr/local/LabWarden/util/Maintenance"
+    then
+      /usr/local/LabWarden/util/Maintenance
+    else
+      if test -e "/usr/local/LabWarden/legacy/util/Maintenance"
+      then
+        /usr/local/LabWarden/legacy/util/Maintenance
+      else
+        LW_nf_RestartNow "ERROR, cannot find maintenance utility."
+      fi
+    fi
 
     # Restart after a successful update
     LW_nf_RestartNow "ATTENTION, maintenance complete - we should reboot."

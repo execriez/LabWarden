@@ -1,0 +1,1079 @@
+#!/bin/bash
+#
+# Short:    Policy script - Enforce Opening Hours User Access
+# Author:   Mark J Swift
+# Version:  1.0.101
+# Modified: 09-Dec-2016
+#
+# Triggered by the following events:
+#   Boot     (as root)
+#   SystemPoll      (as root)
+#   UserAtDesktop   (as user)
+#   UserPoll        (as user)
+#
+# Called as follows:    
+#   SystemOfficeHours <ConfigDir> <EventHistory> <LoggedInUser> <ConfigEntryName> <OptionalParam>
+# 
+# This was simple in my head - I'm not sure why it ended up so complicated.
+
+# ---
+
+sv_CodeVersion="1.0.101"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config directory
+sv_ConfigDirPath="${1}"
+if test -z "${sv_ConfigDirPath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get event History
+sv_EventHistory="${2}"
+
+# Get event that triggered this policy
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+# This is generally null during a system event, and not null during a user event
+LW_sv_LoggedInUserName="${3}"
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${4}"
+
+# Get optional parameter
+# So far, this is only ever used to get Application info after a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+sv_OptionalParam="${5}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${LW_sv_BuildVersionStampAsString}"
+then
+  . /usr/local/LabWarden/lib/CommonLib
+fi
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${LW_sv_ThisScriptName}"
+
+# ---
+
+Sf_ShowTidyDateTime() # display date/time as today/tomorrow, etc
+{
+  local iv_ThisEpoch
+  local iv_ThisZerohourEpoch
+  local iv_NowZerohourEpoch
+  local iv_TomorrowZerohourEpoch
+  local iv_NextWeekZerohourEpoch
+  
+  iv_ThisEpoch=${1}
+  iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+
+  iv_NowZerohourEpoch=$(date -r ${LW_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+  if [ ${iv_ThisZerohourEpoch} -eq ${iv_NowZerohourEpoch} ]
+  then
+    printf "Today "
+  else
+    iv_TomorrowZerohourEpoch=$(date -r ${iv_NowZerohourEpoch} -v+1d "+%s")
+    if [ ${iv_ThisZerohourEpoch} -eq ${iv_TomorrowZerohourEpoch} ]
+    then
+      printf "Tomorrow "
+    else
+      iv_NextWeekZerohourEpoch=$(date -r ${iv_NowZerohourEpoch} -v+7d "+%s")
+      printf "$(date -r ${iv_ThisEpoch} "+%a") "    
+      if [ ${iv_ThisZerohourEpoch} -ge ${iv_NextWeekZerohourEpoch} ]
+      then
+        printf "$(date -r ${iv_ThisEpoch} "+%d %b %Y") "    
+      fi
+    fi
+  fi
+
+  printf "@ $(date -r ${iv_ThisEpoch} "+%H:%M")"
+}
+
+# Return the open and close time for the day of a given epoch - plus some other useful info
+# Returns a string as follows:
+#      HolidayHours,<OpenTimeEpoch>,<CloseTimeEpoch>,<StartOfRestrictedEpoch>,<EndOfRestrictedEpoch>"
+#  or  NormalHours,<OpenTimeEpoch>,<CloseTimeEpoch>,,"
+#  or  ClosedDays,,,<StartOfCloseEpoch>,<EndOfCloseEpoch>"
+Sf_GetSlotForEpoch()   # epoch
+{
+  local iv_ThisEpoch
+  local iv_ThisDayOfWeek
+  local bv_ClosedDaysAccess
+  local bv_HolidayHoursAccess
+  local iv_ClosedDaysCount
+  local iv_ClosedDaysIndex
+  local iv_HolidayHoursCount
+  local iv_HolidayHoursIndex
+  local iv_DatesCount
+  local iv_DatesIndex
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_EndDay
+  local iv_EndMonth
+  local iv_EndYear
+  local iv_StartEpoch
+  local iv_EndEpoch
+  local sv_OpenTimeString
+  local sv_CloseTimeString
+  local sv_SlotType
+  local iv_ThisZerohourEpoch
+  local iv_ThisOffsetSecs
+  local iv_OpenTimeEpoch
+  local iv_CloseTimeEpoch
+
+  iv_ThisEpoch=${1}
+
+  # The day of the week as a decimal, range 1 to 7, Monday being 1
+  iv_ThisDayOfWeek="$(date -r ${iv_ThisEpoch} "+%u")"
+
+  sv_SlotType=""
+
+  iv_OpenTimeEpoch=""
+  sv_CloseTimeString=""
+  iv_StartEpoch=""
+  iv_CloseTimeEpoch=""
+  
+  # Check if current date is in the closed access list
+  iv_ClosedDaysCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays")"
+  for (( iv_ClosedDaysIndex=0; iv_ClosedDaysIndex<${iv_ClosedDaysCount}; iv_ClosedDaysIndex++ ))
+  do
+    iv_StartDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Day")
+    iv_StartMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Month")
+    iv_StartYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Year")
+    iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+
+    iv_EndDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Day")
+    iv_EndMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Month")
+    iv_EndYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Year")
+    iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v23H -v59M -v59S "+%s")
+
+    if [ ${iv_ThisEpoch} -ge ${iv_StartEpoch} ] && [ ${iv_ThisEpoch} -le ${iv_EndEpoch} ]
+    then
+      sv_SlotType="ClosedDays"
+      break
+    fi
+      
+  done
+
+  if test -z "${sv_SlotType}"
+  then
+    iv_HolidayHoursCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours")"
+    for (( iv_HolidayHoursIndex=0; iv_HolidayHoursIndex<${iv_HolidayHoursCount}; iv_HolidayHoursIndex++ ))
+    do
+      iv_DatesCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange")"
+      for (( iv_DatesIndex=0; iv_DatesIndex<${iv_DatesCount}; iv_DatesIndex++ ))
+      do  
+        iv_StartDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Day")
+        iv_StartMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Month")
+        iv_StartYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Year")
+        iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+
+        iv_EndDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Day")
+        iv_EndMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Month")
+        iv_EndYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Year")
+        iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v23H -v59M -v59S "+%s")
+
+        if [ ${iv_ThisEpoch} -ge ${iv_StartEpoch} ] && [ ${iv_ThisEpoch} -le ${iv_EndEpoch} ]
+        then
+          sv_SlotType="HolidayHours"
+          sv_OpenTimeString=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:Day${iv_ThisDayOfWeek}:OpenTime")
+          sv_CloseTimeString=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:Day${iv_ThisDayOfWeek}:CloseTime")
+
+          break
+        fi
+  
+      done
+    
+      if test -n "${sv_SlotType}"
+      then
+        break
+      fi
+      
+    done
+
+    if test -z "${sv_SlotType}"
+    then
+      sv_SlotType="NormalHours"
+      sv_OpenTimeString=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:NormalHours:Day${iv_ThisDayOfWeek}:OpenTime")
+      sv_CloseTimeString=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:NormalHours:Day${iv_ThisDayOfWeek}:CloseTime")
+    fi
+
+    iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+    
+    if test -n "${sv_OpenTimeString}"
+    then
+      iv_ThisOffsetSecs=$(($(echo "${sv_OpenTimeString}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+      iv_OpenTimeEpoch=$((${iv_ThisZerohourEpoch}+${iv_ThisOffsetSecs}))
+    fi
+
+    if test -n "${sv_CloseTimeString}"
+    then
+      iv_ThisOffsetSecs=$(($(echo "${sv_CloseTimeString}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+      iv_CloseTimeEpoch=$((${iv_ThisZerohourEpoch}+${iv_ThisOffsetSecs}))
+    fi
+  
+  fi
+
+  echo "${sv_SlotType},${iv_OpenTimeEpoch},${iv_CloseTimeEpoch},${iv_StartEpoch},${iv_EndEpoch}"
+}
+
+# Find an open or close slot relative to a given epoch
+# Returns a string as follows:
+# <SlotType>,<OpenEpoch>,<CloseEpoch>
+Sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch> 
+{
+  local sv_ThisTimeSlot
+  local sv_ThisPosition
+  local iv_ThisEpoch
+  local iv_ThisZerohourEpoch
+  local iv_Index
+  local sv_InfoString
+  local sv_SlotType
+  local iv_ThisOpenEpoch
+  local iv_ThisCloseEpoch
+  local iv_SomeEpoch
+  
+  sv_ThisTimeSlot=${1} # "open" or "close"
+  sv_ThisPosition=${2} # "before" or "after"
+  iv_ThisEpoch=${3}
+
+#    LW_nf_logmessage "DEBUG, Find ${sv_ThisTimeSlot} time slot ${sv_ThisPosition} ${iv_ThisEpoch}"
+    iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+#    LW_nf_logmessage "DEBUG, iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+    for (( iv_Index=0; iv_Index<14; iv_Index++ )) # If we can't get it after 14 attempts, give up
+    do
+      sv_InfoString="$(Sf_GetSlotForEpoch ${iv_ThisZerohourEpoch})"
+#      LW_nf_logmessage "DEBUG, sv_InfoString ${sv_InfoString}"
+      sv_SlotType="$(echo ${sv_InfoString} | cut -d"," -f1)"
+      case ${sv_SlotType} in
+      NormalHours|HolidayHours)
+        iv_ThisOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+        iv_ThisCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+#        LW_nf_logmessage "DEBUG, iv_ThisOpenEpoch ${iv_ThisOpenEpoch}"
+#        LW_nf_logmessage "DEBUG, iv_ThisCloseEpoch ${iv_ThisCloseEpoch}"
+        if [ "${sv_ThisTimeSlot}" = "open" ]
+        then
+          if test -n "${iv_ThisOpenEpoch}"
+          then
+            if [ "${sv_ThisPosition}" = "before" ]
+            then
+              if [ ${iv_ThisOpenEpoch} -lt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            else
+              if [ ${iv_ThisOpenEpoch} -gt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            fi
+          fi
+        else
+          if test -n "${iv_ThisCloseEpoch}"
+          then
+            if [ "${sv_ThisPosition}" = "before" ]
+            then
+              if [ ${iv_ThisCloseEpoch} -lt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            else
+              if [ ${iv_ThisCloseEpoch} -gt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            fi
+          fi
+        fi
+        ;;
+        
+      ClosedDays)
+        if [ "${sv_ThisPosition}" = "before" ]
+        then
+          iv_SomeEpoch="$(echo ${sv_InfoString} | cut -d"," -f4)"
+        else
+          iv_SomeEpoch="$(echo ${sv_InfoString} | cut -d"," -f5)"
+        fi
+#        LW_nf_logmessage "DEBUG, iv_SomeEpoch ${iv_SomeEpoch}"
+
+        if test -n "${iv_SomeEpoch}"
+        then
+          iv_ThisZerohourEpoch=$(date -r ${iv_SomeEpoch} -v0H -v0M -v0S "+%s")
+#          LW_nf_logmessage "DEBUG, iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+        fi
+        ;;
+      
+      esac
+      
+      if [ "${sv_ThisPosition}" = "before" ]
+      then
+        iv_ThisZerohourEpoch=$(date -r ${iv_ThisZerohourEpoch} -v-1d "+%s")
+      else
+        iv_ThisZerohourEpoch=$(date -r ${iv_ThisZerohourEpoch} -v+1d "+%s")
+      fi
+#      LW_nf_logmessage "DEBUG, iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+    done
+
+  if [ ${iv_Index} -lt 14 ]
+  then
+    echo ${sv_SlotType},${iv_ThisOpenEpoch},${iv_ThisCloseEpoch}
+  else
+    echo ,,
+  fi
+}
+
+# Calculate the following globals for a given epoch
+#  bv_OfficeHoursIsActive
+#  sv_CurrSlotType (NormalHours, HolidayHours or ClosedDays)
+#  iv_CurrOpenEpoch
+#  iv_CurrCloseEpoch
+#  iv_NextOpenEpoch
+Nf_GetOfficeHours() #epoch
+{
+  local iv_ThisEpoch
+  local sv_InfoString
+ 
+  iv_ThisEpoch=${1}
+
+  bv_OfficeHoursIsActive="false"
+
+  sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_ThisEpoch})"
+  iv_CurrOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+  if test -n "${iv_CurrOpenEpoch}"
+  then
+    sv_CurrSlotType="$(echo ${sv_InfoString} | cut -d"," -f1)"
+    iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+    if test -z "${iv_CurrCloseEpoch}"
+    then
+      sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_CurrOpenEpoch})"
+      iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+    fi
+    
+    if test -n "${iv_CurrCloseEpoch}"
+    then
+      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CurrCloseEpoch})"
+      iv_NextOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+      if test -n "${iv_NextOpenEpoch}"
+      then
+        iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+        if test -z "${iv_NextCloseEpoch}"
+        then
+          sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_NextOpenEpoch})"
+          iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+        fi
+        
+        if test -n "${iv_NextCloseEpoch}"
+        then
+          sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_NextCloseEpoch})"
+          iv_SubsequentOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+          if test -n "${iv_SubsequentOpenEpoch}"
+          then
+            bv_OfficeHoursIsActive="true"
+
+          fi
+
+        fi
+      fi
+      
+    fi
+  fi
+
+}
+
+Nf_SetupPolicy() # determine if the policy is active
+{
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_EndDay
+  local iv_EndMonth
+  local iv_EndYear
+  local iv_StartEpoch
+  local iv_EndEpoch
+  
+  iv_StartDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Day")
+  iv_StartMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Month")
+  iv_StartYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Year")
+    
+  if test -z $(echo "${iv_StartDay}/${iv_StartMonth}/${iv_StartYear}" | grep -E "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$")
+  then
+    # Invalid date entry - Disable policy
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+    LW_nf_logmessage "ATTENTION, policy start date is invalid - policy is inactive"
+    
+  else
+    iv_EndDay=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Day")
+    iv_EndMonth=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Month")
+    iv_EndYear=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Year")
+    
+    if test -z $(echo "${iv_EndDay}/${iv_EndMonth}/${iv_EndYear}" | grep -E "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$")
+    then
+      # Invalid date entry - Disable policy
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+      LW_nf_logmessage "ATTENTION, policy end date is invalid - policy is inactive"
+      
+    else
+      iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyStartEpoch" ${iv_StartEpoch}
+
+      iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v0H -v0M -v0S "+%s")
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyEndEpoch" ${iv_EndEpoch}
+      
+      if [ ${LW_iv_ThisScriptStartEpoch} -lt ${iv_StartEpoch} ] || [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_EndEpoch} ]
+      then
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+        LW_nf_logmessage "ATTENTION, outside active dates - policy is inactive"
+        
+      else
+        # Enable policy.
+        # First check if the policy has been previously disabled. If so, and if there has been an audit - update the lastaudit epoch
+        bv_PolicyIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+        if [ "${bv_PolicyIsActive}" = "false" ]
+        then
+          iv_FirstAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+          if test -n "${iv_FirstAuditEpoch}"
+          then
+            LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${LW_iv_ThisScriptStartEpoch}
+          fi
+        fi
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "true"
+        LW_nf_logmessage "ATTENTION, policy is active"
+        
+      fi
+    
+    fi
+
+  fi
+}
+
+Nf_SetupOfficeHours() # Should only be called as root
+{
+  local iv_CurrOpenEpoch
+  local iv_CurrCloseEpoch
+  local iv_NextOpenEpoch
+  local bv_OpenAccessOnClosedDays
+  local iv_NowZerohourEpoch
+  local bv_PolicyIsActive
+
+  bv_PolicyIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" != "true" ]
+  then
+    # Disable opening hours restrictions
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive" "false"
+
+  else
+    # Values need to be read as both a root and normal user - so store in the policies GlobalPrefs
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive" "false"
+
+    LW_nf_logmessage "NOTE, calculating out of hours restrictions."
+    Nf_GetOfficeHours ${LW_iv_ThisScriptStartEpoch}
+  
+    if [ "${bv_OfficeHoursIsActive}" = "false" ]
+    then
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive" "false"
+      LW_nf_logmessage "ATTENTION, opening times undefined or invalid"
+
+    else
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrSlotType" "${sv_CurrSlotType}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch" "${iv_CurrOpenEpoch}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch" "${iv_CurrCloseEpoch}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch" "${iv_NextOpenEpoch}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextCloseEpoch" "${iv_NextCloseEpoch}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:SubsequentOpenEpoch" "${iv_SubsequentOpenEpoch}"
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive" "${bv_OfficeHoursIsActive}"
+
+      LW_nf_logmessage "NOTE, CurrSlotType ${sv_CurrSlotType}"
+      LW_nf_logmessage "NOTE, CurrOpen $(date -r ${iv_CurrOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+      LW_nf_logmessage "NOTE, CurrClose $(date -r ${iv_CurrCloseEpoch} "+%Y%m%d-%H:%M.%S")"
+      LW_nf_logmessage "NOTE, NextOpen $(date -r ${iv_NextOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+      LW_nf_logmessage "NOTE, NextClose $(date -r ${iv_NextCloseEpoch} "+%Y%m%d-%H:%M.%S")"
+      LW_nf_logmessage "NOTE, SubsequentOpenEpoch $(date -r ${iv_SubsequentOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+
+    fi
+  fi
+
+}
+
+Nf_SetupAudit() # setup audit counts for first time
+{
+  local bv_OfficeHoursIsActive
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_StartEpoch
+  local iv_FirstAuditEpoch
+  
+  # Values need to be read as both a root and normal user - so store in the policies GlobalPrefs
+  
+  bv_PolicyIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" != "true" ]
+  then
+    # Disable opening hours restrictions
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive" "false"
+
+  else
+    bv_OfficeHoursIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive")
+    if [ "${bv_OfficeHoursIsActive}" != "true" ]
+    then
+      # Disable audit
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive" "false"
+
+    else
+      iv_StartEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:PolicyStartEpoch")
+      
+      iv_FirstAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+      if test -n "${iv_FirstAuditEpoch}"
+      then
+        if [ ${iv_FirstAuditEpoch} -lt ${iv_StartEpoch} ]
+        then
+          /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_PolicyName}:GlobalPrefs:Audit'" "${sv_ConfigDirPath}/LabWarden.plist"
+          LW_nf_logmessage "ATTENTION, First audit predates policy start date - usage stats reset"
+        fi
+      fi
+        
+      iv_FirstAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+      if test -z "${iv_FirstAuditEpoch}"
+      then
+        # First Audit not started yet - Delete old audit that shouldn't exist anyway
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_PolicyName}:GlobalPrefs:Audit'" "${sv_ConfigDirPath}/LabWarden.plist"
+      
+        LW_nf_logmessage "ATTENTION, Creating empty usage stats"
+
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch" ${LW_iv_ThisScriptStartEpoch}
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${LW_iv_ThisScriptStartEpoch}
+
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs" 0
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs" 0
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs" 0
+        LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs" 0
+
+      fi
+      
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive" "true"
+    fi
+  fi
+}
+
+Nf_UpdateTotCounts() # update tot counts since last audit
+{
+  local iv_AuditEpoch
+  local iv_LastAuditEpoch
+  local bv_AuditIsActive
+  local iv_CurrOpenEpoch
+  local iv_CurrCloseEpoch
+  local iv_CountUntilClosedSecs
+  local iv_OfficeHoursTimeSecs
+  local iv_OfficeHoursTotSecs
+  local iv_OutOfHoursTimeSecs
+  local iv_OutOfHoursTotSecs
+  local iv_BackAuditStartEpoch
+  local sv_InfoString
+  local iv_OpenEpoch
+  local iv_CloseEpoch
+  
+  bv_AuditIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+  if [ "${bv_AuditIsActive}" = "true" ]
+  then
+    iv_CurrOpenEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch")
+    iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+
+    iv_LastAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch")
+
+    iv_AuditEpoch=${iv_LastAuditEpoch}
+    
+    # Calculate time passed since last audit
+    iv_OfficeHoursTimeSecs=0
+    iv_OutOfHoursTimeSecs=0
+
+    sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_AuditEpoch})"
+    iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+    iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+
+    LW_nf_logmessage "NOTE, previous audit completed to $(date -r ${iv_LastAuditEpoch} "+%Y%m%d-%H:%M.%S")"
+    iv_BackAuditStartEpoch=$(date -u "+%s")
+    while [ ${iv_AuditEpoch} -lt ${iv_CurrOpenEpoch} ]
+    do
+#      LW_nf_logmessage "DEBUG, iv_AuditEpoch ${iv_AuditEpoch}"
+      iv_CountUntilClosedSecs=$((${iv_CloseEpoch}-${iv_AuditEpoch}))
+#      LW_nf_logmessage "DEBUG, CountUntilClosedSecs ${iv_CountUntilClosedSecs}"
+      if [ ${iv_CountUntilClosedSecs} -gt 0 ]
+      then
+        iv_OfficeHoursTimeSecs=$((${iv_OfficeHoursTimeSecs}+${iv_CountUntilClosedSecs}))
+      fi
+      
+      # On a Core2duo it could take up to 15 minutes to do 1 year of back audits,
+      # so limit the processing to 30 secs to prevent an excessive back-audit from hogging the triggered event.
+      # 30 secs is long enough to do about 13 days of back audit on a Core2duo
+      if [ $(( $(date -u "+%s")-${iv_BackAuditStartEpoch} )) -gt 30 ]
+      then
+        LW_nf_logmessage "NOTE, back audit postponed, completed to $(date -r ${iv_AuditEpoch} "+%Y%m%d-%H:%M.%S")"
+        break
+      fi
+      
+      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CloseEpoch})"
+      iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+      iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+      iv_AuditEpoch=${iv_OpenEpoch}
+      
+#      LW_nf_logmessage "DEBUG, NormalHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+#      LW_nf_logmessage "DEBUG, HolidayHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+    done
+    
+#    LW_nf_logmessage "DEBUG, iv_AuditEpoch ${iv_AuditEpoch}"
+#    LW_nf_logmessage "DEBUG, NormalHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+#    LW_nf_logmessage "DEBUG, HolidayHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+
+    # Check if we completed the back-audit
+    if [ ${iv_AuditEpoch} -ge ${iv_CurrOpenEpoch} ]
+    then
+    
+      if [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_CountUntilClosedSecs=$((${iv_CurrCloseEpoch}-${iv_AuditEpoch}))
+      else
+        iv_CountUntilClosedSecs=$((${LW_iv_ThisScriptStartEpoch}-${iv_AuditEpoch}))
+      fi
+
+      if [ ${iv_CountUntilClosedSecs} -gt 0 ]
+      then
+        iv_OfficeHoursTimeSecs=$((${iv_OfficeHoursTimeSecs}+${iv_CountUntilClosedSecs}))
+      fi
+    
+      iv_AuditEpoch=${LW_iv_ThisScriptStartEpoch}
+      LW_nf_logmessage "NOTE, back audit complete at $(date -r ${iv_AuditEpoch} "+%Y%m%d-%H:%M.%S")"
+    fi
+
+    iv_OutOfHoursTimeSecs=$((${iv_AuditEpoch}-${iv_LastAuditEpoch}-${iv_OfficeHoursTimeSecs}))
+
+    iv_OfficeHoursTotSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs")
+    iv_OfficeHoursTotSecs=$((${iv_OfficeHoursTotSecs}+${iv_OfficeHoursTimeSecs}))
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs" ${iv_OfficeHoursTotSecs}
+    
+    iv_OutOfHoursTotSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs")
+    iv_OutOfHoursTotSecs=$((${iv_OutOfHoursTotSecs}+${iv_OutOfHoursTimeSecs}))
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs" ${iv_OutOfHoursTotSecs}
+
+    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${iv_AuditEpoch}
+
+  fi  
+}
+
+Nf_UpdateUseCounts() # update use counts since last audit
+{
+  local bv_AuditIsActive
+  local iv_LastAuditEpoch
+  local iv_UseSinceLastAuditSecs
+  local iv_OfficeHoursUseSecs
+  local iv_OfficeHoursUseSecs
+  local iv_OutOfHoursUseSecs
+  local iv_CurrCloseEpoch
+  local iv_UseSinceLastAuditMaxSecs
+  
+  # Check that someone is logged in
+  if [ "$(stat -f '%Su' /dev/console)" != "root" ]
+  then
+    # Check that Auditing has been setup
+    bv_AuditIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+    if [ "${bv_AuditIsActive}" = "true" ]
+    then
+      iv_LastAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch")
+      
+      # Set up a maximum value for usage - taking into account the fact that this routine is regularly polled
+      iv_UseSinceLastAuditMaxSecs=$(( ${LW_iv_SystemPollTriggerSecs}+4 ))
+      
+      iv_UseSinceLastAuditSecs=$((${LW_iv_ThisScriptStartEpoch}-${iv_LastAuditEpoch}))
+      if [ ${iv_UseSinceLastAuditSecs} -gt ${iv_UseSinceLastAuditMaxSecs} ]
+      then
+        iv_UseSinceLastAuditSecs=${iv_UseSinceLastAuditMaxSecs}
+      fi
+
+      iv_OfficeHoursUseSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs")
+      iv_OutOfHoursUseSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs")
+
+      iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+
+      if [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_OutOfHoursUseSecs=$((${iv_OutOfHoursUseSecs}+${iv_UseSinceLastAuditSecs}))
+        
+      else
+        iv_OfficeHoursUseSecs=$((${iv_OfficeHoursUseSecs}+${iv_UseSinceLastAuditSecs}))
+        
+      fi
+
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs" ${iv_OfficeHoursUseSecs}
+      LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs" ${iv_OutOfHoursUseSecs}
+
+    fi
+  fi
+}
+
+Nf_UpdateOfficeHoursDisplay() # update usage percentage display on login window
+{
+  local bv_AuditIsActive
+  local sv_AuditText
+  local iv_FirstAuditEpoch
+  local iv_AuditAge
+  local bv_LogoutUserOutOfHours
+  local iv_CurrCloseEpoch
+  local iv_LogoutEarlySecs
+  local iv_ThisCloseEpoch
+  local bv_UnrestrictedHoursOnClosedDays
+  
+  sv_AuditText=""
+  
+  bv_OfficeHoursIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive")
+  if [ "${bv_OfficeHoursIsActive}" = "true" ]
+  then
+    iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+
+    if [ ${LW_iv_ThisScriptStartEpoch} -le ${iv_CurrCloseEpoch} ]
+    then
+      sv_AuditText="Office Hours"
+
+    else
+      sv_AuditText="Out of Hours"
+      
+    fi
+
+    bv_LogoutUserOutOfHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutUserOutOfHours")
+    if [ "${bv_LogoutUserOutOfHours}" = "true" ]
+    then
+      iv_LogoutEarlySecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutEarlySecs")
+      if test -z "${iv_LogoutEarlySecs}"
+      then
+        iv_LogoutEarlySecs=0
+      fi
+      iv_ThisCloseEpoch=$((${iv_CurrCloseEpoch}-${iv_LogoutEarlySecs}))
+      if [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_NextOpenEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+
+        iv_LoginEarlySecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LoginEarlySecs")
+        if test -z "${iv_LoginEarlySecs}"
+        then
+          iv_LoginEarlySecs=0
+        fi
+        iv_ThisOpenEpoch=$((${iv_NextOpenEpoch}-${iv_LoginEarlySecs}))
+        if [ ${LW_iv_ThisScriptStartEpoch} -lt ${iv_ThisOpenEpoch} ]
+        then
+          bv_UnrestrictedHoursOnClosedDays=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:UnrestrictedHoursOnClosedDays")
+          if [ "${bv_UnrestrictedHoursOnClosedDays}" = "true" ]
+          then
+
+            iv_ThisZerohourEpoch=$(date -r ${LW_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+            iv_CurrCloseZeroEpoch=$(date -r ${iv_CurrCloseEpoch} -v0H -v0M -v0S "+%s")
+            iv_NextOpenZeroEpoch=$(date -r ${iv_NextOpenEpoch} -v0H -v0M -v0S "+%s")
+            if [ ${iv_ThisZerohourEpoch} -eq ${iv_CurrCloseZeroEpoch} ] || [ ${iv_ThisZerohourEpoch} -eq ${iv_NextOpenZeroEpoch} ]
+            then
+              sv_AuditText="${sv_AuditText} (Closed)"
+                        
+            fi
+
+          else
+            sv_AuditText="${sv_AuditText} (Closed)"
+          
+          fi
+        
+        fi
+        
+        sv_AuditText="${sv_AuditText} - Open $(Sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
+        
+      else
+        sv_AuditText="${sv_AuditText} - Closing $(Sf_ShowTidyDateTime ${iv_ThisCloseEpoch})"
+        
+      fi
+    fi
+
+    bv_AuditIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+    if [ "${bv_AuditIsActive}" = "true" ]
+    then
+      iv_UseSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs")
+      iv_TotSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs")
+
+      if [ ${iv_TotSecs} -gt 0 ]
+      then
+        iv_FirstAuditEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+        iv_AuditHideUntilAgeSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:AuditHideUntilAgeSecs")
+        if test -z "${iv_AuditHideUntilAgeSecs}"
+        then
+          iv_AuditHideUntilAgeSecs=0
+        fi
+
+        iv_AuditAgeSecs=$((${LW_iv_ThisScriptStartEpoch}-${iv_FirstAuditEpoch}))
+        if [ ${iv_AuditAgeSecs} -gt ${iv_AuditHideUntilAgeSecs} ]
+        then
+          iv_UsePercentage=$(( (${iv_UseSecs}*100)/${iv_TotSecs} ))
+          sv_AuditText="${sv_AuditText} - Avg Use ${iv_UsePercentage}%"
+          if [ ${iv_UsePercentage} -lt 30 ]
+          then
+            sv_AuditText="${sv_AuditText} (Low)"
+          else
+            if [ ${iv_UsePercentage} -lt 60 ]
+            then
+              sv_AuditText="${sv_AuditText} (Good)"
+            else
+              sv_AuditText="${sv_AuditText} (High)"
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+  
+  # Update the LoginWindow text with the audit text
+  LW_nf_logmessage "NOTE, setting audit text to '${sv_AuditText}'"
+  sv_LoginWindowText=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 1-2)";${sv_AuditText}"
+  sv_LoginWindowText=$(echo "${sv_LoginWindowText}" | tr ";" "\n")
+  /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
+}
+
+Nf_ForceUserLogout() # Force user logout. Could be better
+{
+  # cycle through usual apps and kill them dead (unsaved changes will be lost)
+  ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read iv_JobID
+  do
+    kill ${iv_JobID}
+  done
+
+  # applescript to log out gracefully
+  /usr/bin/osascript -e 'tell application "loginwindow" to «event aevtrlgo»'
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+LW_nf_logmessage "NOTE, policy triggered: '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${LW_sv_ThisUserName}' "
+
+case ${sv_EventName} in
+    
+Boot)
+  # (as root) Setup Working Hours
+  Nf_SetupPolicy
+  Nf_SetupOfficeHours
+  Nf_SetupAudit
+  Nf_UpdateOfficeHoursDisplay
+  ;;
+  
+SystemPoll)
+  # (as root) Verify Working Hours are still valid
+  bv_OfficeHoursIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive")
+  if [ "${bv_OfficeHoursIsActive}" = "true" ]
+  then
+    iv_CurrOpenEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch")
+    iv_NextOpenEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+
+    if [ ${LW_iv_ThisScriptStartEpoch} -lt ${iv_CurrOpenEpoch} ] || [ ${LW_iv_ThisScriptStartEpoch} -gt ${iv_NextOpenEpoch} ]
+    then
+      Nf_SetupOfficeHours
+    fi 
+  fi
+  
+  # Audit usage
+  bv_AuditIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+  if [ "${bv_AuditIsActive}" = "true" ]
+  then
+    Nf_UpdateUseCounts    
+    Nf_UpdateTotCounts
+  fi
+
+  Nf_UpdateOfficeHoursDisplay
+  ;;
+  
+UserAtDesktop|UserPoll)
+  # (as user) Log Users off out-of-hours.
+  # Note, we don't log the admin users off and we don't log users off when off-network
+  LW_nf_logmessage "NOTE, checking time restrictions as user '${LW_sv_ThisUserName}'"
+
+  # Note, we dont log users off when off-network
+  if [ "${LW_sv_ADDomainNameDNS}" != "${LW_sv_NetworkServiceDHCPOption15}" ]
+  then
+    LW_nf_logmessage "NOTE, opening hour restrictions ignored (not on ${LW_sv_ADDomainNameFlat} network)."
+    
+  else
+    # Note, we dont ever log the admin users off
+    if [ "${LW_bv_LoggedInUserIsAdmin}" = "true" ]
+    then
+      LW_nf_logmessage "NOTE, opening hour restrictions ignored (user is an admin)."
+      
+    else
+      bv_EnforceRestrictions="true"
+      
+      # Check if user is exempt from force log-outs
+      if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/Users/${LW_sv_LoggedInUserName}.txt"
+      then
+        iv_ForceLogoutExceptionGroupCount="$(LW_if_GetPlistArraySize "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ForceLogoutExceptionGroup")"
+        for (( iv_ForceLogoutExceptionGroupIndex=0; iv_ForceLogoutExceptionGroupIndex<${iv_ForceLogoutExceptionGroupCount}; iv_ForceLogoutExceptionGroupIndex++ ))
+        do
+          sv_ExceptionGroup=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:ForceLogoutExceptionGroup:${iv_ForceLogoutExceptionGroupIndex}")
+          if test -n "$(cat "${LW_sv_SettingsDirPath}/Cache/MemberOf/Users/${LW_sv_LoggedInUserName}.txt" | grep -E "^${sv_ExceptionGroup}$")"
+          then
+            LW_nf_logmessage "NOTE, opening hour restrictions ignored (user is a member of the group ${sv_ExceptionGroup})."
+            bv_EnforceRestrictions="false"
+            break
+          fi
+        done
+      fi
+    
+      if [ "${bv_EnforceRestrictions}" = "true" ]
+      then
+        # Check idle time
+        iv_LogoutUserIdleSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutUserIdleSecs")
+        if test -z "${iv_LogoutUserIdleSecs}"
+        then
+          iv_LogoutUserIdleSecs=0
+        fi
+        
+        if [ ${iv_LogoutUserIdleSecs} -gt 0 ]
+        then
+          iv_IdleSecs=$(LW_if_SystemIdleSecs)
+          LW_nf_logmessage "NOTE, User Idle for ${iv_IdleSecs} secs"
+          iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutWarningSecs")
+          iv_RemainingUntilLogoutSecs=$((${iv_LogoutUserIdleSecs}-${iv_IdleSecs}))
+          if [ ${iv_RemainingUntilLogoutSecs} -gt ${iv_LogoutWarningSecs} ]
+          then
+            LW_nf_logmessage "NOTE, User has not been idle very long so will not be logged off for a while."
+          else
+            if [ ${iv_RemainingUntilLogoutSecs} -gt 0 ]
+            then
+              LW_nf_logmessage "ATTENTION, User warned about impending idle force logout with ${iv_RemainingUntilLogoutSecs} seconds remaining."
+              LW_nf_ShowNotification "WARNING" "If your session remains idle, you will be logged off in about ${iv_RemainingUntilLogoutSecs} seconds."
+            else
+              LW_nf_logmessage "ATTENTION, User idle logout by system."
+              LW_nf_ShowNotification "WARNING" "Your session has been idle too long. The system is logging you off."
+              Nf_ForceUserLogout
+              bv_EnforceRestrictions="false"
+            fi
+          fi
+        fi
+      fi
+      
+      if [ "${bv_EnforceRestrictions}" = "true" ]
+      then
+        # Check working hours
+        bv_OfficeHoursIsActive=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHoursIsActive")
+        if test -z "${bv_OfficeHoursIsActive}"
+        then
+          bv_OfficeHoursIsActive="false"
+        fi
+
+        if [ "${bv_OfficeHoursIsActive}" = "true" ]
+        then
+          # Get 'LogoutUserOutOfHours' settings
+          bv_LogoutUserOutOfHours=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutUserOutOfHours")
+          if test -z "${bv_LogoutUserOutOfHours}"
+          then
+            bv_LogoutUserOutOfHours="false"
+          fi
+
+          # Get 'LoginEarlySecs' settings
+          iv_LoginEarlySecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LoginEarlySecs")
+          if test -z "${iv_LoginEarlySecs}"
+          then
+            iv_LoginEarlySecs=0
+          fi
+
+          # Get 'LogoutEarlySecs' settings
+          iv_LogoutEarlySecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutEarlySecs")
+          if test -z "${iv_LogoutEarlySecs}"
+          then
+            iv_LogoutEarlySecs=0
+          fi
+
+          # Get 'LogoutWarningSecs' settings
+          iv_LogoutWarningSecs=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:LogoutWarningSecs")
+          if test -z "${iv_LogoutWarningSecs}"
+          then
+            iv_LogoutWarningSecs=600
+          fi
+
+          if [ "${bv_LogoutUserOutOfHours}" = "false" ]
+          then
+            LW_nf_logmessage "NOTE, out of hours restrictions ignored (policy not strictly enforced)."
+          
+          else
+            iv_CurrCloseEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+            iv_RemainingUntilClosedSecs=$((${iv_CurrCloseEpoch}-${LW_iv_ThisScriptStartEpoch}-${iv_LogoutEarlySecs}))
+    
+            if [ ${iv_RemainingUntilClosedSecs} -gt ${iv_LogoutWarningSecs} ] 
+            then
+              LW_nf_logmessage "NOTE, Closing time is some way off"
+            
+            else
+              if [ ${iv_RemainingUntilClosedSecs} -gt 0 ] 
+              then
+                LW_nf_logmessage "ATTENTION, User warned about impending out of hours force logout with ${iv_RemainingUntilClosedSecs} seconds remaining."
+                LW_nf_ShowNotification "WARNING" "Closing time approaches. The system will log you off in about ${iv_RemainingUntilClosedSecs} seconds."
+        
+              else
+                iv_NextOpenEpoch=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+
+                iv_RemainingUntilOpenSecs=$((${iv_NextOpenEpoch}-${LW_iv_ThisScriptStartEpoch}-${iv_LoginEarlySecs}))
+                if [ ${iv_RemainingUntilOpenSecs} -gt 0 ] 
+                then
+
+                  bv_UnrestrictedHoursOnClosedDays=$(LW_sf_GetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":${sv_ConfigEntryName}:Config:UnrestrictedHoursOnClosedDays")
+                  if [ "${bv_UnrestrictedHoursOnClosedDays}" = "true" ]
+                  then
+                    iv_ThisZerohourEpoch=$(date -r ${LW_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+                    iv_CurrCloseZeroEpoch=$(date -r ${iv_CurrCloseEpoch} -v0H -v0M -v0S "+%s")
+                    iv_NextOpenZeroEpoch=$(date -r ${iv_NextOpenEpoch} -v0H -v0M -v0S "+%s")
+                    if [ ${iv_ThisZerohourEpoch} -eq ${iv_CurrCloseZeroEpoch} ] || [ ${iv_ThisZerohourEpoch} -eq ${iv_NextOpenZeroEpoch} ]
+                    then
+                      LW_nf_logmessage "ATTENTION, User out of hours force logout by system."
+                      LW_nf_ShowNotification "WARNING" "No out of hours access. The system is logging you off."
+                  
+                      Nf_ForceUserLogout
+                    else
+                      LW_nf_logmessage "NOTE, Unrestricted access is allowed on closed days so the user will not be logged off"
+                    fi
+                  else
+                    LW_nf_logmessage "ATTENTION, User out of hours force logout by system."
+                    LW_nf_ShowNotification "WARNING" "No out of hours access. The system is logging you off."
+                  
+                    Nf_ForceUserLogout
+                  fi
+                fi
+              fi
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+
+  ;;
+  
+*)
+  LW_nf_QuickExit "NOTE, policy aborted: Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+  
+# Trigger an event
+LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+
+# ---

@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  1.0.101
+# Modified: 09-Dec-2016
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
@@ -38,6 +38,47 @@ if [ "${sv_ThisUserName}" != "root" ]
 then
   # we only like root
   exit 0
+fi
+
+# ---
+
+# Load the contants, only if they are not already loaded
+if test -z "${LW_sv_LabWardenSignature}"
+then
+  . /usr/local/LabWarden/lib/Constants
+fi
+
+# ---
+
+# If we are not running from a remote shell, and iHook is available - then use it
+if test -z "$(who am i | grep -E ".*\([^(]*\)$")"
+then
+  if test -e "/usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook"
+  then
+    iv_MyParentProcess="$(ps -o comm= $PPID | tr "/" "\n" | tail -n1)"
+    if [ "${iv_MyParentProcess}" != "iHook" ]
+    then
+      /usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}" "${1}" "${2}" "${3}" "${4}"
+      exit 0
+    else
+      echo "%WINDOWSIZE 640 456"
+      echo "%TEXTCOLOR BLACK"
+      if test -f "/usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
+      then
+        echo "%BACKGROUND /usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
+      else
+        if test -f "/usr/local/labwarden/images/SplashScreenLight.jpg"
+        then
+          echo "%BACKGROUND /usr/local/labwarden/images/SplashScreenLight.jpg"
+        fi
+      fi
+      echo "%UIMODE AUTOCRATIC"
+      echo "%WINDOWZOOM DISABLE"
+      echo "%SHOWTIMER"
+      echo "%TITLE ${sv_ThisScriptFileName}"
+      echo "%LOG APPEND /Library/Logs/${LW_sv_LabWardenSignature}/LabWarden.log"
+    fi
+  fi
 fi
 
 # ---
@@ -94,14 +135,12 @@ Sf_urlencode() {
 Nf_showmessage()   # messagetxt
 {
   echo "$(date '+%d %b %Y %H:%M:%S') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]: ${1}"
+  sleep 2
 }
 
 Nf_showerror()   # messagetxt
 {
   Nf_showmessage "${1}"
-
-  # Update the RemoteDesktop Computer Info Fields #4
-  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 "${1}"
 
   if test -n "${sv_FailURI}"
   then
@@ -117,9 +156,6 @@ Nf_showerror()   # messagetxt
 Nf_showsuccess()   # messagetxt
 {
   Nf_showmessage "${1}"
-
-  # Update the RemoteDesktop Computer Info Fields #4
-  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
 
   if test -n "${sv_SuccessURI}"
   then
@@ -252,14 +288,14 @@ case "${iv_ErrCode}" in
   ;;
 1)
   Nf_showerror "ERROR, apply failed - no changes made"
-  #cat "${sv_fsdiffOutputFilePath}"
-  rm -f $sv_fsdiffOutputFilePath
+  rm -f /private/var/radmind/client/error.T
+  mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0
   ;;
 2)
   Nf_showerror "ERROR, apply failed - changes made"
-  #cat "${sv_fsdiffOutputFilePath}"
-  rm -f $sv_fsdiffOutputFilePath
+  rm -f /private/var/radmind/client/error.T
+  mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0
   ;;
 esac
