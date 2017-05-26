@@ -2,8 +2,8 @@
 #
 # Short:    Do something when an app is launched
 # Author:   Mark J Swift
-# Version:  1.0.90
-# Modified: 01-Jul-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called by appwarden as follows:    
 #   appwarden-DidLaunch "DidLaunch:Epoch:ApplicationBundleIdentifier:ApplicationName:ApplicationPath:ApplicationProcessIdentifier"
@@ -16,8 +16,8 @@ then
   exit 0
 fi
 
-# -- Trigger the AppDidLaunch policy (and pass it the app info) --
+# -- Trigger the App-DidLaunch policy (and pass it the app info) --
 
-/usr/local/LabWarden/lib/Trigger "AppDidLaunch" "$(whoami)" "${1}"
+/usr/local/LabWarden/lib/Trigger "App-DidLaunch" "$(whoami)" "${1}"
 
 # ---

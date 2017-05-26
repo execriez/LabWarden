@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  1.0.101
-# Modified: 09-Dec-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
@@ -43,9 +43,9 @@ fi
 # ---
 
 # Load the contants, only if they are not already loaded
-if test -z "${LW_sv_LabWardenSignature}"
+if test -z "${GLB_sv_ProjectSignature}"
 then
-  . /usr/local/LabWarden/lib/Constants
+  . /usr/local/LabWarden/inc/Constants.sh
 fi
 
 # ---
@@ -53,30 +53,30 @@ fi
 # If we are not running from a remote shell, and iHook is available - then use it
 if test -z "$(who am i | grep -E ".*\([^(]*\)$")"
 then
-  if test -e "/usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook"
+  if test -e "/usr/local/${GLB_sv_ProjectName}/bin/iHook.app/Contents/MacOS/iHook"
   then
     iv_MyParentProcess="$(ps -o comm= $PPID | tr "/" "\n" | tail -n1)"
     if [ "${iv_MyParentProcess}" != "iHook" ]
     then
-      /usr/local/labwarden/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}" "${1}" "${2}" "${3}" "${4}"
+      /usr/local/${GLB_sv_ProjectName}/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}" "${1}" "${2}" "${3}" "${4}"
       exit 0
     else
       echo "%WINDOWSIZE 640 456"
       echo "%TEXTCOLOR BLACK"
-      if test -f "/usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
+      if test -f "/usr/local/${GLB_sv_ProjectName}/images/${sv_ThisScriptFileName}.jpg"
       then
-        echo "%BACKGROUND /usr/local/labwarden/images/${sv_ThisScriptFileName}.jpg"
+        echo "%BACKGROUND /usr/local/${GLB_sv_ProjectName}/images/${sv_ThisScriptFileName}.jpg"
       else
-        if test -f "/usr/local/labwarden/images/SplashScreenLight.jpg"
+        if test -f "/usr/local/${GLB_sv_ProjectName}/images/SplashScreenLight.jpg"
         then
-          echo "%BACKGROUND /usr/local/labwarden/images/SplashScreenLight.jpg"
+          echo "%BACKGROUND /usr/local/${GLB_sv_ProjectName}/images/SplashScreenLight.jpg"
         fi
       fi
       echo "%UIMODE AUTOCRATIC"
       echo "%WINDOWZOOM DISABLE"
       echo "%SHOWTIMER"
       echo "%TITLE ${sv_ThisScriptFileName}"
-      echo "%LOG APPEND /Library/Logs/${LW_sv_LabWardenSignature}/LabWarden.log"
+      echo "%LOG APPEND /Library/Logs/${GLB_sv_ProjectSignature}.log"
     fi
   fi
 fi
@@ -250,7 +250,7 @@ esac
 
 # Fix for SIP on 10.11
 Nf_showmessage "NOTE, Removing SIP protected entries from transcript"
-/usr/local/LabWarden/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
+/usr/local/${GLB_sv_ProjectName}/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
 
 # Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
 if test -n "${iv_MaxDeletes}"
@@ -283,7 +283,7 @@ launchctl start org.cups.cupsd
 case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  Nf_showsuccess "ATTENTION, apply successful - we should reboot."
+  Nf_showsuccess "ATTENTION, apply successful - we should restart."
   exit 0
   ;;
 1)

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>CCF28F0A-AC70-4ED9-95F5-9EBB76E52351</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/Desktop/</string>
+						<string>/Documents/</string>
+						<string>/Downloads/</string>
+						<string>/Library/Preferences/</string>
+						<string>/Movies/</string>
+						<string>/Music/</string>
+						<string>/Pictures/</string>
+						<string>/NETWORKHOME/</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Usr-CreateFolder</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Usr-ConsoleUserLoggedIn</string>
+					<string>Usr-AtDesktop</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>CCF28F0A-AC70-4ED9-95F5-9EBB76E52351</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>CCF28F0A-AC70-4ED9-95F5-9EBB76E52351</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-CreateFolder</string>
+	<key>PayloadIdentifier</key>
+	<string>B8DE7FFA-B039-4274-9618-338F407B78B1</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>B8DE7FFA-B039-4274-9618-338F407B78B1</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/usr/local/Updates</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-InstallPackageFromFolder</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-LoginWindowIdle</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-InstallPackageFromFolder</string>
+	<key>PayloadIdentifier</key>
+	<string>2E4DECF8-1AD6-4873-B806-10D3CE08FCF6</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>2E4DECF8-1AD6-4873-B806-10D3CE08FCF6</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

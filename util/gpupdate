@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  1.0.101
-# Modified: 09-Dec-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,27 +13,61 @@
 
 # ---
 
-sv_CodeVersion="1.0.101"
+sv_CodeVersion="2.0.6"
 
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_BuildVersionStampAsString}"
+if test -z "${GLB_sv_ProjectSignature}"
 then
-  . /usr/local/LabWarden/lib/CommonLib
+  . /usr/local/LabWarden/inc/Common.sh
 fi
-
-# ---
-
-LW_nf_logmessage "NOTE, ${LW_sv_ThisScriptFileName} version ${sv_CodeVersion}"
 
 # ---
 
 sv_GPoption="$(echo ${1} | tr [A-Z] [a-z])"
 
-if [ "${LW_sv_ThisUserName}" != "root" ]
+case "${sv_GPoption}" in
+-force|-quick|-default)
+  sv_GPOuser=${2}
+  ;;
+
+*)
+  sv_GPoption="-default"
+  sv_GPOuser=${1}
+  ;;
+    
+esac
+
+# ---
+
+if [ "${GLB_sv_ThisUserName}" = "root" ]
 then
-  sv_GPOuser="${LW_sv_ThisUserName}"
+  # If a config has never been set up for this workstation, create base folders and set access rights
+  if ! test -e "${GLB_sv_ProjectConfigDirPath}/Cache"
+  then
+    # Create base folders
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/Users"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Users"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Active/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Active/Users"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/Users"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/Users"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Config/Global"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Config/Computers"
+    mkdir -p "${GLB_sv_ProjectConfigDirPath}/Config/Users"
+    
+    # Set access rights
+    chown -R root:wheel "${GLB_sv_ProjectConfigDirPath}"
+    chmod -R 755 "${GLB_sv_ProjectConfigDirPath}"
+    
+    # Force gpupdate
+    sv_GPoption="-force"
+  fi
 fi
 
 # ---
@@ -41,34 +75,41 @@ fi
 case "${sv_GPoption}" in
 -force)
   # Update if policy doesn't exist or is older than this (1 minute)
-  iv_GPCacheMaxAgeMinutes=${LW_iv_GPforceAgeMinutes}
-  sv_GPOuser=${2}
-  
-  if test -z "${sv_GPOuser}"
-  then
-    if test -e "${LW_sv_SettingsDirPath}/Config/Users"
-    then
-      ls -1 "${LW_sv_SettingsDirPath}/Config/Users" | while read sv_KnownUser
-      do
-        /usr/local/LabWarden/util/gpupdate "-force" "${sv_KnownUser}"
-      done
-    fi
-  fi
+  iv_GPCacheMaxAgeMinutes=${GLB_iv_GPforceAgeMinutes}
   ;;
 
 -quick)
   # Update if policy doesn't exist or is older than this (180 days)
-  iv_GPCacheMaxAgeMinutes=${LW_iv_GPquickAgeMinutes}
-  sv_GPOuser=${2}
+  iv_GPCacheMaxAgeMinutes=${GLB_iv_GPquickAgeMinutes}
   ;;
     
 *)
   # Update if policy doesn't exist or is older than this (1 day old)
-  iv_GPCacheMaxAgeMinutes=${LW_iv_GPdefaultAgeMinutes}
-  sv_GPOuser=${1}
+  iv_GPCacheMaxAgeMinutes=${GLB_iv_GPdefaultAgeMinutes}
   ;;
     
 esac
+
+# ---
+
+if [ "${GLB_sv_ThisUserName}" = "root" ]
+then
+  if test -z "${sv_GPOuser}"
+  then
+    # If we are root and we didn't supply a user, Update/apply user policies (as root) for all users who are logged in
+    who -q | grep -Ev "^#" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
+    do
+      "${0}" "${sv_GPoption}" "${sv_GPOuser}"
+    done
+    
+    sv_GPOuser=""
+  fi
+
+else
+  # If we are not root, we can only update policies for ourself
+  sv_GPOuser="${GLB_sv_ThisUserName}"
+  
+fi
 
 # ---
 
@@ -81,6 +122,9 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
   local sv_SubGroupName
   local iv_CacheEpoch
   local sv_Temp1FilePath
+  local sv_Attr
+  local sv_Value
+  local iv_Err
 
   sv_ObjectContext=${1}
   sv_ObjectName=${2}
@@ -101,34 +145,37 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
   esac
   
   iv_CacheEpoch=0
-  if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+  if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
   then
-    iv_CacheEpoch=$(stat -f "%m" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
+    iv_CacheEpoch=$(stat -f "%m" "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
   fi
   
-  if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -lt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
+  if [ $((${GLB_iv_ThisScriptStartEpoch}-${iv_CacheEpoch})) -lt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
   then
-    cat "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+    cat "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
 
   else
-    sv_Temp0FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+    sv_Temp0FilePath=$(mktemp "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
     
     # Get the memberOf field from AD 
-    dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" memberOf > "${sv_Temp0FilePath}"
+    #dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" memberOf > "${sv_Temp0FilePath}"
     
-    if [ "$?" != "0" ]
+    sv_Attr="memberOf";sv_Value="$(dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
+|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')";echo "${sv_Value}" > "${sv_Temp0FilePath}"
+
+    if [ ${iv_Err} -ne 0 ]
     then
-      LW_nf_logmessage "ERROR, cannot get ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
-      if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Cannot get ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
+      if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
       then
-        LW_nf_logmessage "ATTENTION, using cached ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field."
-        cat "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} " using cached ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field."
+        cat "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
       fi
       
     else
-      # LW_nf_logmessage "DEBUG, just read ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Just read ${sv_ObjectContext} ${sv_ObjectName} 'memberOf' field from AD."
     
-      sv_Temp1FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+      sv_Temp1FilePath=$(mktemp "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
       touch "${sv_Temp1FilePath}"
 
       cat "${sv_Temp0FilePath}" | tr -d "\n" | sed "s|dsAttrTypeNative:memberOf:||g;s| CN=|:|g;s|^:||" | tr ":" "\n" | cut -d"," -f1 | sort -u | while read sv_GroupName
@@ -150,37 +197,42 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
       done
       rm -f "${sv_Temp0FilePath}"
     
-      sv_Temp2FilePath=$(mktemp "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+      sv_Temp2FilePath=$(mktemp "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
       chmod 644 "${sv_Temp2FilePath}"
     
       cat "${sv_Temp1FilePath}" | sort -u >"${sv_Temp2FilePath}"
       rm -f "${sv_Temp1FilePath}"
 
-      mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}"
-      chmod 755 "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}"
+      mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}"
+      chmod 755 "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}"
     
-      ln -fh "${sv_Temp2FilePath}" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
+      ln -fh "${sv_Temp2FilePath}" "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
       rm -f "${sv_Temp2FilePath}"
       
       if [ "${sv_ObjectContext}" = "Groups" ]
       then
         # Get the Info (Notes) field from AD 
-        dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${sv_Temp1FilePath}"
-        if [ "$?" != "0" ]
+#        dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" info | sed "s|dsAttrTypeNative:info:||" | sed "s|^[ ]*||" | sed "s|[ ]*$||" | tr -s "\n" > "${sv_Temp1FilePath}"
+
+        sv_Attr="info";sv_Value="$(dscl 2>/dev/null localhost -read "/Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
+|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')";echo "${sv_Value}" > "${sv_Temp1FilePath}"
+
+        if [ ${iv_Err} -ne 0 ]
         then
-          LW_nf_logmessage "ERROR, cannot get ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD (maybe it hasn't connected yet)."
+          GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Cannot get ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD (maybe it hasn't connected yet)."
           
         else
-          # LW_nf_logmessage "DEBUG, just read ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD."
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Just read ${sv_ObjectContext} ${sv_ObjectName} 'info' (Notes) field from AD."
           
           # Keep the file if the Info field is not empty
           if test -s "${sv_Temp1FilePath}"
           then
-            touch -t $(date -r ${LW_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_Temp1FilePath}"
+            touch -t $(date -r ${GLB_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_Temp1FilePath}"
             chmod 644 "${sv_Temp1FilePath}"
-            mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}"
-            chmod 755 "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}"
-            ln -fh "${sv_Temp1FilePath}" "${LW_sv_SettingsDirPath}/Cache/Notes/${sv_ObjectContext}/${sv_ObjectName}.txt"
+            mkdir -p "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/${sv_ObjectContext}"
+            chmod 755 "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/${sv_ObjectContext}"
+#            ln -fh "${sv_Temp1FilePath}" "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/${sv_ObjectContext}/${sv_ObjectName}.txt"
+            mv -f "${sv_Temp1FilePath}" "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/${sv_ObjectContext}/${sv_ObjectName}.txt"
           fi
         fi
         rm -f "${sv_Temp1FilePath}"
@@ -209,6 +261,17 @@ Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can b
 
 # Here we start for real
 
+# ---
+
+if test -z "${sv_GPOuser}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption}  (version ${sv_CodeVersion})"
+else
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption} '${sv_GPOuser}'  (version ${sv_CodeVersion})"
+fi
+
+# ---
+
 if test -n "${sv_GPOuser}"
 then
   sv_ObjectContext="Users"
@@ -216,7 +279,7 @@ then
 
 else
   sv_ObjectContext="Computers"
-  sv_ObjectName="${LW_sv_ADComputerName}"
+  sv_ObjectName="${GLB_sv_Hostname}"
   
 fi
 
@@ -235,123 +298,150 @@ Users|Groups)
     
 esac
  
-sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/${sv_ObjectContext}/${sv_ObjectName}"
+sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/${sv_ObjectContext}/${sv_ObjectName}"
 
-if [ "${LW_sv_ThisUserName}" = "root" ]
+if [ "${GLB_sv_ThisUserName}" = "root" ]
 then
 
-  # If a config has never been set up for this workstation, create base folders and set access rights
-  if ! test -e "${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}/LabWarden.plist"
-  then
-    # Remove old configs
-    rm -fR "${LW_sv_SettingsDirPath}"
-    
-    # Create base folders
-    mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Cache/MemberOf/Users"
-    mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Cache/Notes/Users"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/Users"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/Users"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/Users"
-    mkdir -p "${LW_sv_SettingsDirPath}/Config/Computers"
-    mkdir -p "${LW_sv_SettingsDirPath}/Config/Users"
-    
-    # Set access rights
-    chown -R root:wheel "${LW_sv_SettingsDirPath}"
-    chmod -R 755 "${LW_sv_SettingsDirPath}"
-  fi
-
-  if ! test -e "${sv_ConfigDirPath}/LabWarden.plist"
+  if ! test -e "${sv_ConfigDirPath}"
   then
     mkdir -p "${sv_ConfigDirPath}"
     chown -R root:wheel "${sv_ConfigDirPath}"
     chmod -R 755 "${sv_ConfigDirPath}"
-    LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:InstallEpoch" "${LW_iv_ThisScriptStartEpoch}"
+#    GLB_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:InstallEpoch" "${GLB_iv_ThisScriptStartEpoch}"
   fi
-  
-  iv_ObjectEpoch=0
-  if test -e "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
-  then
-    iv_ObjectEpoch=$(stat -f "%m" "${LW_sv_SettingsDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
-  fi
-  
-  if test -z "${LW_sv_ADDomainNameDNS}"
-  then
-    LW_nf_logmessage "ERROR, this workstation is not bound to AD"
-    exit 0
-  fi
-  
-  if [ $((${LW_iv_ThisScriptStartEpoch}-${iv_ObjectEpoch})) -gt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
-  then
-    LW_nf_logmessage "ATTENTION, Rebuilding cache for ${sv_ObjectContext} ${sv_ObjectName}"
 
-    # The cache has aged out - so we need to be able to update the object from AD
-    if test -z "${LW_sv_NetworkServiceInterfaceName}"
+  # --- check if we should update payloads from AD
+
+  if test -z "${GLB_sv_ADDomainNameDNS}"
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Not updating payloads from AD - this workstation may not be bound to an AD domain"
+    
+  else
+  
+    if [ "${GLB_bv_LoadConfigsFromADnotes}" = "false" ]
     then
-      # we need a network
-      LW_nf_logmessage "ERROR, no network"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Not updating payloads from AD - workstation defaults specify not to"
       
     else
-      if [ "${LW_sv_ADDomainNameDNS}" != "${LW_sv_NetworkServiceDHCPOption15}" ]
+    
+      mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+      chmod 755 "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+
+      mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/UnInstall/${sv_ObjectContext}/${sv_ObjectName}"
+      chmod 755 "${GLB_sv_ProjectConfigDirPath}/Policies/UnInstall/${sv_ObjectContext}/${sv_ObjectName}"
+
+      mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}"
+      chmod 755 "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}"
+
+      mkdir -p "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
+      chmod 755 "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
+
+      # ---
+
+      bv_UpdatePoliciesFromAD="false"
+    
+      iv_ObjectEpoch=0
+      if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt"
       then
-        # we need to be on the domains network
-        LW_nf_logmessage "ERROR, not on ${LW_sv_ADDomainNameFlat} network"
+        iv_ObjectEpoch=$(stat -f "%m" "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/${sv_ObjectContext}/${sv_ObjectName}.txt")
+      fi
+  
+      if [ $((${GLB_iv_ThisScriptStartEpoch}-${iv_ObjectEpoch})) -gt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
+      then
+        # The cache has aged out - so lets look to see if we can update the object from AD
+        if test -z "${GLB_sv_IPv4PrimaryService}"
+        then
+          # we need a network
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "No network - not updating payloads from AD"
+      
+        else
+          if [ "${GLB_sv_ADDomainNameDNS}" != "${GLB_sv_NetworkServiceDHCPOption15}" ]
+          then
+            # we need to be on the domains network
+            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Not on ${GLB_sv_ADDomainNameFlat} network - not updating payloads from AD"
         
+          else
+            bv_UpdatePoliciesFromAD="true"
+
+          fi
+        fi
+      fi
+        
+      if [ "${bv_UpdatePoliciesFromAD}" = "false" ]
+      then
+        # --- Lets just verify if the already installed AD payloads are still active
+
+        # First check if we have already recently done this
+        iv_LastCheckEpoch=0
+        if test -e "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+        then
+          iv_LastCheckEpoch=$(stat -f "%m" "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}")
+        fi
+
+        if [ $((${GLB_iv_ThisScriptStartEpoch}-${iv_LastCheckEpoch})) -gt $((${iv_GPCacheMaxAgeMinutes}*60)) ]
+        then
+          # Get the dst (existing) payload
+          ls -1 "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}" > "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt"
+
+          # Update list of policies to verify as still active
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt" | while read sv_PayloadFileName
+          do
+            ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+          done
+      
+          # Delete temporary file
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt"
+      
+        fi
+      
       else
+        # --- Lets try to update the payloads from AD
+      
         dscl >/dev/null 2>&1 localhost -read /Search/${sv_ObjectContext}/${sv_ObjectName}${sv_NameDelim} name
-        if [ "$?" != "0" ]
+        if [ $? -ne 0 ]
         then
           # the object needs to exist in AD
-          LW_nf_logmessage "ERROR, cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD. Might be too soon after reboot."
+          GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Cannot find ${sv_ObjectContext} ${sv_ObjectName} in AD. Might be too soon after restart."
                     
         else
-          # If we are updating the Computer policies, update the LoginWindow Message and Remote Management strings
-          if [ "${sv_ObjectContext}" = "Computers" ]
-          then
-            sv_ADpath=$(dscl 2>/dev/null localhost -read "/Search/Computers/${LW_sv_ADTrustAccount}" distinguishedName | sed 's|^.*distinguishedName:||;/^\s*$/d' | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${LW_sv_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
-            if test -n "${sv_ADpath}"
-            then
-              # Get line 3 of the LoginWindow text which we dont want to overwrite
-              sv_LoginWindowText=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 3)
-
-              # Update the loginWindow Text
-              sv_LoginWindowText=$(echo "$(echo ${LW_sv_ADTrustAccount} | sed "s|\$$||"):$(echo ${sv_ADpath} | sed "s|,| - |g"):${sv_LoginWindowText}" | tr ":" "\n")
-              /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginWindowText}"
-            fi
-          fi
-
           # Fill a directory with the objects info payload(s)
-          sv_UpdatedInfoPayloadDirPath=$(mktemp -d "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Filling a directory with the objects info payload(s)"
+          
+          sv_UpdatedInfoPayloadDirPath=$(mktemp -d "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
 
           Sf_ListGroups "${sv_ObjectContext}" "${sv_ObjectName}" | while read sv_ObjectGroup
           do
-            if test -e "${LW_sv_SettingsDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt"
+            if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt"
             then
-              ln -fh "${LW_sv_SettingsDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt" "${sv_UpdatedInfoPayloadDirPath}/${sv_ObjectGroup}.txt"
+          
+#              mv -f "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt" "${sv_UpdatedInfoPayloadDirPath}/${sv_ObjectGroup}.txt"
+          
+              ln -fh "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt" "${sv_UpdatedInfoPayloadDirPath}/${sv_ObjectGroup}.txt"
             fi
           done
 
-          # Join split info payloads into a new file
+          # Join split info payloads into a single file - if the joined file already exists, it will be overwritten
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Joining split info payloads into a new file"
           cd "${sv_UpdatedInfoPayloadDirPath}"
           ls -1 "${sv_UpdatedInfoPayloadDirPath}" | grep -E "\-[0-9]{1}.txt$" | sed -E "s|(.*)(-[0-9]{1}.txt$)|\1|" | sort -u | while read sv_GroupName
           do
             # If the joined file doesn't exist, create a new file from the split parts
-            if ! test -e "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
-            then
+#            if ! test -e "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
+#            then
               cat $(ls -1 "${sv_UpdatedInfoPayloadDirPath}" | grep -E "${sv_GroupName}-[0-9]{1}.txt$" | sort) > "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
-              touch -t $(date -r ${LW_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
-            fi
+              touch -t $(date -r ${GLB_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${sv_UpdatedInfoPayloadDirPath}/${sv_GroupName}.txt"
+#            fi
           done
 
           # Delete split payloads
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Deleting remaining split payloads"
           find "${sv_UpdatedInfoPayloadDirPath}" -iregex '.*\-[0-9]\{1\}.txt$' -exec rm -f "{}" \;
 
           # Unpack the info payload content
-          sv_UpdatedPayloadContentDirPath=$(mktemp -d "${LW_sv_ThisScriptTempDirPath}/XXXXXXXX")
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Unpacking the info payload content"
+          sv_UpdatedPayloadContentDirPath=$(mktemp -d "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
 
           cd "${sv_UpdatedPayloadContentDirPath}"
           ls -1 "${sv_UpdatedInfoPayloadDirPath}" | while read sv_InfoPayloadName
@@ -364,8 +454,9 @@ then
           # so normal users will have to be able to uninstall.
           if [ "${sv_ObjectContext}" = "Users" ]
           then
-            if [ ${LW_iv_SystemVersionStampAsNumber} -lt 168493056 ]
+            if [ ${GLB_iv_SystemVersionStampAsNumber} -lt 168493056 ]
             then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Modifying mobileconfigs to allow pre MacOS 10.11 users uninstall rights"
               ls -1 "${sv_UpdatedPayloadContentDirPath}" | grep -E ".*\.mobileconfig" | while read sv_PayloadContentName
               do
                 iv_PayloadContentEpoch=$(stat -f "%m" "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadContentName}")
@@ -377,71 +468,109 @@ then
 
           # ---
 
-          mkdir -p "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
-          chmod 755 "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
 
-          mkdir -p "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
-          chmod 755 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
+          # Here we decide what needs to be installed, uninstalled, and verified
 
-          rm -fR "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
-          mkdir -p "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
-          chmod 755 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
-
-          # ---
-
-          # Here we decide what definitely needs to be uninstalled, and what needs to be verified
-
-          cd "${LW_sv_ThisScriptTempDirPath}"
+          cd "${GLB_sv_ThisScriptTempDirPath}"
 
           # Get the src payload
-          ls -1 "${sv_UpdatedPayloadContentDirPath}" > "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt"
+          ls -1 "${sv_UpdatedPayloadContentDirPath}" > "${GLB_sv_ThisScriptTempDirPath}/Policies-src.txt"
 
           # Get the dst (existing) payload
-          ls -1 "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}" > "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt"
+          ls -1 "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}" > "${GLB_sv_ThisScriptTempDirPath}/Policies-dst.txt"
 
           # Build a list of payloads that are in src or dst, but not in both
-          cat "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt" "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -u > "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-src.txt" "${GLB_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -u > "${GLB_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
 
           # Build a list of payloads unique to the dst (need to be uninstalled)
-          cat "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt" "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -d > "${LW_sv_ThisScriptTempDirPath}/Policies-uninstall.txt"
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-uniq.txt" "${GLB_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -d > "${GLB_sv_ThisScriptTempDirPath}/Policies-uninstall.txt"
 
-          # Remove temp files
-          rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-src.txt"
-          rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-dst.txt"
-          rm -f "${LW_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
+          # Build a list of payloads unique to the src (need to be installed)
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-uniq.txt" "${GLB_sv_ThisScriptTempDirPath}/Policies-src.txt" | sort | uniq -d > "${GLB_sv_ThisScriptTempDirPath}/Policies-install.txt"
 
-          # Update list of disabled policies (they still need to be uninstalled)
-          cat "${LW_sv_ThisScriptTempDirPath}/Policies-uninstall.txt" | while read sv_PayloadFileName
+          # Build a list of payloads that are in src and dst (need to check if updated, and possibly need to be uninstalled or verified)
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-src.txt" "${GLB_sv_ThisScriptTempDirPath}/Policies-dst.txt" | sort | uniq -d > "${GLB_sv_ThisScriptTempDirPath}/Policies-check.txt"
+
+          # Check if payload is same (verify) or updated (uninstall/install)
+          touch "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt"
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-check.txt" | while read sv_PayloadFileName
           do
-            ln -fh "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-            rm -f "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            sv_ActivePayloadShaSum="$(shasum -a 256 "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" | cut -d" " -f1)"
+            sv_UpdatedPayloadShaSum="$(shasum -a 256 "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" | cut -d" " -f1)"
+            if [ "${sv_ActivePayloadShaSum}" = "${sv_UpdatedPayloadShaSum}" ]
+            then
+              # Payload has not been updated, so just needs to be verified as still active
+              echo "${sv_PayloadFileName}" >> "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt"
+              
+            else
+              # Payload has not updated, so needs to be uninstalled and re-installed
+              echo "${sv_PayloadFileName}" >> "${GLB_sv_ThisScriptTempDirPath}/Policies-uninstall.txt"
+              echo "${sv_PayloadFileName}" >> "${GLB_sv_ThisScriptTempDirPath}/Policies-install.txt"
+              
+            fi
           done
 
-          # Update list of policies to be verified as active
-          ls -1 "${sv_UpdatedPayloadContentDirPath}" | while read sv_PayloadFileName
+
+          # Update list of policies to uninstall (they still need to be actually uninstalled)
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-uninstall.txt" | while read sv_PayloadFileName
           do
-            ln -fh "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-            rm -f "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}"
+#            ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/UnInstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+#            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+#            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/UnInstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            mv -f "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/UnInstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+          done
+
+          # Update list of policies to verify as still active
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt" | while read sv_PayloadFileName
+          do
+#            ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+#            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+#            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            mv -f "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
           done
     
-          LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${LW_sv_LabWardenVersion}"
-          LW_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${LW_iv_ThisScriptStartEpoch}"
+          # Update list of policies to install
+          cat "${GLB_sv_ThisScriptTempDirPath}/Policies-install.txt" | while read sv_PayloadFileName
+          do
+#            ln -fh "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+#            rm -f "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}"
+#            rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+            mv -f "${sv_UpdatedPayloadContentDirPath}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+          done
+    
+#            GLB_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:Version" "${GLB_sv_ProjectVersion}"
+#            GLB_nf_SetPlistProperty "${sv_ConfigDirPath}/LabWarden.plist" ":LabWarden:LocalPrefs:LastUpdateEpoch" "${GLB_iv_ThisScriptStartEpoch}"
 
-        fi
+
+          # Remove temp files
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-install.txt"
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-verify.txt"
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-uninstall.txt"
+
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-check.txt"
+
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-src.txt"
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-dst.txt"
+          rm -f "${GLB_sv_ThisScriptTempDirPath}/Policies-uniq.txt"
+
+        fi      
+      
       fi
+    
     fi
-
-
+  
   fi
   
 fi
 
 # This bit can be run as root or user
 
-if test -e "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}"
+# --- install, uninstall or verify the downloaded or existing AD payloads (which are usually mobileconfig files)
+
+if test -e "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/${sv_ObjectContext}/${sv_ObjectName}"
 then
   # uninstall payloads
-  ls -1 "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
+  ls -1 "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
     if [ "$(echo ${sv_PayloadFileName} | tr "[A-Z]" "[a-z]")" = "policybanner.rtf" ]
     then
@@ -452,7 +581,7 @@ then
       
     fi
     
-    sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
+    sv_HandlerFilePath="/usr/local/LabWarden/Custom-PayloadHandlers/${sv_PayloadFileExt}-uninstall"
     if ! test -e "${sv_HandlerFilePath}"
     then
       sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
@@ -462,24 +591,30 @@ then
       fi
     fi
 
-    if test -n "${sv_HandlerFilePath}"
+    if test -z "${sv_HandlerFilePath}"
     then
-      LW_nf_logmessage "ATTENTION, uninstalling ${sv_PayloadFileName}"
-      "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
-      if [ "$?" = "0" ]
+      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "There's no handler to uninstall ${sv_PayloadFileName}"
+      rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+    else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Uninstalling ${sv_PayloadFileName}"
+      "${sv_HandlerFilePath}" "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      sv_Error=$?
+      if [ ${sv_Error} -eq 0 ]
       then
-        rm -f "${LW_sv_SettingsDirPath}/Policies/Disable/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Uninstall/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        
       else
-        LW_nf_logmessage "ERROR, failed to uninstall ${sv_PayloadFileName}"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to uninstall ${sv_PayloadFileName} (${sv_Error})"
+        
       fi
     fi
   done
 fi
 
-if test -e "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
+if test -e "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}"
 then
-  # verify payloads
-  ls -1 "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
+  # Verify payloads
+  ls -1 "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
   do
     if [ "$(echo ${sv_PayloadFileName} | tr "[A-Z]" "[a-z]")" = "policybanner.rtf" ]
     then
@@ -490,7 +625,7 @@ then
       
     fi
     
-    sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-verify"
+    sv_HandlerFilePath="/usr/local/LabWarden/Custom-PayloadHandlers/${sv_PayloadFileExt}-verify"
     if ! test -e "${sv_HandlerFilePath}"
     then
       sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-verify"
@@ -499,63 +634,335 @@ then
         sv_HandlerFilePath=""
       fi
     fi
-    if test -n "${sv_HandlerFilePath}"
-    then
-      # Verify the payload
-      "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
-      if [ "$?" = "0" ]
-      then
-        ln -fh "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-        rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-        
-      else
-      
-        sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
-        if ! test -e "${sv_HandlerFilePath}"
-        then
-          sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-uninstall"
-          if ! test -e "${sv_HandlerFilePath}"
-          then
-            sv_HandlerFilePath=""
-          fi
-        fi
-        if test -n "${sv_HandlerFilePath}"
-        then
-          # Uninstall the payload
-          "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
 
-          sv_HandlerFilePath="/usr/local/LabWarden/Custom/PayloadHandlers/${sv_PayloadFileExt}-install"
-          if ! test -e "${sv_HandlerFilePath}"
-          then
-            sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install"
-            if ! test -e "${sv_HandlerFilePath}"
-            then
-              sv_HandlerFilePath=""
-            fi
-          fi
-          if test -n "${sv_HandlerFilePath}"
-          then
-            # Install the payload
-            "${sv_HandlerFilePath}" "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
-            if [ "$?" = "0" ]
-            then
-              ln -fh "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${LW_sv_SettingsDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-              rm -f "${LW_sv_SettingsDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
-              
-            else
-              LW_nf_logmessage "ERROR, failed to install ${sv_PayloadFileName}"
-              
-            fi
-          fi
-        fi
+    if test -z "${sv_HandlerFilePath}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "There's no handler to verify ${sv_PayloadFileName}"
+      rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+    else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Verifying ${sv_PayloadFileName}"
+      "${sv_HandlerFilePath}" "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      if [ $? -eq 0 ]
+      then
+        # No errors when verifying - flag it as active
+        ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        touch -t $(date -r ${GLB_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+
+      else
+        # Errors when verifying - we should install
+        ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Verify/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+
       fi
     fi
   done
 fi
 
+if test -e "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}"
+then
+  # Install payloads
+  ls -1 "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}" | while read sv_PayloadFileName
+  do
+    if [ "$(echo ${sv_PayloadFileName} | tr "[A-Z]" "[a-z]")" = "policybanner.rtf" ]
+    then
+      sv_PayloadFileExt="PolicyBanner-rtf"
+    
+    else
+      sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|' | tr [A-Z] [a-z])
+      
+    fi
+    
+    sv_HandlerFilePath="/usr/local/LabWarden/Custom-PayloadHandlers/${sv_PayloadFileExt}-install"
+    if ! test -e "${sv_HandlerFilePath}"
+    then
+      sv_HandlerFilePath="/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-install"
+      if ! test -e "${sv_HandlerFilePath}"
+      then
+        sv_HandlerFilePath=""
+      fi
+    fi
+
+    if test -z "${sv_HandlerFilePath}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "There's no handler to install ${sv_PayloadFileName}"
+      rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+    else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Installing ${sv_PayloadFileName}"
+      "${sv_HandlerFilePath}" "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${sv_GPOuser}"
+      sv_Error=$?
+      if [ ${sv_Error} -eq 0 ]
+      then
+        ln -fh "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}" "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        rm -f "${GLB_sv_ProjectConfigDirPath}/Policies/Install/${sv_ObjectContext}/${sv_ObjectName}/${sv_PayloadFileName}"
+        touch -t $(date -r ${GLB_iv_ThisScriptStartEpoch} "+%Y%m%d%H%M.%S") "${GLB_sv_ProjectConfigDirPath}/Policies/Active/${sv_ObjectContext}/${sv_ObjectName}"
+
+      else
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to install ${sv_PayloadFileName} (${sv_Error})"
+        
+      fi
+    fi
+  done
+fi
+
+# --- now strip the configs from the installed mobileconfigs
+
+if [ "${GLB_sv_ThisUserName}" = "root" ]
+then
+
+sv_ConfigTmpDirPath="${GLB_sv_ThisScriptTempDirPath}/${sv_ObjectName}/Config"
+mkdir -p "${sv_ConfigTmpDirPath}"
+
+
+sv_EventsFileName="LabWarden-Events.plist"
+sv_KnownProfilesFileName="LabWarden-KnownProfiles.txt"
+
+sv_EventsFilePath="${sv_ConfigDirPath}/${sv_EventsFileName}"
+
+# If the events plist exists, and has a size of zero - something has gone wrong - so rebuild from scratch
+if test -f "${sv_EventsFilePath}"
+then
+  if ! test -s "${sv_EventsFilePath}"
+  then
+    rm -fR "${sv_ConfigDirPath}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "File possibly corrupt '${sv_ConfigDirPath}' - rebuilding..."
+  fi
+fi
+
+if ! test -e "${sv_ConfigDirPath}"
+then
+  mkdir -p "${sv_ConfigDirPath}"
+  chown -R root:wheel "${sv_ConfigDirPath}"
+  chmod -R 755 "${sv_ConfigDirPath}"
+fi
+
+if ! test -e "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating empty '${sv_ConfigDirPath}/${sv_KnownProfilesFileName}'"
+  touch "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}"
+fi
+
+if ! test -e "${sv_EventsFilePath}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating empty '${sv_EventsFilePath}'"
+  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_EventsFilePath}"
+fi
+
+if [ "${sv_ObjectContext}" = "Computers" ]
+then
+
+  profiles -L | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u > "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt"
+  sv_TopLevelKeyName="_computerlevel"
+
+else
+
+  profiles -L -U ${sv_ObjectName} | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u > "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt"
+  sv_TopLevelKeyName=${sv_ObjectName}
+
+fi
+
+
+cat "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}" | sort -u > "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}"
+
+diff "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}" "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt" | grep -E "^> " | cut -d" " -f2 > "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt"
+diff "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}" "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt" | grep -E "^< " | cut -d" " -f2 > "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt"
+
+#echo "INSTALL THESE"
+#cat "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt"
+
+#echo "UNINSTALL THESE"
+#cat "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt"
+
+
+if [ -s "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt" ]
+then
+  while read sv_ProfileIdentifier
+  do
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing config for profile ${sv_ProfileIdentifier}"
+    
+    # Remove profile entry from Installed Profiles list
+    if test -s "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}"
+    then
+      cat "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}" | grep -v "${sv_ProfileIdentifier}" > "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}"
+      cp -f "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}" "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}"
+    fi
+    
+    # Remove payload entries from events plist
+    if test -f "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
+    then
+      while read sv_PayloadUUID
+      do
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing config for payload ${sv_PayloadUUID}"
+        if test -f "${sv_EventsFilePath}"
+        then
+          cat "${sv_EventsFilePath}" | grep -v "${sv_PayloadUUID}" > "${sv_ConfigTmpDirPath}/${sv_EventsFileName}"
+          cp -f "${sv_ConfigTmpDirPath}/${sv_EventsFileName}" "${sv_EventsFilePath}"
+        fi
+        sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_PayloadUUID}.plist"
+        
+        # Call Policy script passing an "Sys-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
+        sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
+        if test -n "${sv_PolicyFilePath}"
+        then
+          "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Sys-PolicyUninstall" "${GLB_sv_LoggedInUserName}" ""
+        fi
+
+        # Delete config
+        rm -f "${sv_ConfigFilePath}"
+      done < "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
+      
+      # Delete identifier payload list
+      rm -f "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
+    fi
+    
+  done < "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt"
+fi
+
+if [ -s "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt" ]
+then
+
+sv_ProfilesFilePath="${sv_ConfigTmpDirPath}/object.xml"
+rm -f "${sv_ProfilesFilePath}"
+
+if [ "${sv_ObjectContext}" = "Computers" ]
+then
+  profiles -Lv -o "${sv_ProfilesFilePath}"
+
+else
+  profiles -Lv -U ${sv_ObjectName} -o "${sv_ProfilesFilePath}"
+
+fi
+
+iv_TopLevelKeyCount=$(GLB_if_GetPlistArraySize ${sv_ProfilesFilePath} ":${sv_TopLevelKeyName}")
+
+for (( iv_LoopCount1=0; iv_LoopCount1<${iv_TopLevelKeyCount}; iv_LoopCount1++ ))
+do
+  sv_ProfileIdentifier="$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileIdentifier'" "${sv_ProfilesFilePath}")"
+
+  if test -n "$(cat "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt" | grep "${sv_ProfileIdentifier}")"
+  then
+
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Processing mobileconfig '${sv_ProfileIdentifier}' for config payloads"
+
+    bv_configOK="true"
+    
+    sv_ProfileDisplayName="$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileDisplayName'" "${sv_ProfilesFilePath}")"
+
+    if test -n "$(echo ${sv_ProfileDisplayName} | grep -E "^${GLB_sv_ProjectInitials} ")"
+    then
+      iv_ProfileItemsCount=$(GLB_if_GetPlistArraySize ${sv_ProfilesFilePath} ":${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileItems")
+
+      for (( iv_LoopCount2=0; iv_LoopCount2<${iv_ProfileItemsCount}; iv_LoopCount2++ ))
+      do
+        sv_PayloadType=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileItems:${iv_LoopCount2}:PayloadType'" ${sv_ProfilesFilePath})
+#        if [ "${sv_PayloadType}" = "${GLB_sv_ProjectSignature}" ] # Will re-introduce this at some point, but at the moment case doesn't matter       
+        if test -n "$(echo "${sv_PayloadType}" | grep -iE "^${GLB_sv_ProjectSignature}$")"        
+        then
+          sv_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileItems:${iv_LoopCount2}:PayloadUUID'" ${sv_ProfilesFilePath})
+
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing config for payload '${sv_PayloadUUID}'"
+
+          sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_PayloadUUID}.plist"
+        
+          if ! test -f "${sv_ConfigFilePath}"
+          then
+        
+            /usr/libexec/PlistBuddy 2>/dev/null -x -c "Print ':${sv_TopLevelKeyName}:${iv_LoopCount1}:ProfileItems:${iv_LoopCount2}:PayloadContent'" ${sv_ProfilesFilePath} >"${sv_ConfigFilePath}"
+
+            if test -f "${sv_ConfigFilePath}"
+            then
+              iv_TriggeredByItemsCount=$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_PayloadUUID}:TriggeredBy")
+              for (( iv_LoopCount3=0; iv_LoopCount3<${iv_TriggeredByItemsCount}; iv_LoopCount3++ ))
+              do
+
+                sv_TriggeredByEventName=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_PayloadUUID}:TriggeredBy:${iv_LoopCount3}")
+                if test -n "${sv_TriggeredByEventName}"
+                then
+                  # Create object
+                  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}'" "${sv_EventsFilePath}"
+                  if [ $? -ne 0 ]
+                  then
+                    # Add a new object
+                    /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}' dict" "${sv_EventsFilePath}"
+                    if [ $? -ne 0 ]
+                    then
+                      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to Add dict ':${sv_TriggeredByEventName}' to '${sv_EventsFilePath}'"
+                      bv_configOK="false"
+                      break 2
+                    fi
+                  fi
+
+                  # Create array
+                  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_EventsFilePath}"
+                  if [ $? -ne 0 ]
+                  then
+                    # Add a new object
+                    /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}:DoesTrigger' array" "${sv_EventsFilePath}"
+                    if [ $? -ne 0 ]
+                    then
+                      GLB_nf_logmessage ${GLB_iv_MsgLevelErr}  "Failed to Add dict ':${sv_TriggeredByEventName}:DoesTrigger' to '${sv_EventsFilePath}'"
+                      bv_configOK="false"
+                      break 2
+                    fi
+                  fi
+            
+                  iv_DoesTriggerCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_TriggeredByEventName}:DoesTrigger")"
+
+                  if test -z "$(/usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Print ':${sv_TriggeredByEventName}:DoesTrigger'" "${sv_EventsFilePath}" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_PayloadUUID}$")"
+                  then
+                    /usr/libexec/PlistBuddy 2>/dev/null -c "Add ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' string" "${sv_EventsFilePath}"
+                    if [ $? -ne 0 ]
+                    then
+                      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to Add array entry ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' to '${sv_EventsFilePath}'"
+                      bv_configOK="false"
+                      break 2
+                    fi
+            
+                    # Set array Value    
+                    /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Set ':${sv_TriggeredByEventName}:DoesTrigger:${iv_DoesTriggerCount}' '${sv_PayloadUUID}'" "${sv_EventsFilePath}"
+            
+                  fi
+
+                fi
+
+              done
+          
+            fi
+          fi
+        
+          echo "${sv_PayloadUUID}" >> "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
+       
+          # Call Policy script passing an "Sys-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
+          sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
+          if test -n "${sv_PolicyFilePath}"
+          then
+            "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Sys-PolicyInstall" "${GLB_sv_LoggedInUserName}" ""
+          fi
+
+        fi
+      done
+    fi
+
+    if [ "${bv_configOK}" = "true" ]
+    then
+      echo "${sv_ProfileIdentifier}" >> "${sv_ConfigDirPath}/${sv_KnownProfilesFileName}"
+      
+    else
+      rm -f "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to install profile '${sv_ProfileIdentifier}'"
+      
+    fi
+    
+  fi
+done
+
+fi
+
+fi
+
 # ---
 
 # Remove temporary files
-rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
 
 exit 0

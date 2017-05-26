@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.HIToolbox</key>
+				<dict>
+					<key>Set-Once</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>AppleCurrentKeyboardLayoutInputSourceID</key>
+								<string>com.apple.keylayout.British</string>
+								<key>AppleDateResID</key>
+								<dict>
+									<key>smRoman</key>
+									<integer>2</integer>
+								</dict>
+								<key>AppleDefaultAsciiInputSource</key>
+								<dict>
+									<key>InputSourceKind</key>
+									<string>Keyboard Layout</string>
+									<key>KeyboardLayout ID</key>
+									<integer>2</integer>
+									<key>KeyboardLayout Name</key>
+									<string>British</string>
+								</dict>
+								<key>AppleEnabledInputSources</key>
+								<array>
+									<dict>
+										<key>InputSourceKind</key>
+										<string>Keyboard Layout</string>
+										<key>KeyboardLayout ID</key>
+										<integer>2</integer>
+										<key>KeyboardLayout Name</key>
+										<string>British</string>
+									</dict>
+									<dict>
+										<key>InputSourceKind</key>
+										<string>Keyboard Layout</string>
+										<key>KeyboardLayout ID</key>
+										<integer>250</integer>
+										<key>KeyboardLayout Name</key>
+										<string>British-PC</string>
+									</dict>
+								</array>
+								<key>AppleInputSourceHistory</key>
+								<array>
+									<dict>
+										<key>InputSourceKind</key>
+										<string>Keyboard Layout</string>
+										<key>KeyboardLayout ID</key>
+										<integer>2</integer>
+										<key>KeyboardLayout Name</key>
+										<string>British</string>
+									</dict>
+								</array>
+								<key>AppleNumberResID</key>
+								<dict>
+									<key>smRoman</key>
+									<integer>2</integer>
+								</dict>
+								<key>AppleSelectedInputSources</key>
+								<array>
+									<dict>
+										<key>InputSourceKind</key>
+										<string>Keyboard Layout</string>
+										<key>KeyboardLayout ID</key>
+										<integer>2</integer>
+										<key>KeyboardLayout Name</key>
+										<string>British</string>
+									</dict>
+								</array>
+								<key>AppleTimeResID</key>
+								<dict>
+									<key>smRoman</key>
+									<integer>2</integer>
+								</dict>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>F732856C-53E0-42A1-B921-22373A68F4A1</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>F732856C-53E0-42A1-B921-22373A68F4A1</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.systemuiserver</key>
+				<dict>
+					<key>Set-Once</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>menuExtras</key>
+								<array>
+									<string>/System/Library/CoreServices/Menu Extras/TextInput.menu</string>
+								</array>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>D641BC33-2CDB-4FBB-AF7F-C87FF14F5801</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>D641BC33-2CDB-4FBB-AF7F-C87FF14F5801</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>.GlobalPreferences</key>
+				<dict>
+					<key>Set-Once</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>AppleLanguages</key>
+								<array>
+									<string>English</string>
+								</array>
+								<key>AppleLocale</key>
+								<string>en_GB</string>
+								<key>Country</key>
+								<string>GB</string>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>6FD6DB46-63AF-4091-87BD-A4770DF6ADE1</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>6FD6DB46-63AF-4091-87BD-A4770DF6ADE1</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>BE8582D3-FE0C-4863-AEED-BC227E3D92E8</string>
+			<key>PayloadType</key>
+			<key>com.apple.loginwindow</key>
+			<key>PayloadUUID</key>
+			<string>BE8582D3-FE0C-4863-AEED-BC227E3D92E8</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<!-- Setting custom vars doesnt work if the vars are put in a PayloadContent dict, -->
+			<!-- even though the vars show as being within the PayloadContent after installation. Odd -->
+			<key>showInputMenu</key>
+			<true/>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Managed Settings:
+com.apple.HIToolbox
+.GlobalPreferences
+com.apple.systemuiserver
+System Settings:
+com.apple.loginwindow
+</string>
+	<key>PayloadDisplayName</key>
+	<string>Mac UKLocale</string>
+	<key>PayloadIdentifier</key>
+	<string>1C88C5C3-DD20-4A46-ABB2-B6617FFCC11C</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>1C88C5C3-DD20-4A46-ABB2-B6617FFCC11C</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

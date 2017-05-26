@@ -2,11 +2,11 @@
 #
 # Short:    Handle a Poll Trigger
 # Author:   Mark J Swift
-# Version:  1.0.96
-# Modified: 05-Sep-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
-#   Poll "System|LoginWindow|User"
+#   Poll "Sys|Sys-LoginWindow|Usr"
 #
 
 # ---
@@ -22,44 +22,44 @@ fi
 
 # ---
 
-# Trigger the Poll event
-/usr/local/LabWarden/lib/Trigger "${sv_PollName}Poll" &
-
-# ---
-
 # Load the contants, only if they are not already loaded
-if test -z "${LW_sv_LabWardenSignature}"
+if test -z "${GLB_sv_ProjectSignature}"
 then
-  . /usr/local/LabWarden/lib/Constants
+  . /usr/local/LabWarden/inc/Constants.sh
 fi
 
 # ---
 
+# Trigger the Poll event
+/usr/local/${GLB_sv_ProjectName}/lib/Trigger "${sv_PollName}Poll" &
+
+# ---
+
 # Get seconds that mac mouse/keyboard is idle - thanks to https://github.com/CLCMacTeam/IdleLogout
-LW_if_UserInteractionIdleSecs()
+GLB_if_UserInteractionIdleSecs()
 {
   echo $(($(ioreg -c IOHIDSystem | sed -e '/HIDIdleTime/ !{ d' -e 't' -e '}' -e 's/.* = //g' -e 'q') / 1000000000))
 }
 
 case ${sv_PollName} in
-User)
-  iv_IdleTriggerSecs=${LW_iv_UserPollTriggerSecs}
+Usr-)
+  iv_IdleTriggerSecs=${GLB_iv_UsrPollTriggerSecs}
   ;;
-System)
-  iv_IdleTriggerSecs=${LW_iv_SystemPollTriggerSecs}
+Sys-)
+  iv_IdleTriggerSecs=${GLB_iv_SysPollTriggerSecs}
   ;;
-LoginWindow)
-  iv_IdleTriggerSecs=${LW_iv_LoginWindowPollTriggerSecs}
+Sys-LoginWindow)
+  iv_IdleTriggerSecs=${GLB_iv_SysLoginWindowPollTriggerSecs}
   ;;
 esac
       
 # If there has been no recent input, trigger an idle event 
 # If there continues to be no input, the idle event will continue to be triggered with every subsequent poll event
-iv_IdleSecs=$(LW_if_UserInteractionIdleSecs)
+iv_IdleSecs=$(GLB_if_UserInteractionIdleSecs)
 if [ ${iv_IdleSecs} -gt ${iv_IdleTriggerSecs} ]
 then
   # Trigger an Idle event
-  /usr/local/LabWarden/lib/Trigger "${sv_PollName}Idle" &
+  /usr/local/${GLB_sv_ProjectName}/lib/Trigger "${sv_PollName}Idle" &
 fi
 
 # ---

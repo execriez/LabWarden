@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>3F35FA21-9A13-4A10-B08D-8DD71DC37880</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>DeviceURI</key>
+					<string>lpd://192.168.0.5/</string>
+					<key>DisplayName</key>
+					<string>Marketing-Laser2020-direct</string>
+					<key>Location</key>
+					<string>Marketing</string>
+					<key>Options</key>
+					<string>-o printer-is-shared=false -o printer-error-policy=abort-job -o PageSize=A4 -o HPBookletPageSize=A4</string>
+					<key>PPDURI</key>
+					<string>file://localhost/Library/Printers/PPDs/Contents/Resources/HP Color LaserJet CP2020 Series.gz</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-AddPrinter</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Poll</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>3F35FA21-9A13-4A10-B08D-8DD71DC37880</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>3F35FA21-9A13-4A10-B08D-8DD71DC37880</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-AddPrinter (MarketingLaser2020direct)</string>
+	<key>PayloadIdentifier</key>
+	<string>A7FB730C-75D0-40B5-B912-78E4A29D78F2</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>A7FB730C-75D0-40B5-B912-78E4A29D78F2</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

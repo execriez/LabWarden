@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# Short:    Do something when a user logs out
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Called by ConsoleUserWarden as follows:    
+#   ConsoleUserWarden-UserLoggedIn <PreviousConsoleUser>
+#
+
+# Executes the following Trigger
+#   Sys-ConsoleUserLoggedOut "root" "<user>" (as root)
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- passes the user logging in as first parameter --
+
+# Get user name
+GLB_sv_ThisUserName="${1}"
+
+# -- The following is executed as root --
+
+/usr/local/LabWarden/lib/Trigger "Sys-ConsoleUserLoggedOut" "$(whoami)" "${GLB_sv_ThisUserName}"
+

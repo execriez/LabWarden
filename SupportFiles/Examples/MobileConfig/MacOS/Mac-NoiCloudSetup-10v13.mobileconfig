@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.SetupAssistant</key>
+				<dict>
+					<key>Set-Once</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>DidSeeCloudSetup</key>
+								<true/>
+								<key>DidSeeSyncSetup</key>
+								<true/>
+								<key>DidSeeSyncSetup2</key>
+								<true/>
+								<key>GestureMovieSeen</key>
+								<string>none</string>
+								<key>LastCacheCleanupStillRunning</key>
+								<false/>
+								<key>LastPreLoginTasksPerformedBuild</key>
+								<string>17Z2047</string>
+								<key>LastPreLoginTasksPerformedVersion</key>
+								<string>10.13.25</string>
+								<key>LastSeenBuddyBuildVersion</key>
+								<string>17Z2047</string>
+								<key>LastSeenCloudProductVersion</key>
+								<string>10.13.25</string>
+								<key>RunNonInteractive</key>
+								<true/>
+								<key>ShowKeychainSyncBuddyAtLogin</key>
+								<false/>
+								<key>SkipFirstLoginOptimization</key>
+								<true/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>86B33D53-D9BB-4638-AF43-B6DEACFE0B18</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>86B33D53-D9BB-4638-AF43-B6DEACFE0B18</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Included custom settings:
+com.apple.SetupAssistant
+</string>
+	<key>PayloadDisplayName</key>
+	<string>Mac NoiCloudSetup 10.13</string>
+	<key>PayloadIdentifier</key>
+	<string>AE0D070D-51C3-4AE1-B078-986B737E78C9</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>AE0D070D-51C3-4AE1-B078-986B737E78C9</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

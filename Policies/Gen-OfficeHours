@@ -1,0 +1,1316 @@
+#!/bin/bash
+#
+# Short:    Gen Policy script - Enforces User Access to Opening Hours and collects usage stats
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-Boot            (as root)
+#   Sys-NetworkUp       (as root)
+#   Sys-Poll      (as root)
+#   Usr-AtDesktop   (as user)
+#   Usr-Poll        (as user)
+#
+# Called as follows:    
+#   Gen-OfficeHours <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+# 
+# This was simple in my head - I'm not sure why it ended up so complicated.
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+App-WillLaunch|App-DidLaunch|App-DidTerminate)
+
+  # Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
+  # Note, older applications may return "(null)"
+  sv_ThisAppBundleIdentifier="$(echo ${sv_OptionalParam} | cut -d":" -f3)"
+
+  # Get notification e.g. WillLaunch, DidLaunch or DidTerminate
+  sv_ThisAppNotificationType="$(echo ${sv_OptionalParam} | cut -d":" -f1)"
+
+  # Get Date/Time Epoch of the notification
+  iv_ThisAppNotificationEpoch="$(echo ${sv_OptionalParam} | cut -d":" -f2)"
+
+  # Get ApplicationName e.g. TextEdit
+  sv_ThisAppName="$(echo ${sv_OptionalParam} | cut -d":" -f4)"
+
+  # Get ApplicationPath e.g. /Applications/TextEdit.app
+  sv_ThisAppFilePath="$(echo ${sv_OptionalParam} | cut -d":" -f5)"
+
+  # Get ApplicationProcessIdentifier - i.e. the process ID
+  sv_ThisAppProcessID="$(echo ${sv_OptionalParam} | cut -d":" -f6)"
+  ;;
+  
+  # Note, we should quickly quit if are running an App that we are not interested in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+Sf_ShowTidyDateTime() # display date/time as today/tomorrow, etc
+{
+  local iv_ThisEpoch
+  local iv_ThisZerohourEpoch
+  local iv_NowZerohourEpoch
+  local iv_TomorrowZerohourEpoch
+  local iv_NextWeekZerohourEpoch
+  
+  iv_ThisEpoch=${1}
+  iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+
+  iv_NowZerohourEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+  if [ ${iv_ThisZerohourEpoch} -eq ${iv_NowZerohourEpoch} ]
+  then
+    printf "Today "
+  else
+    iv_TomorrowZerohourEpoch=$(date -r ${iv_NowZerohourEpoch} -v+1d "+%s")
+    if [ ${iv_ThisZerohourEpoch} -eq ${iv_TomorrowZerohourEpoch} ]
+    then
+      printf "Tomorrow "
+    else
+      iv_NextWeekZerohourEpoch=$(date -r ${iv_NowZerohourEpoch} -v+7d "+%s")
+      printf "$(date -r ${iv_ThisEpoch} "+%a") "    
+      if [ ${iv_ThisZerohourEpoch} -ge ${iv_NextWeekZerohourEpoch} ]
+      then
+        printf "$(date -r ${iv_ThisEpoch} "+%d %b %Y") "    
+      fi
+    fi
+  fi
+
+  printf "@ $(date -r ${iv_ThisEpoch} "+%H:%M")"
+}
+
+# Return the open and close time for the day of a given epoch - plus some other useful info
+# Returns a string as follows:
+#      HolidayHours,<OpenTimeEpoch>,<CloseTimeEpoch>,<StartOfRestrictedEpoch>,<EndOfRestrictedEpoch>"
+#  or  NormalHours,<OpenTimeEpoch>,<CloseTimeEpoch>,,"
+#  or  ClosedDays,,,<StartOfCloseEpoch>,<EndOfCloseEpoch>"
+Sf_GetSlotForEpoch()   # epoch
+{
+  local iv_ThisEpoch
+  local iv_ThisDayOfWeek
+  local bv_ClosedDaysAccess
+  local bv_HolidayHoursAccess
+  local iv_ClosedDaysCount
+  local iv_ClosedDaysIndex
+  local iv_HolidayHoursCount
+  local iv_HolidayHoursIndex
+  local iv_DatesCount
+  local iv_DatesIndex
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_EndDay
+  local iv_EndMonth
+  local iv_EndYear
+  local iv_StartEpoch
+  local iv_EndEpoch
+  local sv_OpenTimeString
+  local sv_CloseTimeString
+  local sv_SlotType
+  local iv_ThisZerohourEpoch
+  local iv_ThisOffsetSecs
+  local iv_OpenTimeEpoch
+  local iv_CloseTimeEpoch
+
+  iv_ThisEpoch=${1}
+
+  # The day of the week as a decimal, range 1 to 7, Monday being 1
+  iv_ThisDayOfWeek="$(date -r ${iv_ThisEpoch} "+%u")"
+
+  sv_SlotType=""
+
+  iv_OpenTimeEpoch=""
+  sv_CloseTimeString=""
+  iv_StartEpoch=""
+  iv_CloseTimeEpoch=""
+  
+  # Check if current date is in the closed access list
+  iv_ClosedDaysCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays")"
+  for (( iv_ClosedDaysIndex=0; iv_ClosedDaysIndex<${iv_ClosedDaysCount}; iv_ClosedDaysIndex++ ))
+  do
+    iv_StartDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Day")
+    iv_StartMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Month")
+    iv_StartYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:Start:Year")
+    iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+
+    iv_EndDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Day")
+    iv_EndMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Month")
+    iv_EndYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ClosedDays:${iv_ClosedDaysIndex}:End:Year")
+    iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v23H -v59M -v59S "+%s")
+
+    if [ ${iv_ThisEpoch} -ge ${iv_StartEpoch} ] && [ ${iv_ThisEpoch} -le ${iv_EndEpoch} ]
+    then
+      sv_SlotType="ClosedDays"
+      break
+    fi
+      
+  done
+
+  if test -z "${sv_SlotType}"
+  then
+    iv_HolidayHoursCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours")"
+    for (( iv_HolidayHoursIndex=0; iv_HolidayHoursIndex<${iv_HolidayHoursCount}; iv_HolidayHoursIndex++ ))
+    do
+      iv_DatesCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange")"
+      for (( iv_DatesIndex=0; iv_DatesIndex<${iv_DatesCount}; iv_DatesIndex++ ))
+      do  
+        iv_StartDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Day")
+        iv_StartMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Month")
+        iv_StartYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:Start:Year")
+        iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+
+        iv_EndDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Day")
+        iv_EndMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Month")
+        iv_EndYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:DateRange:${iv_DatesIndex}:End:Year")
+        iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v23H -v59M -v59S "+%s")
+
+        if [ ${iv_ThisEpoch} -ge ${iv_StartEpoch} ] && [ ${iv_ThisEpoch} -le ${iv_EndEpoch} ]
+        then
+          sv_SlotType="HolidayHours"
+          sv_OpenTimeString=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:Day${iv_ThisDayOfWeek}:OpenTime")
+          sv_CloseTimeString=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HolidayHours:${iv_HolidayHoursIndex}:Day${iv_ThisDayOfWeek}:CloseTime")
+
+          break
+        fi
+  
+      done
+    
+      if test -n "${sv_SlotType}"
+      then
+        break
+      fi
+      
+    done
+
+    if test -z "${sv_SlotType}"
+    then
+      sv_SlotType="NormalHours"
+      sv_OpenTimeString=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:NormalHours:Day${iv_ThisDayOfWeek}:OpenTime")
+      sv_CloseTimeString=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:NormalHours:Day${iv_ThisDayOfWeek}:CloseTime")
+    fi
+
+    iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+    
+    if test -n "${sv_OpenTimeString}"
+    then
+      iv_ThisOffsetSecs=$(($(echo "${sv_OpenTimeString}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+      iv_OpenTimeEpoch=$((${iv_ThisZerohourEpoch}+${iv_ThisOffsetSecs}))
+    fi
+
+    if test -n "${sv_CloseTimeString}"
+    then
+      iv_ThisOffsetSecs=$(($(echo "${sv_CloseTimeString}" | grep -E "^[0-9]{1,2}:[0-9]{2}$" | sed "s|:|*3600+60*|")))
+      iv_CloseTimeEpoch=$((${iv_ThisZerohourEpoch}+${iv_ThisOffsetSecs}))
+    fi
+  
+  fi
+
+  echo "${sv_SlotType},${iv_OpenTimeEpoch},${iv_CloseTimeEpoch},${iv_StartEpoch},${iv_EndEpoch}"
+}
+
+# Find an open or close slot relative to a given epoch
+# Returns a string as follows:
+# <SlotType>,<OpenEpoch>,<CloseEpoch>
+Sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch> 
+{
+  local sv_ThisTimeSlot
+  local sv_ThisPosition
+  local iv_ThisEpoch
+  local iv_ThisZerohourEpoch
+  local iv_Index
+  local sv_InfoString
+  local sv_SlotType
+  local iv_ThisOpenEpoch
+  local iv_ThisCloseEpoch
+  local iv_SomeEpoch
+  
+  sv_ThisTimeSlot=${1} # "open" or "close"
+  sv_ThisPosition=${2} # "before" or "after"
+  iv_ThisEpoch=${3}
+
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Find ${sv_ThisTimeSlot} time slot ${sv_ThisPosition} ${iv_ThisEpoch}"
+    iv_ThisZerohourEpoch=$(date -r ${iv_ThisEpoch} -v0H -v0M -v0S "+%s")
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+    for (( iv_Index=0; iv_Index<14; iv_Index++ )) # If we can't get it after 14 attempts, give up
+    do
+      sv_InfoString="$(Sf_GetSlotForEpoch ${iv_ThisZerohourEpoch})"
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "sv_InfoString ${sv_InfoString}"
+      sv_SlotType="$(echo ${sv_InfoString} | cut -d"," -f1)"
+      case ${sv_SlotType} in
+      NormalHours|HolidayHours)
+        iv_ThisOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+        iv_ThisCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+#        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisOpenEpoch ${iv_ThisOpenEpoch}"
+#        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisCloseEpoch ${iv_ThisCloseEpoch}"
+        if [ "${sv_ThisTimeSlot}" = "open" ]
+        then
+          if test -n "${iv_ThisOpenEpoch}"
+          then
+            if [ "${sv_ThisPosition}" = "before" ]
+            then
+              if [ ${iv_ThisOpenEpoch} -lt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            else
+              if [ ${iv_ThisOpenEpoch} -gt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            fi
+          fi
+        else
+          if test -n "${iv_ThisCloseEpoch}"
+          then
+            if [ "${sv_ThisPosition}" = "before" ]
+            then
+              if [ ${iv_ThisCloseEpoch} -lt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            else
+              if [ ${iv_ThisCloseEpoch} -gt ${iv_ThisEpoch} ]
+              then
+                break;
+              fi         
+            fi
+          fi
+        fi
+        ;;
+        
+      ClosedDays)
+        if [ "${sv_ThisPosition}" = "before" ]
+        then
+          iv_SomeEpoch="$(echo ${sv_InfoString} | cut -d"," -f4)"
+        else
+          iv_SomeEpoch="$(echo ${sv_InfoString} | cut -d"," -f5)"
+        fi
+#        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_SomeEpoch ${iv_SomeEpoch}"
+
+        if test -n "${iv_SomeEpoch}"
+        then
+          iv_ThisZerohourEpoch=$(date -r ${iv_SomeEpoch} -v0H -v0M -v0S "+%s")
+#          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+        fi
+        ;;
+      
+      esac
+      
+      if [ "${sv_ThisPosition}" = "before" ]
+      then
+        iv_ThisZerohourEpoch=$(date -r ${iv_ThisZerohourEpoch} -v-1d "+%s")
+      else
+        iv_ThisZerohourEpoch=$(date -r ${iv_ThisZerohourEpoch} -v+1d "+%s")
+      fi
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
+    done
+
+  if [ ${iv_Index} -lt 14 ]
+  then
+    echo ${sv_SlotType},${iv_ThisOpenEpoch},${iv_ThisCloseEpoch}
+  else
+    echo ,,
+  fi
+}
+
+# Calculate the following globals for a given epoch
+#  bv_OfficeHoursAreValid
+#  sv_CurrSlotType (NormalHours, HolidayHours or ClosedDays)
+#  iv_CurrOpenEpoch
+#  iv_CurrCloseEpoch
+#  iv_NextOpenEpoch
+Nf_GetOfficeHours() #epoch
+{
+  local iv_ThisEpoch
+  local sv_InfoString
+ 
+  iv_ThisEpoch=${1}
+
+  bv_OfficeHoursAreValid="false"
+
+  sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_ThisEpoch})"
+  iv_CurrOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+  if test -n "${iv_CurrOpenEpoch}"
+  then
+    sv_CurrSlotType="$(echo ${sv_InfoString} | cut -d"," -f1)"
+    iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+    if test -z "${iv_CurrCloseEpoch}"
+    then
+      sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_CurrOpenEpoch})"
+      iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+    fi
+    
+    if test -n "${iv_CurrCloseEpoch}"
+    then
+      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CurrCloseEpoch})"
+      iv_NextOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+      if test -n "${iv_NextOpenEpoch}"
+      then
+        iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+        if test -z "${iv_NextCloseEpoch}"
+        then
+          sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_NextOpenEpoch})"
+          iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+        fi
+        
+        if test -n "${iv_NextCloseEpoch}"
+        then
+          sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_NextCloseEpoch})"
+          iv_SubsequentOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+          if test -n "${iv_SubsequentOpenEpoch}"
+          then
+            bv_OfficeHoursAreValid="true"
+
+          fi
+
+        fi
+      fi
+      
+    fi
+  fi
+
+}
+
+Nf_UpgradefromV1() # copy V2 prefs from V1
+{
+  local sv_OldPolicyGlobalPrefFilePath
+  local iv_FirstAuditEpoch
+  local iv_LastAuditEpoch
+  local iv_OfficeHoursTotSecs
+  local iv_OutOfHoursTotSecs
+  local iv_OfficeHoursUseSecs
+  local iv_OutOfHoursUseSecs
+  
+  # If the V2 global pref file doesnt exist, check for existing V1 prefs
+  if ! test -e "${sv_ThisPolicyGlobalPrefFilePath}"
+  then
+    sv_OldPolicyGlobalPrefFilePath="/Library/Preferences/SystemConfiguration/${GLB_sv_ProjectSignature}/Config/Computers/${GLB_sv_ADComputerName}/LabWarden.plist"
+    
+    iv_FirstAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:FirstAuditEpoch")
+    iv_LastAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:LastAuditEpoch")
+    iv_OfficeHoursTotSecs=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:OfficeHoursTotSecs")
+    iv_OutOfHoursTotSecs=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:OutOfHoursTotSecs")
+    iv_OfficeHoursUseSecs=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:OfficeHoursUseSecs")
+    iv_OutOfHoursUseSecs=$(GLB_sf_GetPlistProperty "${sv_OldPolicyGlobalPrefFilePath}" ":SystemOfficeHours:GlobalPrefs:Audit:OutOfHoursUseSecs")
+
+    if test -n "${iv_FirstAuditEpoch}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:FirstAuditEpoch" ${iv_FirstAuditEpoch}
+    fi
+    
+    if test -n "${iv_LastAuditEpoch}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:LastAuditEpoch" ${iv_LastAuditEpoch}
+    fi
+    
+    if test -n "${iv_OfficeHoursTotSecs}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:OfficeHoursTotSecs" ${iv_OfficeHoursTotSecs}
+    fi
+    
+    if test -n "${iv_OutOfHoursTotSecs}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:OutOfHoursTotSecs" ${iv_OutOfHoursTotSecs}
+    fi
+    
+    if test -n "${iv_OfficeHoursUseSecs}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:OfficeHoursUseSecs" ${iv_OfficeHoursUseSecs}
+    fi
+    
+    if test -n "${iv_OutOfHoursUseSecs}"
+    then
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":Gen-OfficeHours:GlobalPrefs:Audit:OutOfHoursUseSecs" ${iv_OutOfHoursUseSecs}
+    fi
+    
+  fi
+}
+
+Nf_SetupPolicy() # determine if the policy is active
+{
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_EndDay
+  local iv_EndMonth
+  local iv_EndYear
+  local iv_StartEpoch
+  local iv_EndEpoch
+  
+  iv_StartDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Day")
+  iv_StartMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Month")
+  iv_StartYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:Start:Year")
+    
+  if test -z $(echo "${iv_StartDay}/${iv_StartMonth}/${iv_StartYear}" | grep -E "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$")
+  then
+    # Invalid date entry - Disable policy
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Policy start date is invalid - policy is inactive"
+    
+  else
+    iv_EndDay=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Day")
+    iv_EndMonth=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Month")
+    iv_EndYear=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ActiveForDates:End:Year")
+    
+    if test -z $(echo "${iv_EndDay}/${iv_EndMonth}/${iv_EndYear}" | grep -E "^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}$")
+    then
+      # Invalid date entry - Disable policy
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Policy end date is invalid - policy is inactive"
+      
+    else
+      iv_StartEpoch=$(date -v${iv_StartYear}y -v${iv_StartMonth}m -v${iv_StartDay}d -v0H -v0M -v0S "+%s")
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyStartEpoch" ${iv_StartEpoch}
+
+      iv_EndEpoch=$(date -v${iv_EndYear}y -v${iv_EndMonth}m -v${iv_EndDay}d -v0H -v0M -v0S "+%s")
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyEndEpoch" ${iv_EndEpoch}
+      
+      if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_StartEpoch} ] || [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_EndEpoch} ]
+      then
+        GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Outside active dates - policy is inactive"
+        
+      else
+        # Enable policy.
+        
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Calculating opening and closing times."
+        Nf_GetOfficeHours ${GLB_iv_ThisScriptStartEpoch}
+        if [ "${bv_OfficeHoursAreValid}" = "false" ]
+        then
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Opening times undefined or invalid - policy is inactive"
+          
+        else
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting opening times in global vars."
+      
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrSlotType" "${sv_CurrSlotType}"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch" "${iv_CurrOpenEpoch}"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch" "${iv_CurrCloseEpoch}"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch" "${iv_NextOpenEpoch}"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextCloseEpoch" "${iv_NextCloseEpoch}"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:SubsequentOpenEpoch" "${iv_SubsequentOpenEpoch}"
+
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "CurrSlotType ${sv_CurrSlotType}"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "CurrOpen $(date -r ${iv_CurrOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "CurrClose $(date -r ${iv_CurrCloseEpoch} "+%Y%m%d-%H:%M.%S")"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "NextOpen $(date -r ${iv_NextOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "NextClose $(date -r ${iv_NextCloseEpoch} "+%Y%m%d-%H:%M.%S")"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "SubsequentOpenEpoch $(date -r ${iv_SubsequentOpenEpoch} "+%Y%m%d-%H:%M.%S")"
+        
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "true"
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy is active"
+        fi
+        
+      fi
+    
+    fi
+
+  fi
+}
+
+Nf_SetupAudit() # setup audit counts for first time
+{
+  local iv_StartDay
+  local iv_StartMonth
+  local iv_StartYear
+  local iv_StartEpoch
+  local iv_FirstAuditEpoch
+  
+  # Values need to be read as both a root and normal user - so store in the policies GlobalPrefs
+  
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" != "true" ]
+  then
+    # Policy is inactive, so we should disable the audit
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive" "false"
+
+  else
+    # Policy is active, so we should enable the audit
+  
+    # Get epoch when this policy started
+    iv_PolicyStartEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyStartEpoch")
+
+    # Get the first audit
+    iv_FirstAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+    if test -n "${iv_FirstAuditEpoch}"
+    then
+    
+      # First check if the audit was previously disabled.
+      bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+      if [ "${bv_AuditIsActive}" = "false" ]
+      then
+        # If so, and if there has been an audit - update the lastaudit epoch
+        GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${GLB_iv_ThisScriptStartEpoch}      
+      fi
+    
+      # Check if the First audit predates the policy
+      if [ ${iv_FirstAuditEpoch} -lt ${iv_PolicyStartEpoch} ]
+      then
+        /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_PolicyName}:GlobalPrefs:Audit'" "${sv_ConfigFilePath}"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "First audit predates policy start date - resetting usage stats."
+      fi
+    fi
+    
+    # If there's no existing audit - create a blank one
+    iv_FirstAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+    if test -z "${iv_FirstAuditEpoch}"
+    then
+      # First Audit not started yet - Delete old audit that shouldn't exist anyway
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete ':${sv_PolicyName}:GlobalPrefs:Audit'" "${sv_ConfigFilePath}"
+      
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating empty usage stats"
+
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch" ${GLB_iv_ThisScriptStartEpoch}
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${GLB_iv_ThisScriptStartEpoch}
+
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs" 0
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs" 0
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs" 0
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs" 0
+
+    fi
+        
+    # Enable audit
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive" "true"
+  fi
+}
+
+# check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
+Sf_OptionIsActiveForThisDomain() # [subkey]
+{
+  local bv_IsActive
+  local iv_IsActiveForDomainCount
+  local sv_IsActiveForDomain
+  
+  sv_SubKey="${1}"
+  if test -n "${sv_SubKey}" 
+  then
+    # add a single colon to the subkey
+    sv_SubKey=$(echo "${sv_SubKey}:" | sed "s|[:]*$|:|")
+  fi
+  
+  # Note, config "ActiveForDomain" value can be null, ALL, NONE, ADDOMAIN or your.company.domain
+
+  bv_IsActive="false"
+  iv_IsActiveForDomainCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:${sv_SubKey}ActiveForDomain")"
+  for (( iv_IsActiveForDomainIndex=0; iv_IsActiveForDomainIndex<${iv_IsActiveForDomainCount}; iv_IsActiveForDomainIndex++ ))
+  do
+    sv_IsActiveForDomain=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:${sv_SubKey}ActiveForDomain:${iv_IsActiveForDomainIndex}")
+    if test -n "${sv_IsActiveForDomain}"
+    then
+      case ${sv_IsActiveForDomain} in
+      ALL)
+        bv_IsActive="true"
+        break 2
+        ;;
+        
+      NONE)
+        break 2
+        ;;
+        
+      ADDOMAIN)
+        sv_IsActiveForDomain="${GLB_sv_ADDomainNameDNS}"
+        ;;
+          
+      esac
+    fi
+    
+    if [ "${sv_IsActiveForDomain}" = "${GLB_sv_NetworkServiceDHCPOption15}" ]
+    then
+      bv_IsActive="true"
+      break
+    fi
+  done
+  
+  echo "${bv_IsActive}"
+}
+
+Nf_SetupForceLogout() # Check if force logouts are in effect
+{
+  local bv_ForceLogoutIsActive
+  local iv_ForceLogoutEarlyLoginSecs
+  local iv_ForceLogoutEarlyLogoutSecs
+  local iv_CurrCloseEpoch
+  local iv_NextOpenEpoch
+  local bv_ForceLogoutInactiveOnClosedDays
+  local iv_ThisZerohourEpoch
+  local iv_CurrCloseZeroEpoch
+  local iv_NextOpenZeroEpoch
+
+  # Note, only active when on the specified domain(s) - can be null, ALL, NONE, ADDOMAIN or your.company.domain
+  # Note, at start-up the domain will be null - so be aware
+  bv_ForceLogoutIsActive="false"
+
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+    # Policy is active
+
+    bv_ForceLogoutIsActive=$(Sf_OptionIsActiveForThisDomain "ForceLogout")
+    
+    if [ "${bv_ForceLogoutIsActive}" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Workstation is on a domain that has force logouts enabled"
+
+      # Get 'LoginEarlySecs' settings
+      iv_ForceLogoutEarlyLoginSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyLoginSecs")
+      if test -z "${iv_ForceLogoutEarlyLoginSecs}"
+      then
+        iv_ForceLogoutEarlyLoginSecs=0
+      fi
+
+      # Get 'LogoutEarlySecs' settings
+      iv_ForceLogoutEarlyLogoutSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyLogoutSecs")
+      if test -z "${iv_ForceLogoutEarlyLogoutSecs}"
+      then
+        iv_ForceLogoutEarlyLogoutSecs=0
+      fi
+
+      iv_CurrCloseEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+      if [ ${GLB_iv_ThisScriptStartEpoch} -gt $((${iv_CurrCloseEpoch}-${iv_ForceLogoutEarlyLogoutSecs})) ]
+      then
+        # It is after closing time
+      
+        iv_NextOpenEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+        if [ ${GLB_iv_ThisScriptStartEpoch} -lt $((${iv_NextOpenEpoch}-${iv_ForceLogoutEarlyLoginSecs})) ] 
+        then
+          # It is before we next open
+        
+          bv_ForceLogoutInactiveOnClosedDays=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:InactiveOnClosedDays")
+          if [ "${bv_ForceLogoutInactiveOnClosedDays}" = "true" ]
+          then
+            # Force logouts have been disabled for closed days - Are we a closed day?
+            
+            iv_ThisZerohourEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v0H -v0M -v0S "+%s")
+            iv_CurrCloseZeroEpoch=$(date -r ${iv_CurrCloseEpoch} -v0H -v0M -v0S "+%s")
+            iv_NextOpenZeroEpoch=$(date -r ${iv_NextOpenEpoch} -v0H -v0M -v0S "+%s")
+            if [ ${iv_ThisZerohourEpoch} -ne ${iv_CurrCloseZeroEpoch} ] && [ ${iv_ThisZerohourEpoch} -ne ${iv_NextOpenZeroEpoch} ]
+            then
+              # It's a closed day
+              
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Force logouts are disabled - they are disabled on closed days, and today is a closed day"
+              bv_ForceLogoutIsActive="false"
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+
+  GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ForceLogoutIsActive" "${bv_ForceLogoutIsActive}"
+  if [ "${bv_ForceLogoutIsActive}" = "true" ]
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Force logouts are enabled"
+  fi
+}
+
+Nf_UpdateTotCounts() # update tot counts since last audit
+{
+  local iv_AuditEpoch
+  local iv_LastAuditEpoch
+  local bv_AuditIsActive
+  local iv_CurrOpenEpoch
+  local iv_CurrCloseEpoch
+  local iv_CountUntilClosedSecs
+  local iv_OfficeHoursTimeSecs
+  local iv_OfficeHoursTotSecs
+  local iv_OutOfHoursTimeSecs
+  local iv_OutOfHoursTotSecs
+  local iv_BackAuditStartEpoch
+  local sv_InfoString
+  local iv_OpenEpoch
+  local iv_CloseEpoch
+  
+  bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+  if [ "${bv_AuditIsActive}" = "true" ]
+  then
+    iv_CurrOpenEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch")
+    iv_CurrCloseEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+
+    iv_LastAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch")
+
+    iv_AuditEpoch=${iv_LastAuditEpoch}
+    
+    # Calculate time passed since last audit
+    iv_OfficeHoursTimeSecs=0
+    iv_OutOfHoursTimeSecs=0
+
+    sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_AuditEpoch})"
+    iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+    iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Previous audit completed to $(date -r ${iv_LastAuditEpoch} "+%Y%m%d-%H:%M.%S")"
+    iv_BackAuditStartEpoch=$(date -u "+%s")
+    while [ ${iv_AuditEpoch} -lt ${iv_CurrOpenEpoch} ]
+    do
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_AuditEpoch ${iv_AuditEpoch}"
+      iv_CountUntilClosedSecs=$((${iv_CloseEpoch}-${iv_AuditEpoch}))
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "CountUntilClosedSecs ${iv_CountUntilClosedSecs}"
+      if [ ${iv_CountUntilClosedSecs} -gt 0 ]
+      then
+        iv_OfficeHoursTimeSecs=$((${iv_OfficeHoursTimeSecs}+${iv_CountUntilClosedSecs}))
+      fi
+      
+      # On a Core2duo it could take up to 15 minutes to do 1 year of back audits,
+      # so limit the processing to 30 secs to prevent an excessive back-audit from hogging the triggered event.
+      # 30 secs is long enough to do about 13 days of back audit on a Core2duo
+      if [ $(( $(date -u "+%s")-${iv_BackAuditStartEpoch} )) -gt 30 ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Back audit postponed, completed to $(date -r ${iv_AuditEpoch} "+%Y%m%d-%H:%M.%S")"
+        break
+      fi
+      
+      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CloseEpoch})"
+      iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
+      iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+      iv_AuditEpoch=${iv_OpenEpoch}
+      
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "NormalHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "HolidayHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+    done
+    
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_AuditEpoch ${iv_AuditEpoch}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "NormalHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "HolidayHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
+
+    # Check if we completed the back-audit
+    if [ ${iv_AuditEpoch} -ge ${iv_CurrOpenEpoch} ]
+    then
+    
+      if [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_CountUntilClosedSecs=$((${iv_CurrCloseEpoch}-${iv_AuditEpoch}))
+      else
+        iv_CountUntilClosedSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_AuditEpoch}))
+      fi
+
+      if [ ${iv_CountUntilClosedSecs} -gt 0 ]
+      then
+        iv_OfficeHoursTimeSecs=$((${iv_OfficeHoursTimeSecs}+${iv_CountUntilClosedSecs}))
+      fi
+    
+      iv_AuditEpoch=${GLB_iv_ThisScriptStartEpoch}
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Back audit complete at $(date -r ${iv_AuditEpoch} "+%Y%m%d-%H:%M.%S")"
+    fi
+
+    iv_OutOfHoursTimeSecs=$((${iv_AuditEpoch}-${iv_LastAuditEpoch}-${iv_OfficeHoursTimeSecs}))
+
+    iv_OfficeHoursTotSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs")
+    iv_OfficeHoursTotSecs=$((${iv_OfficeHoursTotSecs}+${iv_OfficeHoursTimeSecs}))
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs" ${iv_OfficeHoursTotSecs}
+    
+    iv_OutOfHoursTotSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs")
+    iv_OutOfHoursTotSecs=$((${iv_OutOfHoursTotSecs}+${iv_OutOfHoursTimeSecs}))
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursTotSecs" ${iv_OutOfHoursTotSecs}
+
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch" ${iv_AuditEpoch}
+
+  fi  
+}
+
+Nf_UpdateUseCounts() # update use counts since last audit
+{
+  local bv_AuditIsActive
+  local iv_LastAuditEpoch
+  local iv_UseSinceLastAuditSecs
+  local iv_OfficeHoursUseSecs
+  local iv_OfficeHoursUseSecs
+  local iv_OutOfHoursUseSecs
+  local iv_CurrCloseEpoch
+  local iv_UseSinceLastAuditMaxSecs
+  
+  # Check that someone is logged in
+  if [ "$(stat -f '%Su' /dev/console)" != "root" ]
+  then
+    # Check that Auditing has been setup
+    bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+    if [ "${bv_AuditIsActive}" = "true" ]
+    then
+      iv_LastAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:LastAuditEpoch")
+      
+      # Set up a maximum value for usage - taking into account the fact that this routine is regularly polled
+      iv_UseSinceLastAuditMaxSecs=$(( ${GLB_iv_SysPollTriggerSecs}+4 ))
+      
+      iv_UseSinceLastAuditSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_LastAuditEpoch}))
+      if [ ${iv_UseSinceLastAuditSecs} -gt ${iv_UseSinceLastAuditMaxSecs} ]
+      then
+        iv_UseSinceLastAuditSecs=${iv_UseSinceLastAuditMaxSecs}
+      fi
+
+      iv_OfficeHoursUseSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs")
+      iv_OutOfHoursUseSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs")
+
+      iv_CurrCloseEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+
+      if [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_OutOfHoursUseSecs=$((${iv_OutOfHoursUseSecs}+${iv_UseSinceLastAuditSecs}))
+        
+      else
+        iv_OfficeHoursUseSecs=$((${iv_OfficeHoursUseSecs}+${iv_UseSinceLastAuditSecs}))
+        
+      fi
+
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs" ${iv_OfficeHoursUseSecs}
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OutOfHoursUseSecs" ${iv_OutOfHoursUseSecs}
+
+    fi
+  fi
+}
+
+Sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or null
+{
+  local sv_LoginStatusMessage
+  local bv_ForceLogoutIsActive
+  local iv_ForceLogoutEarlyLoginSecs
+  local iv_ForceLogoutEarlyLogoutSecs
+  local iv_ForceLogoutEarlyWarningSecs
+  local iv_CurrCloseEpoch
+  local iv_RemainingUntilClosedSecs
+  local iv_NextOpenEpoch
+  local iv_RemainingUntilOpenSecs
+
+  sv_LoginStatusMessage="Login enabled"
+
+  bv_ForceLogoutIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ForceLogoutIsActive")
+  if [ "${bv_ForceLogoutIsActive}" = "true" ]
+  then
+    # Get 'LoginEarlySecs' settings
+    iv_ForceLogoutEarlyLoginSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyLoginSecs")
+    if test -z "${iv_ForceLogoutEarlyLoginSecs}"
+    then
+      iv_ForceLogoutEarlyLoginSecs=0
+    fi
+
+    # Get 'LogoutEarlySecs' settings
+    iv_ForceLogoutEarlyLogoutSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyLogoutSecs")
+    if test -z "${iv_ForceLogoutEarlyLogoutSecs}"
+    then
+      iv_ForceLogoutEarlyLogoutSecs=0
+    fi
+
+    # Get 'LogoutWarningSecs' settings
+    iv_ForceLogoutEarlyWarningSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyWarningSecs")
+    if test -z "${iv_ForceLogoutEarlyWarningSecs}"
+    then
+      iv_ForceLogoutEarlyWarningSecs=600
+    fi
+
+    iv_CurrCloseEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+    iv_RemainingUntilClosedSecs=$((${iv_CurrCloseEpoch}-${GLB_iv_ThisScriptStartEpoch}-${iv_ForceLogoutEarlyLogoutSecs}))
+    if [ ${iv_RemainingUntilClosedSecs} -gt 0 ]
+    then
+      # It is before the current closing time
+
+      if [ ${iv_RemainingUntilClosedSecs} -lt ${iv_ForceLogoutEarlyWarningSecs} ] 
+      then
+        sv_LoginStatusMessage="Login time-limit - Closing $(Sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
+        
+      else
+        sv_LoginStatusMessage="Login enabled - Closing $(Sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
+        
+      fi
+
+    else
+      # It is after the current closing time
+      
+      iv_NextOpenEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+
+      iv_RemainingUntilOpenSecs=$((${iv_NextOpenEpoch}-${GLB_iv_ThisScriptStartEpoch}-${iv_ForceLogoutEarlyLoginSecs}))
+      if [ ${iv_RemainingUntilOpenSecs} -gt 0 ] 
+      then
+        # It is before the next possible login
+        
+        sv_LoginStatusMessage="Login disabled - Open $(Sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
+      else
+        # It is after the next possible login
+      
+        sv_LoginStatusMessage="Login enabled - Open $(Sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
+      fi
+    fi
+      
+  fi
+
+  echo "${sv_LoginStatusMessage}"
+}
+
+Nf_UpdateLoginwindowText() # update usage percentage display on login window
+{
+  local bv_AuditIsActive
+  local sv_DisplayText
+  local iv_FirstAuditEpoch
+  local iv_AuditAge
+  local iv_AuditHideUntilAgeSecs
+  local iv_CurrCloseEpoch
+  local sv_LoginStatusMessage
+  local iv_UseSecs
+  local iv_TotSecs
+  local iv_UsePercentage
+  local sv_LoginwindowText
+  local sv_LoginwindowText1
+  local sv_LoginwindowText2
+  local sv_LoginwindowText3
+  
+  sv_DisplayText=""
+  
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+  
+    iv_CurrCloseEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrCloseEpoch")
+    if [ ${GLB_iv_ThisScriptStartEpoch} -le ${iv_CurrCloseEpoch} ]
+    then
+      sv_DisplayText="Office Hours"
+
+    else
+      sv_DisplayText="Out of Hours"
+      
+    fi
+
+    sv_LoginStatusMessage="$(Sf_LoginStatusMessage)"
+    if test -n "${sv_LoginStatusMessage}"
+    then
+      sv_DisplayText="${sv_DisplayText} (${sv_LoginStatusMessage})"
+    fi
+
+    bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+    if [ "${bv_AuditIsActive}" = "true" ]
+    then
+      iv_UseSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursUseSecs")
+      iv_TotSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs")
+
+      if [ ${iv_TotSecs} -gt 0 ]
+      then
+        iv_FirstAuditEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:FirstAuditEpoch")
+        iv_AuditHideUntilAgeSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Audit:HideUntilAgeSecs")
+        if test -z "${iv_AuditHideUntilAgeSecs}"
+        then
+          iv_AuditHideUntilAgeSecs=0
+        fi
+
+        iv_AuditAgeSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_FirstAuditEpoch}))
+        if [ ${iv_AuditAgeSecs} -gt ${iv_AuditHideUntilAgeSecs} ]
+        then
+          iv_UsePercentage=$(( (${iv_UseSecs}*100)/${iv_TotSecs} ))
+          sv_DisplayText="${sv_DisplayText} - Avg Use ${iv_UsePercentage}%"
+          if [ ${iv_UsePercentage} -lt 30 ]
+          then
+            sv_DisplayText="${sv_DisplayText} (Low)"
+          else
+            if [ ${iv_UsePercentage} -lt 60 ]
+            then
+              sv_DisplayText="${sv_DisplayText} (Good)"
+            else
+              sv_DisplayText="${sv_DisplayText} (High)"
+            fi
+          fi
+        fi
+      fi
+    fi
+  fi
+  
+  # Get line 1 of the existing Loginwindow text
+  sv_LoginwindowText1=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 1)
+
+  # Get line 2 of the existing Loginwindow text
+  sv_LoginwindowText2=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 2)
+
+  # Update line 3 of the Loginwindow text with the audit text
+  sv_LoginwindowText3="${sv_DisplayText}"
+
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting login window text line #3 to '${sv_LoginwindowText3}'"
+  
+  # Update the Loginwindow Text
+  sv_LoginwindowText=$(echo "${sv_LoginwindowText1};${sv_LoginwindowText2};${sv_LoginwindowText3}" | tr ";" "\n")
+  /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
+}
+
+Nf_ForceUserLogout() # Force user logout. Could be better
+{
+  # cycle through usual apps and kill them dead (unsaved changes will be lost)
+  ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read iv_JobID
+  do
+    kill ${iv_JobID}
+  done
+
+  # applescript to log out gracefully
+  /usr/bin/osascript -e 'tell application "LoginWindow" to «event aevtrlgo»'
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+case ${sv_EventName} in
+    
+Sys-Boot|Sys-PolicyInstall)
+  # (as root) Setup Working Hours
+  Nf_UpgradefromV1
+  Nf_SetupPolicy
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+    Nf_SetupAudit
+    Nf_SetupForceLogout
+  fi
+  
+  Nf_UpdateLoginwindowText
+  ;;
+  
+Sys-NetworkUp)
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+    Nf_SetupForceLogout
+  fi
+  
+  Nf_UpdateLoginwindowText
+  ;;
+
+Sys-Poll)
+  # (as root) Verify opening and closing times are still valid
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  
+  # If this setting is null - we have probably just installed the policy
+  if test -z "${bv_PolicyIsActive}"
+  then
+    Nf_SetupPolicy
+    bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+    if [ "${bv_PolicyIsActive}" = "true" ]
+    then
+      Nf_SetupAudit
+      Nf_SetupForceLogout
+    fi
+  fi
+  
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+    iv_CurrOpenEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:CurrOpenEpoch")
+    iv_NextOpenEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:OfficeHours:NextOpenEpoch")
+
+    if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOpenEpoch} ] || [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_NextOpenEpoch} ]
+    then
+      Nf_SetupPolicy
+      bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+      if [ "${bv_PolicyIsActive}" = "true" ]
+      then
+        Nf_SetupAudit
+        Nf_SetupForceLogout
+      fi
+    fi 
+  
+    # Audit usage
+    bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
+    if [ "${bv_AuditIsActive}" = "true" ]
+    then
+      Nf_UpdateUseCounts    
+      Nf_UpdateTotCounts
+    fi
+
+  fi
+
+  Nf_UpdateLoginwindowText
+  ;;
+  
+Usr-AtDesktop|Usr-Poll)
+  # (as user) Log Users off out-of-hours.
+
+  bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
+  if [ "${bv_PolicyIsActive}" = "true" ]
+  then
+  
+    bv_ForceLogoutIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ForceLogoutIsActive")
+    if [ "${bv_ForceLogoutIsActive}" = "true" ]
+    then
+
+      # Note, we dont ever log admin users off
+      if [ "${GLB_bv_LoggedInUserIsAdmin}" = "true" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Opening hour restrictions ignored (user is an admin)."
+        
+      else
+  
+        # Check if the user is in a group that is exempt from force log-outs
+        bv_ForceLogoutUserExempt="false"
+        if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/Users/${GLB_sv_LoggedInUserName}.txt"
+        then
+          iv_ForceLogoutInactiveForGroupCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:InactiveForGroup")"
+          for (( iv_ForceLogoutInactiveForGroupIndex=0; iv_ForceLogoutInactiveForGroupIndex<${iv_ForceLogoutInactiveForGroupCount}; iv_ForceLogoutInactiveForGroupIndex++ ))
+          do
+            sv_ForceLogoutInactiveForGroup=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:InactiveForGroup:${iv_ForceLogoutInactiveForGroupIndex}")
+            if test -n "$(cat "${GLB_sv_ProjectConfigDirPath}/Cache/MemberOf/Users/${GLB_sv_LoggedInUserName}.txt" | grep -E "^${sv_ForceLogoutInactiveForGroup}$")"
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo}  "Opening hour restrictions ignored (user is a member of the group ${sv_ForceLogoutInactiveForGroup})."
+              bv_ForceLogoutUserExempt="true"
+              break
+            fi
+          done
+        fi
+    
+        if [ "${bv_ForceLogoutUserExempt}" = "false" ]
+        then
+          # Get 'LogoutWarningSecs' settings
+          iv_ForceLogoutEarlyWarningSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:EarlyWarningSecs")
+          if test -z "${iv_ForceLogoutEarlyWarningSecs}"
+          then
+            iv_ForceLogoutEarlyWarningSecs=600
+          fi
+
+          # Check idle time
+          iv_ForceLogoutIdleUserSecs=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ForceLogout:IdleUserSecs")
+          if test -z "${iv_ForceLogoutIdleUserSecs}"
+          then
+            iv_ForceLogoutIdleUserSecs=0
+          fi
+        
+          if [ ${iv_ForceLogoutIdleUserSecs} -gt 0 ]
+          then
+            iv_IdleSecs=$(GLB_if_SystemIdleSecs)
+            iv_RemainingUntilLogoutSecs=$((${iv_ForceLogoutIdleUserSecs}-${iv_IdleSecs}))
+            if [ ${iv_RemainingUntilLogoutSecs} -gt ${iv_ForceLogoutEarlyWarningSecs} ]
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "User Idle for ${iv_IdleSecs} secs"
+            else
+              if [ ${iv_RemainingUntilLogoutSecs} -gt 0 ]
+              then
+                GLB_nf_ShowNotification ${GLB_iv_MsgLevelNotice} "If your session remains idle, you will be logged off in about ${iv_RemainingUntilLogoutSecs} seconds."
+              else
+                GLB_nf_ShowNotification ${GLB_iv_MsgLevelWarn} "Your session has been idle too long. The system is logging you off."
+                Nf_ForceUserLogout
+              fi
+            fi
+          fi
+    
+          # Check for closing time
+          sv_LoginStatusMessage="$(Sf_LoginStatusMessage)"
+          if test -n "${sv_LoginStatusMessage}"
+          then
+            sv_LoginStatusWord="$(echo ${sv_LoginStatusMessage} | cut -d" " -f2)"
+    
+            case ${sv_LoginStatusWord} in
+            time-limit)
+              GLB_nf_ShowNotification ${GLB_iv_MsgLevelNotice} "${sv_LoginStatusMessage}"
+              break
+              ;;
+        
+            disabled)
+              GLB_nf_ShowNotification ${GLB_iv_MsgLevelWarn} "${sv_LoginStatusMessage}"
+              Nf_ForceUserLogout
+              break
+              ;;
+          
+            esac
+          fi
+      
+        fi
+      fi
+    fi
+  fi
+  ;;
+  
+Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+  
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

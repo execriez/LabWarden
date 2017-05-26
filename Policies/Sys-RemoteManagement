@@ -1,0 +1,568 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets up remote access to a workstation
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# references:
+#  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
+#  https://ssl.apple.com/remotedesktop/pdf/ARD3_AdminGuide.pdf
+#
+# Triggered by the following events:
+#   Sys-Poll (as root)
+#
+# Called as follows:    
+#   SystemRemoteManagement <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Setup ARD
+Nf_SetupARD()
+{
+  local iv_ARDglobalResetEpoch
+  local sv_ARDgroupName
+  local iv_ARDlocalResetEpoch
+  
+  iv_ARDglobalResetEpoch="$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ARDresetEpoch")"
+  if test -z "${iv_ARDglobalResetEpoch}"
+  then
+    iv_ARDglobalResetEpoch=0
+  fi
+
+  # Make sure that the ARD groups exist
+  #  if they dont either we are creating them for the first time; or someone is messing with the ARD settings
+  while read sv_ARDgroupName
+  do
+    dscl >/dev/null 2>&1 . -read /Groups/${sv_ARDgroupName}
+    if [ $? -ne 0 ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating local group '${sv_ARDgroupName}'"
+      sv_PrimaryGroupID=$(dscl . -list /Groups PrimaryGroupID| sort -n -k 2 | awk '{ field = $NF }; END{ print field }' | xargs -I{} expr {} + 1)
+      dscl . -create /Groups/${sv_ARDgroupName}
+      dscl . -create /Groups/${sv_ARDgroupName} PrimaryGroupID "${sv_PrimaryGroupID}"
+      dscl . -create /Groups/${sv_ARDgroupName} Password "*"
+      dscl . -create /Groups/${sv_ARDgroupName} RealName "${sv_ARDgroupName}"
+      iv_ARDglobalResetEpoch=0
+    fi
+  done < <(printf "ard_admin\nard_interact\nard_manage\nard_reports\n")
+
+  if [ ${iv_ARDglobalResetEpoch} -eq 0 ]
+  then
+    # Things are being set up for the first time
+    
+    iv_ARDglobalResetEpoch=${GLB_iv_ThisScriptStartEpoch}
+    GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ARDresetEpoch" ${iv_ARDglobalResetEpoch}
+
+    # If the ARD groups already exist, delete their membership
+    while read sv_ARDgroupName
+    do
+      dscl >/dev/null 2>&1 . -read /Groups/${sv_ARDgroupName}
+      if [ $? -eq 0 ]
+      then
+	    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting membership for local group '${sv_ARDgroupName}'"
+        dscl >/dev/null 2>&1 . -delete /Groups/${sv_ARDgroupName} GroupMembers
+        dscl >/dev/null 2>&1 . -create /Groups/${sv_ARDgroupName} GroupMembers
+        dscl >/dev/null 2>&1 . -delete /Groups/${sv_ARDgroupName} GroupMembership
+        dscl >/dev/null 2>&1 . -create /Groups/${sv_ARDgroupName} GroupMembership
+        dscl >/dev/null 2>&1 . -delete /Groups/${sv_ARDgroupName} NestedGroups
+      fi
+    done < <(printf "ard_admin\nard_interact\nard_manage\nard_reports\n")
+
+    # Uninstall all existing ARD settings and prefs, enable directory authentication options, restrict ARD service access to specific users, activate and restart agent, always enable menuextra so that users know they are being observed
+	GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Resetting ARD settings"
+    /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -quiet -uninstall -settings -prefs -configure -allowAccessFor -specifiedUsers -clientopts -setmenuextra -menuextra yes -setdirlogins -dirlogins yes -setreqperm -reqperm no -activate -restart -agent -console
+  fi
+
+  iv_ARDlocalResetEpoch="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:ARDresetEpoch")"
+  if test -z "${iv_ARDlocalResetEpoch}"
+  then
+    iv_ARDlocalResetEpoch=0
+  fi
+
+  if [ ${iv_ARDlocalResetEpoch} -ne ${iv_ARDglobalResetEpoch} ]
+  then
+    iv_ARDlocalResetEpoch=${iv_ARDglobalResetEpoch}
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:ARDresetEpoch" ${iv_ARDglobalResetEpoch}
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LocalUsersConfigured" "false"
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsersConfigured" "false"
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroupsConfigured" "false"
+  fi
+}
+
+# set ARD privileges for local users
+Nf_SetLocalUsersARDprivs()
+{
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ObjectName
+  local sv_PrivsList
+  local iv_PrivsCount
+  local iv_LoopCount2
+  local sv_ObjectPrivs
+  local bv_LocalUsersConfigured
+  
+  bv_LocalUsersConfigured="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LocalUsersConfigured")"
+  if [ "${bv_LocalUsersConfigured}" != "true" ]
+  then
+    bv_LocalUsersConfigured="true"
+
+    iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers")"
+    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+    do
+      sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers:${iv_LoopCount}:Name")"
+
+	  # Build the list of privileges
+	  sv_PrivsList=""
+	  iv_PrivsCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers:${iv_LoopCount}:Privs")"
+	  for (( iv_LoopCount2=0; iv_LoopCount2<${iv_PrivsCount}; iv_LoopCount2++ ))
+	  do
+	    sv_ObjectPrivs="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers:${iv_LoopCount}:Privs:${iv_LoopCount2}")"
+	    case ${sv_ObjectPrivs} in
+	
+	    all)
+          sv_PrivsList="-privs -${sv_ObjectPrivs}"
+		  break
+		  ;;
+	  
+	    none)
+		  sv_PrivsList="-privs -${sv_ObjectPrivs}"
+		  break
+		  ;;
+	
+	    DeleteFiles|ControlObserve|TextMessages|ShowObserve|OpenQuitApps|GenerateReports|RestartShutDown|SendFiles|ChangeSettings|ObserveOnly)
+		  if test -z "${sv_PrivsList}"
+		  then
+		    sv_PrivsList="-privs -${sv_ObjectPrivs}"
+		  else
+		    sv_PrivsList="${sv_PrivsList} -${sv_ObjectPrivs}"
+		  fi
+		  ;;
+   
+	    esac
+  
+	  done
+	  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting user '${sv_ObjectName}' ARD access to '${sv_PrivsList}'"
+	  eval /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -quiet -configure -access -on -users "${sv_ObjectName}" "${sv_PrivsList}"
+  
+    done
+
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LocalUsersConfigured" "${bv_LocalUsersConfigured}"
+  fi
+
+}
+
+# remove ARD privileges from local users
+Nf_RemoveLocalUsersARDprivs()
+{
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ObjectName
+  
+  # Remove privileges for local users
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+	sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LocalUsers:${iv_LoopCount}:Name")"
+	GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing ARD access for user '${sv_ObjectName}'"
+	/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -quiet -configure -access -off -users "${sv_ObjectName}"
+  done
+}
+
+# Add directory users to appropriate ARD groups
+Nf_AddDirUsersToARDgroups()
+{
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ObjectName
+  local iv_ObjectCount2
+  local sv_ObjectAccess
+  local sv_UUID
+  local sv_err
+  local iv_err
+  local bv_DirUsersConfigured
+  
+  bv_DirUsersConfigured="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsersConfigured")"
+  if [ "${bv_DirUsersConfigured}" != "true" ]
+  then
+    bv_DirUsersConfigured="true"
+
+	iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Users")"
+	for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+	do
+	  sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Users:${iv_LoopCount}:Name")"
+	  sv_ObjectAccess="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Users:${iv_LoopCount}:Access")"
+
+	  sv_err=$(dscl 2>&1 . -read /Groups/"ard_${sv_ObjectAccess}")
+	  iv_err=$?
+	  if [ ${iv_err} -ne 0 ]
+	  then
+		GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error looking for group 'ard_${sv_ObjectAccess}'; (${iv_err}) ${sv_err}"
+        bv_DirUsersConfigured="false"
+		
+	  else
+		# Get the UUID for the user - we need this if we want to remove the user from the group but we find that the directory info is unavailable
+	    sv_err=$(dsmemberutil 2>&1 getuuid -U "${sv_ObjectName}")
+	    iv_err=$?
+		if [ ${iv_err} -ne 0 ]
+		then
+		  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error getting UUID for user '${sv_ObjectName}'; (${iv_err}) ${sv_err}"
+          bv_DirUsersConfigured="false"
+		else
+		  sv_UUID=${sv_err}
+		  
+          sv_err=$(dseditgroup 2>&1 -o edit -a "${sv_ObjectName}" -t user "ard_${sv_ObjectAccess}")
+          iv_err=$?
+	      if [ ${iv_err} -ne 0 ]
+		  then
+		    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error adding user '${sv_ObjectName}' to ard_${sv_ObjectAccess}; (${iv_err}) ${sv_err}"
+            bv_DirUsersConfigured="false"
+          
+		  else
+	        iv_ObjectCount2="$(GLB_if_GetPlistArraySize "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers")"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_ObjectCount2}:MemberOf" "ard_${sv_ObjectAccess}"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_ObjectCount2}:Name" "${sv_ObjectName}"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_ObjectCount2}:UUID" "${sv_UUID}"
+		    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "User '${sv_ObjectName}' added to ard_${sv_ObjectAccess}"
+		  fi
+		fi
+	  fi
+	done
+
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsersConfigured" "${bv_DirUsersConfigured}"
+  fi
+}
+
+# Remove directory users from appropriate ARD groups
+Nf_RemoveDirUsersFromARDgroups()
+{
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ObjectMemberOf
+  local sv_ObjectName
+  local sv_ObjectUUID
+  local sv_err
+  local iv_err
+
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+	sv_ObjectMemberOf="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_LoopCount}:MemberOf")"
+	sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_LoopCount}:Name")"
+	sv_ObjectUUID="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirUsers:${iv_LoopCount}:UUID")"
+
+	sv_err=$(dscl 2>&1 . -read /Groups/"${sv_ObjectMemberOf}")
+	iv_err=$?
+	if [ ${iv_err} -ne 0 ]
+	then
+	  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error looking for group '${sv_ObjectMemberOf}'; (${iv_err}) ${sv_err}"
+		
+	else
+	  # We are not using dseditgroup to remove the user, because we are unsure if the directory info is available; or if the user has been deleted at some point
+	  
+      sv_err=$(dscl 2>&1 . -read /Groups/${sv_ObjectMemberOf} GroupMembers)
+	  iv_err=$?
+	  if [ ${iv_err} -ne 0 ]
+	  then
+	    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error checking membership of group '${sv_ObjectName}' to ard_${sv_ObjectMemberOf}; (${iv_err}) ${sv_err}"
+	    
+	  else
+	    if [ "$(echo "${sv_err}"  | tr " " "\n" | grep -E "${sv_ObjectUUID}")" != "${sv_ObjectUUID}" ]
+        then
+		  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Group '${sv_ObjectName}' not removed from ${sv_ObjectMemberOf} (not a member)"
+		  
+        else
+	      sv_err=$(dscl . -delete /Groups/${sv_ObjectMemberOf} GroupMembers ${sv_ObjectUUID})
+	      iv_err=$?
+	      if [ ${iv_err} -ne 0 ]
+	      then
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error removing '${sv_ObjectUUID}' from '${sv_ObjectMemberOf}' GroupMembers (user '${sv_ObjectName}'); (${iv_err}) ${sv_err}"
+
+          else
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removed '${sv_ObjectUUID}' from '${sv_ObjectMemberOf}' GroupMembers (user '${sv_ObjectName}')"
+
+	      fi
+	    fi
+	  fi
+	  
+      sv_err=$(dscl 2>&1 . -read /Groups/${sv_ObjectMemberOf} GroupMembership)
+      iv_err=$?
+	  if [ ${iv_err} -ne 0 ]
+	  then
+	    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error checking membership of group '${sv_ObjectName}' to ard_${sv_ObjectMemberOf}; (${iv_err}) ${sv_err}"
+	    
+	  else
+	    if [ "$(echo "${sv_err}" | tr " " "\n" | grep -E "${sv_ObjectName}")" != "${sv_ObjectName}" ]
+        then
+		  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Group '${sv_ObjectName}' not removed from ${sv_ObjectMemberOf} (not a member)"
+		  
+        else
+          sv_err=$(dscl . -delete /Groups/${sv_ObjectMemberOf} GroupMembership ${sv_ObjectName})
+          iv_err=$?
+	      if [ ${iv_err} -ne 0 ]
+	      then
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error removing '${sv_ObjectName}' from '${sv_ObjectMemberOf}' GroupMembership for user '${sv_ObjectName}'; (${iv_err}) ${sv_err}"
+
+          else
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removed '${sv_ObjectName}' from '${sv_ObjectMemberOf}' GroupMembership"
+
+	      fi
+	    fi
+	  fi
+
+	fi
+  done
+}
+
+# Add directory groups to appropriate ARD groups
+Nf_AddDirGroupsToARDgroups()
+{
+  local iv_ObjectCount
+  local iv_ObjectCount2
+  local iv_LoopCount
+  local sv_ObjectName
+  local sv_ObjectAccess
+  local sv_UUID
+  local sv_err
+  local iv_err
+  local bv_DirUsersConfigured
+
+  bv_DirGroupsConfigured="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroupsConfigured")"
+  if [ "${bv_DirGroupsConfigured}" != "true" ]
+  then
+    bv_DirGroupsConfigured="true"
+
+	iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Groups")"
+	for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+	do
+	  sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Groups:${iv_LoopCount}:Name")"
+	  sv_ObjectAccess="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Groups:${iv_LoopCount}:Access")"
+	  
+	  sv_err=$(dscl 2>&1 . -read /Groups/"ard_${sv_ObjectAccess}")
+	  iv_err=$?
+	  if [ ${iv_err} -ne 0 ]
+	  then
+		GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error looking for group 'ard_${sv_ObjectAccess}'; (${iv_err}) ${sv_err}"
+        bv_DirGroupsConfigured="false"
+		
+	  else
+
+		# Get the UUID for the user group - we need this to check whether its already a member of the ARD group
+	    sv_err=$(dsmemberutil 2>&1 getuuid -G "${sv_ObjectName}")
+	    iv_err=$?
+		if [ ${iv_err} -ne 0 ]
+		then
+		  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error getting UUID for group '${sv_ObjectName}'; (${iv_err}) ${sv_err}"
+          bv_DirUsersConfigured="false"
+          
+		else
+		  sv_UUID=${sv_err}
+
+		  sv_err=$(dseditgroup 2>&1 -o edit -a "${sv_ObjectName}" -t group "ard_${sv_ObjectAccess}")
+		  iv_err=$?
+		  if [ ${iv_err} -ne 0 ]
+          then
+		    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error adding group '${sv_ObjectName}' to ard_${sv_ObjectAccess}; (${iv_err}) ${sv_err}"
+            bv_DirGroupsConfigured="false"
+          
+		  else
+	        iv_ObjectCount2="$(GLB_if_GetPlistArraySize "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups")"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_ObjectCount2}:MemberOf" "ard_${sv_ObjectAccess}"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_ObjectCount2}:Name" "${sv_ObjectName}"
+            GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_ObjectCount2}:UUID" "${sv_UUID}"
+		    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Group '${sv_ObjectName}' added to ard_${sv_ObjectAccess}"
+		  fi
+		fi
+	  fi
+	done
+
+    GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroupsConfigured" "${bv_DirGroupsConfigured}"
+  fi
+}
+
+# Remove directory groups from appropriate ARD groups
+Nf_RemoveDirGroupsFromARDgroups()
+{
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ObjectMemberOf
+  local sv_ObjectName
+  local sv_ObjectUUID
+  local sv_err
+  local iv_err
+
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+	sv_ObjectMemberOf="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_LoopCount}:MemberOf")"
+	sv_ObjectName="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_LoopCount}:Name")"
+	sv_ObjectUUID="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:DirGroups:${iv_LoopCount}:UUID")"
+
+	sv_err=$(dscl 2>&1 . -read /Groups/"${sv_ObjectMemberOf}")
+	iv_err=$?
+	if [ ${iv_err} -ne 0 ]
+	then
+	  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error looking for group '${sv_ObjectMemberOf}'; (${iv_err}) ${sv_err}"
+		
+	else
+	  # We are not using dseditgroup to remove the group, because we are unsure if the directory info is available; or if the group has been deleted at some point
+
+      sv_err=$(dscl 2>&1 . -read /Groups/${sv_ObjectMemberOf} NestedGroups)
+      iv_err=$?
+	  if [ ${iv_err} -ne 0 ]
+	  then
+	    GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error checking membership of group '${sv_ObjectName}' to ard_${sv_ObjectMemberOf}; (${iv_err}) ${sv_err}"
+	    
+	  else
+	    if [ "$(echo "${sv_err}" | tr " " "\n" | grep -E "${sv_ObjectUUID}")" != "${sv_ObjectUUID}" ]
+        then
+		  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Group '${sv_ObjectName}' not removed from ${sv_ObjectMemberOf} (not a member)"
+		  
+        else
+          sv_err=$(dscl . -delete /Groups/${sv_ObjectMemberOf} NestedGroups ${sv_ObjectUUID})
+          iv_err=$?
+	      if [ ${iv_err} -ne 0 ]
+	      then
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error removing '${sv_ObjectUUID}' from '${sv_ObjectMemberOf}' NestedGroups; (${iv_err}) ${sv_err}"
+
+          else
+	        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removed '${sv_ObjectUUID}' from '${sv_ObjectMemberOf}' NestedGroups"
+
+	      fi
+	    fi
+	  fi	  
+	fi
+  done
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are not root
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# ---
+
+case ${sv_EventName} in
+
+Sys-Poll|Sys-PolicyInstall)
+  Nf_SetupARD
+  Nf_SetLocalUsersARDprivs
+  Nf_AddDirGroupsToARDgroups
+  Nf_AddDirUsersToARDgroups
+  ;;
+  
+Sys-PolicyUninstall)
+  Nf_RemoveLocalUsersARDprivs
+  Nf_RemoveDirUsersFromARDgroups
+  Nf_RemoveDirGroupsFromARDgroups
+
+  # Force other policies to setup users again (in case this policy uninstalls a user that another policy has also added)
+  GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ARDresetEpoch" ${GLB_iv_ThisScriptStartEpoch}
+  ;;
+  
+esac
+  
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

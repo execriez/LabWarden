@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - shrink a .mobileconfig payload down to its bare minimum content
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   mobileconfig-shrink <somefile.mobileconfig>
@@ -121,7 +121,11 @@ done
 #sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_DocFileName}"
 sv_ShrunkFilePath="${sv_ShrunkDirPath}/${sv_PayloadUUID}.mobileconfig"
 
-cat "${sv_TempFilePath}" | sed 's|<!DOCTYPE[^>]*>||;s|<?xml[^>]*>||;s|<plist[^>]*>|<plist>|' | tr -d "\t" | tr -d "\n" > "${sv_ShrunkFilePath}"
+#cat "${sv_TempFilePath}" | sed 's|<!DOCTYPE[^>]*>||;s|<?xml[^>]*>||;s|<plist[^>]*>|<plist>|;s|<!--[^>]*>||;' | tr -d "\t" | tr -d "\n" > "${sv_ShrunkFilePath}"
+
+# Remove tabs. Remove newlines if not in the middle of a definition.
+cat "${sv_TempFilePath}" | tr -d "\t" | awk '/<?xml[^>]*>$/ { printf("", $0); next } 1' | awk '/<?xml[^>]*>$/ { printf("", $0); next } 1' | awk '/<!DOCTYPE[^>]*>$/ { printf("", $0); next } 1' | awk '/<plist[^>]*>$/ { printf("<plist>", $0); next } 1' | awk '/<!--[^>]*>$/ { printf("", $0); next } 1' | awk '/<[^>]*\/>$/ { printf("%s", $0); next } 1' | awk '/<[^>]*>$/ { printf("%s", $0); next } 1'  > "${sv_ShrunkFilePath}"
+
 rm -f "${sv_TempFilePath}"
 
 echo "${sv_ShrunkFilePath}"

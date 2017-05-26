@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   mobileconfig-verify <somefile.mobileconfig> [user]
@@ -14,9 +14,9 @@
 # ---
 
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_BuildVersionStampAsString}"
+if test -z "${GLB_sv_ProjectSignature}"
 then
-  . /usr/local/LabWarden/lib/CommonLib
+  . /usr/local/LabWarden/inc/Common.sh
 fi
 
 # ---
@@ -25,12 +25,12 @@ sv_PayloadFilePath="${1}"
 
 if test -z "${sv_PayloadFilePath}"
 then
-  LW_nf_QuickExit "Usage ${LW_sv_ThisScriptFileName} somefile.mobileconfig"
+  GLB_nf_QuickExit "Usage ${GLB_sv_ThisScriptFileName} somefile.mobileconfig"
 fi
 
 if ! test -e "${sv_PayloadFilePath}"
 then
-  LW_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
+  GLB_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
 fi
 
 # ---
@@ -39,10 +39,10 @@ sv_GPOuser="${2}"
 
 if test -n "${sv_GPOuser}"
 then
-  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Users/${sv_GPOuser}"
+  sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Users/${sv_GPOuser}"
   
 else
-  sv_ConfigDirPath="${LW_sv_SettingsDirPath}/Config/Computers/${LW_sv_ADComputerName}"
+  sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Computers/${GLB_sv_Hostname}"
   
 fi
 mkdir -p "${sv_ConfigDirPath}"
@@ -55,26 +55,26 @@ if test -n "${sv_GPOuser}"
 then
   if test -n "$(/usr/bin/profiles -U "${sv_GPOuser}" -Lv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    LW_nf_logmessage "Profile "$(basename ${sv_PayloadFilePath})" is already installed"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is installed OK"
 
   else
-    LW_nf_QuickExit "ATTENTION, profile "$(basename ${sv_PayloadFilePath})" is not installed"
+    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed"
     
   fi  
   
 else
   if test -n "$(/usr/bin/profiles -Pv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    LW_nf_logmessage "Profile "$(basename ${sv_PayloadFilePath})" is already installed"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is already installed"
     
   else
-    LW_nf_QuickExit "ATTENTION, profile "$(basename ${sv_PayloadFilePath})" is not installed"
+    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed"
     
   fi  
 fi
 
 # Remove temporary files
-rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
     
 # Everything is OK
 exit 0

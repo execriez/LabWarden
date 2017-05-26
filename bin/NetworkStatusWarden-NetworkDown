@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Short:    Do something when the network goes down
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Called by NetworkStatusWarden as follows:    
+#   NetworkStatusWarden-NetworkDown <InterfaceName>
+
+# ---
+
+# -- Trigger the Sys-NetworkDown policy --
+
+/usr/local/LabWarden/lib/Trigger "Sys-NetworkDown" "$(whoami)" "${1}"

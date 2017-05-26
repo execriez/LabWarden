@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>72070373-D559-4D24-92BF-66C46515E7B2</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>SSID</key>
+					<array>
+						<string>College</string>
+						<string>virginmedia1234567</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-WirelessForgetSSID</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Boot</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>72070373-D559-4D24-92BF-66C46515E7B2</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>72070373-D559-4D24-92BF-66C46515E7B2</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-WirelessForgetSSID</string>
+	<key>PayloadIdentifier</key>
+	<string>B89DC32C-61F9-4095-9D15-0FED176A3B88</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>B89DC32C-61F9-4095-9D15-0FED176A3B88</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

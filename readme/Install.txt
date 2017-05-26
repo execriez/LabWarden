@@ -1,0 +1,29 @@
+INSTALLATION:
+
+Download the LoginHookWarden zip archive from <https://github.com/execriez/LabWarden>, then unzip the archive on a Mac workstation.
+
+Ideally, to install - you should double-click the following installer package which can be found in the "SupportFiles" directory.
+
+  LabWarden.pkg
+
+If the installer package isn't available, you can run the command-line installer which can be found in the "util" directory:
+
+  sudo Install
+
+The installer will install the following files and directories:
+
+  /Library/LaunchAgents/...labWarden.appwarden.plist
+  /Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
+  /Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
+  /Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
+  /Library/LaunchAgents/...labWarden.Usr-Poll.plist
+  /Library/LaunchDaemons/...labWarden.ADwarden.plist
+  /Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
+  /Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
+  /Library/LaunchDaemons/...labWarden.Sys-Boot.plist
+  /Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+  /usr/LabWarden/
+
+You should note that by default, LabWarden does not make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
+
+After installation, you should reboot.

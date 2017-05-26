@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>587233B8-D37E-44ED-AA90-A729507DF920</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>SpotlightEnabled</key>
+					<false/>
+				</dict>
+				<key>Name</key>
+				<string>Usr-SpotlightSettingOnNetHome</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Usr-AtDesktop</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>587233B8-D37E-44ED-AA90-A729507DF920</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>587233B8-D37E-44ED-AA90-A729507DF920</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-SpotlightSettingOnNetHome (off)</string>
+	<key>PayloadIdentifier</key>
+	<string>315742DD-910C-4B31-BDE4-08A690DE972A</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>315742DD-910C-4B31-BDE4-08A690DE972A</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

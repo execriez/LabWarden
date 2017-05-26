@@ -1,0 +1,316 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Sets the user sidebar contents (makes use of mysides)
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Reference: see https://GitHub.com/mosen - mysides, set the sidebar content 
+#
+# Triggered by the following events:
+#   Usr-AtDesktop (as user)
+#
+# Called (as user) as follows:    
+#   Usr-SidebarContent <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given URI
+{
+  local sv_FileURI
+
+  # Get URI
+  sv_FileURI="${1}"
+
+  if [ -n "${sv_FileURI}" ]
+  then
+    # if it's not a URI - make it into one
+    if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
+    then
+      sv_FileURI="file://${sv_FileURI}"
+    fi
+
+    # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
+    sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_sv_LoggedInUserHomeDirPath}"|;s|LOCALHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|;s|NETWORKHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+
+    # make ALTHOME substitutions to the given URI
+    if [ "${GLB_bv_LoggedInUserHomeIsLocal}" = "true" ]
+    then
+      # The user home is local, so the alternative home is the network home
+      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+
+    else
+      # The user home is on the network, so the alternative home is the local home
+      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|")"
+ 
+    fi
+  
+    # Check if its become a null URI
+    if [ "${sv_FileURI}" = "file://" ]
+    then
+      sv_FileURI=""
+    fi
+  fi
+  
+  echo "${sv_FileURI}"
+}
+
+Nf_RemoveEntry() # sv_ObjectFileURI sv_ObjectName - Delete all objects with the given uri/name from the sidebar
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  local sv_ObjectFilePath
+  local bv_Result
+  
+  # Get object to delete
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+  
+  bv_Result="false"
+
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
+  
+  # If there is no object name (label), create one
+  if [ -z "${sv_ObjectName}" ]
+  then
+    sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
+  fi
+    
+  if [ -n "${sv_ObjectName}" ]
+  then
+    # Remove all existing entries
+    while [ -n "$("${GLB_sv_BinDirPath}"/mysides 2>/dev/null list | grep -E "^$sv_ObjectName -> ")" ]
+    do
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing ${sv_ObjectName} from side bar."
+      "${GLB_sv_BinDirPath}"/mysides 2>/dev/null remove "${sv_ObjectName}"
+      bv_Result="true"
+    done
+  fi
+
+  echo "${bv_Result}"
+}
+
+Nf_AddEntry() # sv_ObjectFileURI sv_ObjectName - Add object with the given uri/name to the sidebar
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  local sv_ObjectFilePath
+  local bv_Result
+  
+  # Get object to add
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+  
+  bv_Result="false"
+
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
+
+  if [ -n "${sv_ObjectFileURI}" ]
+  then
+    # If there is no object name (label), create one
+    if [ -z "${sv_ObjectName}" ]
+    then
+      sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
+    fi
+    
+    if [ -n "${sv_ObjectName}" ]
+    then
+      # Only add the entry of it doesn't already exist
+      if [ -z "$("${GLB_sv_BinDirPath}"/mysides 2>/dev/null list | grep -E "^$sv_ObjectName -> ")" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Adding ${sv_ObjectName} to side bar."
+        "${GLB_sv_BinDirPath}"/mysides 2>/dev/null add "${sv_ObjectName}" "${sv_ObjectFileURI}"
+        bv_Result="true"
+      fi
+    fi
+    
+  fi
+
+  echo "${bv_Result}"
+}
+
+# ---
+
+# Sys-PolicyInstall & Sys-PolicyUninstall events (which are called as the root user) are ignored by user policies
+
+if [ "${sv_EventName}" = "Sys-PolicyInstall" ] || [ "${sv_EventName}" = "Sys-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are root
+if [ "${GLB_sv_ThisUserName}" = "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# Exit if no-one is logged in
+if test -z "${GLB_sv_LoggedInUserName}"
+then
+  GLB_nf_QuickExit "Policy aborted - No-one is logged in."
+fi
+   
+# ---
+
+# Exit if mysides (see https://GitHub.com/mosen) is not installed
+if ! test -e "${GLB_sv_BinDirPath}"/mysides
+then
+  GLB_nf_QuickExit "Policy aborted - mysides (see https://GitHub.com/mosen) is not installed."
+fi
+
+# Exit if the user home folder doesn't exist
+if [ ! -e "${GLB_sv_LoggedInUserHomeDirPath}" ]
+then
+  GLB_nf_QuickExit "Policy aborted - home folder doesn't exist."
+fi
+
+# ---
+
+case ${sv_EventName} in
+    
+Usr-AtDesktop)
+  # Remove Entries
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdObjectFilePath="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove:${iv_LoopCount}:URI")"
+    sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove:${iv_LoopCount}:Label")"
+    Nf_RemoveEntry "${sv_ReqdObjectFilePath}" "${sv_ReqdObjectLabel}"
+  done
+
+  # Check if we are replacing 
+  bv_ReplaceEntries="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Replace")"
+
+  if [ "${bv_ReplaceEntries}" = "true" ]
+  then
+    # Deleting them all first is quickest
+    iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add")"
+    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+    do
+      sv_ReqdObjectFilePath="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:URI")"
+      sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:Label")"
+      if [ "$(Nf_RemoveEntry "${sv_ReqdObjectFilePath}" "${sv_ReqdObjectLabel}")" = "true" ]
+      then
+        bv_SidebarChanged="true"
+      else
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Remove from sidebar ignored - as ${sv_ReqdObjectLabel} ${sv_ReqdObjectFilePath} is not present."
+      fi
+    done
+  fi
+
+  # Add Entries
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdObjectFilePath="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:URI")"
+    sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:Label")"
+    if [ "$(Nf_AddEntry "${sv_ReqdObjectFilePath}" "${sv_ReqdObjectLabel}")" = "true" ]
+    then
+      bv_DockChanged="true"
+    else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add to sidebar ignored - as ${sv_ReqdObjectLabel} ${sv_ReqdObjectFilePath} is already present."
+    fi
+  done
+  ;;
+
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

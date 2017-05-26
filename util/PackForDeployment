@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Pack a payload file for AD deployment
 # Author:   Mark J Swift
-# Version:  1.0.98
-# Modified: 11-Oct-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   PackForDeployment <somefile>
@@ -14,6 +14,14 @@
 # The resultant text should be copied into an AD groups 'Notes' field.
 # Any member of the group (user or workstation) will receive the payload
 # at the next gpupdate.
+
+# ---
+
+# Load the contants, only if they are not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Constants.sh
+fi
 
 # -- Get some info about this script
 
@@ -27,7 +35,7 @@ sv_ThisScriptDirPath="$(dirname "${sv_ThisScriptFilePath}")"
 sv_ThisScriptFileName="$(basename "${sv_ThisScriptFilePath}")"
 
 # Filename without extension
-sv_ThisScriptName="$(basename ${sv_ThisScriptFilePath} | sed 's|\.[^.]*$||')"
+sv_ThisScriptName="$(basename "${sv_ThisScriptFilePath}" | sed 's|\.[^.]*$||')"
 
 # ---
 
@@ -49,20 +57,20 @@ then
 fi
 
 # Filename of the payload
-sv_DocFileName="$(basename ${sv_PayloadFilePath})"
+sv_DocFileName="$(basename "${sv_PayloadFilePath}")"
 
 # Path to the payload
-sv_DocDirPath="$(dirname ${sv_PayloadFilePath})"
+sv_DocDirPath="$(dirname "${sv_PayloadFilePath}")"
 
 # Filename without extension
-sv_DocName=$(echo ${sv_DocFileName} | sed "s|\.[^.]*$||")
+sv_DocName=$(echo "${sv_DocFileName}" | sed "s|\.[^.]*$||")
 
 # A place to store the packed payloads
 sv_PackedDirPath="${sv_DocDirPath}/Packed"
 mkdir -p "${sv_PackedDirPath}"
 
 # Filename for the gzip, base64 payload
-sv_base64tgzFilePath=${sv_PackedDirPath}/${sv_DocName}.txt
+sv_base64tgzFilePath="${sv_PackedDirPath}/${sv_DocName}.txt"
 
 # Create a temporary folder
 sv_TempDirPath=$(mktemp -d /tmp/XXXXXXXX)
@@ -85,12 +93,12 @@ do
     sv_PayloadFileExt="PolicyBanner-rtf"
     
   else
-    sv_PayloadFileExt=$(echo ${sv_PayloadFileName} | sed 's|^[^\.]*\.||;s|\.|-|')
+    sv_PayloadFileExt=$(echo "${sv_PayloadFileName}" | sed 's|^[^\.]*\.||;s|\.|-|')
     
   fi
-  if test -e /usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink
+  if test -e /usr/local/${GLB_sv_ProjectName}/PayloadHandlers/${sv_PayloadFileExt}-shrink
   then
-    sv_ShrunkPayloadFilePath="$(/usr/local/LabWarden/PayloadHandlers/${sv_PayloadFileExt}-shrink "${sv_TempDirPath}/${sv_PayloadFileName}")"
+    sv_ShrunkPayloadFilePath="$(/usr/local/${GLB_sv_ProjectName}/PayloadHandlers/${sv_PayloadFileExt}-shrink "${sv_TempDirPath}/${sv_PayloadFileName}")"
     if test -n "${sv_ShrunkPayloadFilePath}"
     then
       rm -f "${sv_TempDirPath}/${sv_PayloadFileName}"
@@ -101,7 +109,7 @@ done
 
 # tar gzip & base64 the payload
 cd "${sv_TempDirPath}"
-tar -c * | gzip -9 | base64 -b 30 | tr -s "\n" | awk '{ sub(/$/,"\r"); print }' > ${sv_base64tgzFilePath}
+tar -c * | gzip -9 | base64 -b 30 | tr -s "\n" | awk '{ sub(/$/,"\r"); print }' > "${sv_base64tgzFilePath}"
 cd "${sv_PackedDirPath}"
 
 
@@ -109,7 +117,7 @@ cd "${sv_PackedDirPath}"
 rm -fR "${sv_TempDirPath}"
 
 #
-sv_base64tgzFileSize=$(stat -f "%z" ${sv_base64tgzFilePath})
+sv_base64tgzFileSize=$(stat -f "%z" "${sv_base64tgzFilePath}")
 if [ ${sv_base64tgzFileSize} -le 1024 ]
 then
   echo "Unpack the payload file into SomeDirectory as follows"
@@ -119,12 +127,12 @@ then
 else
   if [ ${sv_base64tgzFileSize} -le 10240 ]
   then
-    split -a 1 -b 1k ${sv_base64tgzFilePath} ${sv_DocName}-
+    split -a 1 -b 1k "${sv_base64tgzFilePath}" "${sv_DocName}-"
     rm -f "${sv_base64tgzFilePath}"
     ls -1 "${sv_PackedDirPath}" | grep -E "${sv_DocName}-[a-j]{1}$" | while read sv_PartFileName
     do
       iv_PartNo=$(echo ${sv_PartFileName} | sed -E "s|(.*)(-[a-j]{1}$)|\2|" | tr [a-j] [0-9])
-      mv ${sv_PartFileName} ${sv_DocName}${iv_PartNo}.txt
+      mv "${sv_PartFileName}" "${sv_DocName}${iv_PartNo}.txt"
     done
 
     echo "Note, the payload is too big to fit into a single AD Notes field"
@@ -133,7 +141,7 @@ else
     printf "  cat "
     ls -1 "${sv_PackedDirPath}" | sort | grep -E "${sv_DocName}-[0-9]{1}\.txt$" | while read sv_PartFileName
     do
-      printf "${sv_PartFileName} "
+      printf "'${sv_PartFileName}' "
     done
     echo "| base64 -D | tar -xvzf -"
 

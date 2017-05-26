@@ -2,32 +2,39 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  1.0.100
-# Modified: 27-Oct-2016
+# Version:  2.0.6
+# Modified: 27-May-2017
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
 #
 # Handles the following system events:
-#   Boot                         (as root)
-#   LoginWindow                  (as root)
-#   NetworkUp                    (as root)
-#   NetworkDown                  (as root)
-#   LoginBegin                   (as root)
-#   LogoutEnd                    (as root)
-#   LoginWindowPoll              (as root)
-#   LoginWindowIdle              (as root)
-#   LoginWindowRestartOrShutdown (as root)
-#   SystemPoll                   (as root)
-#   SystemIdle                   (as root)
-#   UserLogin                    (as user)
-#   UserAtDesktop                (as user)
-#   AppWillLaunch                (as user)
-#   AppDidLaunch                 (as user)
-#   AppDidTerminate              (as user)
-#   UserPoll                     (as user)
-#   UserIdle                     (as user)
-#   UserLogout                   (as user)
+#   Sys-Boot                         (as root)
+#   Sys-LoginWindow                  (as root)
+#   Sys-NetworkUp                    (as root)
+#   Sys-NetworkDown                  (as root)
+#   Sys-LoginWindowPoll              (as root)
+#   Sys-LoginWindowIdle              (as root)
+#   Sys-LoginWindowRestartOrShutdown (as root)
+#   Sys-Poll                         (as root)
+#   Sys-Idle                         (as root)
+#   Sys-ActiveDirectoryUp            (as root)
+#   Sys-ActiveDirectoryDown          (as root)
+#   Sys-ConsoleUserLoggedIn          (as root)
+#   Sys-ConsoleUserLoggedOut         (as root)
+#   Sys-ConsoleUserSwitch            (as root)
+#   Usr-AtDesktop                    (as user)
+#   App-WillLaunch                   (as user)
+#   App-DidLaunch                    (as user)
+#   App-DidTerminate                 (as user)
+#   Usr-Poll                         (as user)
+#   Usr-Idle                         (as user)
+#
+# And if loginhooks are active...
+#   Sys-Login                        (as root)
+#   Sys-Logout                       (as root)
+#   Usr-Login                        (as user)
+#   Usr-Logout                       (as user)
 
 # ---
 
@@ -41,101 +48,142 @@ then
 fi
 
 # Get logged in user
-LW_sv_LoggedInUserName="${2}"
+GLB_sv_LoggedInUserName="${2}"
 
 # Get optional parameter
 sv_OptionalParam="${3}"
 
 # ---
 
-# Get Computer AD domain - i.e. your.domain.com
-LW_sv_ADDomainNameDNS="$(dsconfigad -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
-
-if test -z "${LW_sv_ADDomainNameDNS}"
-then
-  # We are probably not part of a domain
-  exit 0
-fi
-
-# ---
-
 # Load the library, only if it is not already loaded
-if test -z "${LW_sv_BuildVersionStampAsString}"
+if test -z "${GLB_sv_ProjectSignature}"
 then
-  . /usr/local/LabWarden/lib/CommonLib
+  . /usr/local/LabWarden/inc/Common.sh
 fi
 
 # ---
 
 sv_EventHistory=""
 
-LW_nf_logmessage "ATTENTION, system event: (${sv_EventName})"
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event '${sv_EventName}' triggered"
 
 # ---
 
 case "${sv_EventName}" in
-Boot)
+Sys-Boot)
   # Make sure the login hooks are set up
-  sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/LabWarden/lib/LoginHook"
-  sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/LabWarden/lib/LogoutHook"
-  ;;
+  sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
+  sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
 
-LoginBegin|UserAtDesktop|LogoutEnd)
-  if test -n "${LW_sv_LoggedInUserName}"
+  if [ "${GLB_bv_UseLoginhookDefault}" = "true" ]
   then
-    # Update/apply user policies (but if already cached, does very little)
-    /usr/local/LabWarden/util/gpupdate "-quick" "${LW_sv_LoggedInUserName}"
+    # Add LoginHook
+    if test -z "${sv_CurrentLoginHookFilePath}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing LoginHook ${sv_CurrentLoginHookFilePath}"
+      sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/${GLB_sv_ProjectName}/lib/LoginHook"
+    else
+      if test -z "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "LoginHook in use ${sv_CurrentLoginHookFilePath}"
+      fi
+    fi
+  
+    # Add LogoutHook
+    if test -z "${sv_CurrentLogoutHookFilePath}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing LogoutHook ${sv_CurrentLoginHookFilePath}"
+      sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/${GLB_sv_ProjectName}/lib/LogoutHook"
+    else
+      if test -z "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "LogoutHook in use ${sv_CurrentLogoutHookFilePath}"
+      fi
+    fi
+
+  else
+    # Remove LoginHook
+    if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
+      defaults write com.apple.loginwindow LoginHook ""
+    fi
+  
+    # Remove LogoutHook
+    if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"
+      defaults write com.apple.loginwindow LogoutHook ""
+    fi
   fi
   ;;
 
-NetworkUp)
-  if [ "${LW_sv_ThisUserName}" = "root" ]
+Sys-ActiveDirectoryUp)
+  if [ "${GLB_sv_ThisUserName}" = "root" ]
   then
     # Update/apply workstation policies (but if already cached, does very little)
-    /usr/local/LabWarden/util/gpupdate "-quick"
+    /usr/local/${GLB_sv_ProjectName}/util/gpupdate "-quick"
   fi
   ;;
     
-LoginWindowIdle|SystemIdle)
-  if [ "${LW_sv_ThisUserName}" = "root" ]
+Sys-ConsoleUserLoggedIn)
+  if test -n "${GLB_sv_LoggedInUserName}"
   then
-    # Update/apply workstation policies
-    /usr/local/LabWarden/util/gpupdate
-    
-    # Update/apply user policies for users who are logged in
-    who -q | grep -Ev "^#" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_LoggedInUser
-    do
-      /usr/local/LabWarden/util/gpupdate "${sv_LoggedInUser}"
-    done
+    # Update/apply user policies (but if already cached, does very little)
+    /usr/local/${GLB_sv_ProjectName}/util/gpupdate "-quick" "${GLB_sv_LoggedInUserName}"
+  fi
+  ;;
+  
+Usr-AtDesktop)
+  if test -n "${GLB_sv_LoggedInUserName}"
+  then
+    # Update/apply user policies (but if already cached, does very little)
+    /usr/local/${GLB_sv_ProjectName}/util/gpupdate "-quick" "${GLB_sv_LoggedInUserName}"
+  fi
+  ;;
+
+Sys-LoginWindowPoll|Sys-Poll)
+  if [ "${GLB_sv_ThisUserName}" = "root" ]
+  then
+    # Update/apply workstation policies (as root) (if deemed to old)
+    /usr/local/${GLB_sv_ProjectName}/util/gpupdate
   fi
   ;;
     
+Usr-Poll)
+  if test -n "${GLB_sv_LoggedInUserName}"
+  then
+    # Update/apply user policies (as user) (if deemed to old)
+    /usr/local/${GLB_sv_ProjectName}/util/gpupdate "${GLB_sv_LoggedInUserName}"
+  fi
+  ;;
+
 esac
 
 # Check policies against event
-LW_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
 
 # Remove temporary files
-rm -fPR "${LW_sv_ThisScriptTempDirPath}"
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
 
 # Have we been flagged to restart or shutdown
-if [ "${LW_sv_ThisUserName}" = "root" ]
+if [ "${GLB_sv_ThisUserName}" = "root" ]
 then
-  if [ -e "${LW_sv_ThisUserTempDirPath}/RestartNow" ] || [ -e "${LW_sv_ThisUserTempDirPath}/ShutdownNow" ]
+  if [ -e "${GLB_sv_ThisUserTempDirPath}/RestartNow" ] || [ -e "${GLB_sv_ThisUserTempDirPath}/ShutdownNow" ]
   then
-    while [ -n "$(ls -1 "${LW_sv_ThisUserTempDirPath}/ActiveEvents")" ]
+    while [ -n "$(ls -1 "${GLB_sv_ThisUserTempDirPath}/ActiveEvents")" ]
     do
-      LW_nf_logmessage "NOTE, Waiting for events to finish in order to restart or shutdown"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Waiting for events to finish in order to restart or shutdown"
       sleep 1
     done
-    if [ -e "${LW_sv_ThisUserTempDirPath}/RestartNow" ]
+    if [ -e "${GLB_sv_ThisUserTempDirPath}/RestartNow" ]
     then
-      LW_nf_logmessage "ATTENTION, restarting workstation"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
       shutdown -r now
     fi
-    if [ -e "${LW_sv_ThisUserTempDirPath}/ShutdownNow" ]
+    if [ -e "${GLB_sv_ThisUserTempDirPath}/ShutdownNow" ]
     then
-      LW_nf_logmessage "ATTENTION, shutting down workstation"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
       shutdown -h now
     fi
   fi

@@ -1,0 +1,136 @@
+#!/bin/bash
+#
+# Short:    Gen Policy script - Unloads (disables) specific Agents and Daemons
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-Boot                (as root)
+#   Usr-ConsoleUserLoggedIn (as user)
+#
+# Called as follows:    
+#   Gen-UnloadAgentsAndDaemons <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# So far, this is only ever used to get Application info after a App-WillLaunch, App-DidLaunch or App-DidTerminate event.
+sv_OptionalParam="${5}"
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+case ${sv_EventName} in
+    
+Sys-Boot|Usr-ConsoleUserLoggedIn)
+  # Unload Agents or Daemons
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Unload")"
+
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdObjectName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Unload:${iv_LoopCount}")"
+    if test -n "${sv_ReqdObjectName}"
+    then
+      if test -n "$(launchctl list | grep "${sv_ReqdObjectName}")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Unloading agent/daemon '${sv_ReqdObjectName}'."
+        launchctl remove "${sv_ReqdObjectName}"
+      fi
+    fi
+  done
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

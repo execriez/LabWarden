@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>F71CE5BC-F94C-4EFC-BE73-ADDA8C38178E</key>
+			<dict>
+				<key>Name</key>
+				<string>Usr-KeychainFix</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Usr-AtDesktop</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>F71CE5BC-F94C-4EFC-BE73-ADDA8C38178E</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>F71CE5BC-F94C-4EFC-BE73-ADDA8C38178E</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-KeychainFix</string>
+	<key>PayloadIdentifier</key>
+	<string>2C2D6249-63B2-40D4-96CF-8FAC4FADBF35</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>2C2D6249-63B2-40D4-96CF-8FAC4FADBF35</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

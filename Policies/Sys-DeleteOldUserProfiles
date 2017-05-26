@@ -1,0 +1,222 @@
+#!/bin/bash
+#
+# Short:    Policy script - Deletes outdated user profiles
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-LoginWindowIdle (as root)
+#
+# Called as follows:    
+#   Sys-DeleteOldUserProfiles <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are not root
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# ---
+
+case ${sv_EventName} in
+    
+Sys-Boot)
+  # Get the days allowable between logins before profiles are deleted
+  iv_LoginMaxAgeDays="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LoginMaxAgeDays")"
+  
+  # Get the earliest creation date/time allowable - cache files (in /private/var/folders) created earlier than this are deleted
+  iv_UserCacheEarliestEpoch="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:UserCacheEarliestEpoch")"
+
+  if test -z "${iv_LoginMaxAgeDays}"
+  then
+    iv_LoginMaxAgeDays=62
+  fi
+
+  while read sv_FolderDirPath
+  do
+    if test -d "${sv_FolderDirPath}"
+    then
+      sv_UserName="$(stat -f "%Su" "${sv_FolderDirPath}")"
+      
+      # Check if user is a local account (returns "true" or "false")
+      if [ "$(dseditgroup -o checkmember -m "${sv_UserName}" -n . localaccounts | cut -d" " -f1)" = "yes" ]
+      then
+        bv_UserIsLocal="true"
+      else
+        bv_UserIsLocal="false"
+      fi
+    
+      # Only Delete local user folders for network users
+      if [ "${bv_UserIsLocal}" = "false" ]
+      then
+#        if test -n "$(dscl 2>/dev/null localhost -read /Local/Default/Users/${sv_UserName} OriginalHomeDirectory)"
+        sv_Attr="OriginalHomeDirectory";sv_Value="$(dscl 2>/dev/null localhost -read "/Local/Default/Users/${sv_UserName}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
+|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')"
+        if test -n "${sv_Value}"
+        then
+          bv_UserIsMobile="true"
+        else
+          bv_UserIsMobile="false"
+        fi
+
+        # Only delete local user folders for non-mobile accounts
+        sv_ReasonToDelete=""
+        if [ "${bv_UserIsMobile}" = "false" ]
+        then
+          if test -e "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist"
+          then
+            iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist")
+            if [ $((${GLB_iv_ThisScriptStartEpoch}-${iv_LastUseEpoch})) -gt $((${iv_LoginMaxAgeDays}*24*60*60)) ]
+            then
+              sv_ReasonToDelete=". User hasn't logged on for more than ${iv_LoginMaxAgeDays} days"
+            fi
+        
+          else
+            sv_ReasonToDelete=". User has never logged on"
+          fi
+        fi
+        
+        if test -n "${sv_ReasonToDelete}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting user home and user cache for '${sv_UserName}'${sv_ReasonToDelete}"
+          
+          # Delete the user folder
+          rm -fR "${sv_FolderDirPath}"
+          
+          # Delete the user cache folders
+          find /private/var/folders \( -depth 2 -prune \) -and -user "${sv_UserName}" -exec rm -fR "{}" \; 
+        fi
+      fi
+      
+      if test -n "${iv_UserCacheEarliestEpoch}"
+      then
+        while read sv_DelPath
+        do
+          iv_CreatedEpoch=$(stat -f "%c" "${sv_DelPath}")
+          if [ ${iv_CreatedEpoch} -lt ${iv_UserCacheEarliestEpoch} ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting outdated user cache for '${sv_UserName}'"
+            rm -fR "${sv_DelPath}"
+          fi
+
+        done < <(find /private/var/folders \( -depth 2 -prune \) -and \( -user "${sv_UserName}" \))
+      fi
+    
+    fi
+  done < <(find /Users \( -depth 1 -prune \) -and \( -type d \) -and \( ! -user root \))
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

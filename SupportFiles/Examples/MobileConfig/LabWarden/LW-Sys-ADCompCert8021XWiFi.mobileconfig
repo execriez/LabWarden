@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>6585C2CE-D676-4471-AB53-633861702F0A</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>CertAuthURL</key>
+					<string>https://yourcaserver.yourdomain/certsrv</string>
+					<key>CertTemplate</key>
+					<string>Mac-Computer</string>
+					<key>ProxyType</key>
+					<string>Auto</string>
+					<key>RenewCertBeforeDays</key>
+					<integer>28</integer>
+					<key>RevokeCertBeforeEpoch</key>
+					<integer>0</integer>
+					<key>SSIDSTR</key>
+					<string>YourSSID</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-ADCompCert8021XWiFi</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-NetworkUp</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>6585C2CE-D676-4471-AB53-633861702F0A</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>6585C2CE-D676-4471-AB53-633861702F0A</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-ADCompCert8021XWiFi</string>
+	<key>PayloadIdentifier</key>
+	<string>FEB48A04-D947-47EE-96B2-5155647BD49C</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>FEB48A04-D947-47EE-96B2-5155647BD49C</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

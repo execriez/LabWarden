@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>DB0F1857-8F96-409B-835D-43347D1A6309</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>GPdefaultAgeMinutes</key>
+					<integer>360</integer>
+					<key>GPforceAgeMinutes</key>
+					<integer>1</integer>
+					<key>GPquickAgeMinutes</key>
+					<integer>259200</integer>
+					<key>LogIsActive</key>
+					<true/>
+					<key>LogLevelTrap</key>
+					<integer>7</integer>
+					<key>MaxLogSizeBytes</key>
+					<integer>81920</integer>
+					<key>NotifyLevelTrap</key>
+					<integer>7</integer>
+				</dict>
+				<key>Name</key>
+				<string>Sys-Defaults</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Boot</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>DB0F1857-8F96-409B-835D-43347D1A6309</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>DB0F1857-8F96-409B-835D-43347D1A6309</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-Defaults (Debug)</string>
+	<key>PayloadIdentifier</key>
+	<string>F2901872-47A9-4C41-B62B-2BAE10CC93D8</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>F2901872-47A9-4C41-B62B-2BAE10CC93D8</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -1,91 +1,217 @@
 
 # LabWarden
 
-![AD Group Members Tab, Members](images/LabWarden.jpg "Policy Scope")
+![Logo](images/LabWarden.jpg "Logo")
 
 ## Brief
 
-LabWarden applies Mac policies to users and workstations.
-
-These policies are controlled via Active Directory without having to extend the AD schema.
-
-Each policy "setting" is determined by a config that is stored directly within an AD groups notes field. Policy "scope" is determined by AD group membership.
-
-Currently, a policy config can be a .mobileconfig file, a .labwarden.plist file or a PolicyBanner.rtf file.
-
-The .labwarden.plist config controls LabWarden specific policy scripts. This config specifies policy script options and how the policy is "triggered". LabWarden policies can be triggered by various system events - such as System Boot, User Login, Application Launch, Application Quit, etc.
-
+Custom Policies for MacOS that can be distributd via AD or an MDM
 
 ## Introduction
 
-The standard Mac policy config is the mobileconfig and there is an increasing number of mobileconfigs for the Mac, that are able to control an increasing number of Mac settings.
-It's preferable to use a mobileconfig wherever possible, however not all aspects of a Mac are configurable via a mobileconfig - and this is where sysadmins tend to deploy custom scripts.
+LabWarden is a suite of policy scripts that control different aspects of MacOS.
 
-LabWarden provides a mechanism for deploying a custom script as if it were a policy - based on scopes and triggers. This allows future sysadmins to retire the script easily when an equivalent mobileconfig appears.
+These policies use mobileconfig files as a way to specify policy "options" and to determine how the policy is "triggered".
 
-There are a number of custom scripts included with LabWarden that do a bunch of stuff that is currently not possible via a mobileconfig. These scripts are controlled via an associated configuration file of type .LabWarden.plist. that holds the script options (much like a .mobileconfig file).
+LabWarden policies can be triggered by various system events - such as System Boot, User Login, Application Launch, Application Quit, etc.
 
-There are many custom policy scripts included in LabWarden – but the beauty of LabWarden is the ability to deploy your own custom scripts just like policies.
+In an AD setup, LabWarden allows mobileconfig files to be stored directly within AD without having to extend the AD schema. This provides a mechanism to "scope" policies to specific users and workstations.
 
-Both .mobileconfig and .LabWarden.plist configurations are stored directly within Active Directory.
+In a non-AD setup, LabWarden mobileconfigs can be installed manually - or by your MDM server.
 
->Policy configurations are compressed, and stored in the “Notes” field of an AD group
->
->![AD Group General Tab, Notes](images/SafariNotesPC.JPG "Policy Config")
->
->The scope of the policy is determined by group membership.
->
->![AD Group Members Tab, Members](images/SafariMembersPC.JPG "Policy Scope")
+See "Quick Demo 1" below to get a quick idea of what LabWarden is all about.
 
-With the a simple combination of AD group notes, and AD group membership, you are able to apply OS X specific group policies to workstations or users - without the need to extend the AD schema.
 
 ## Installation
 
-Download the LabWarden zip archive from <https://github.com/execriez/LabWarden>
+Download the LoginHookWarden zip archive from <https://github.com/execriez/LabWarden>, then unzip the archive on a Mac workstation.
 
-* Unzip the archive on a Mac workstation.
+Ideally, to install - you should double-click the following installer package which can be found in the "SupportFiles" directory.
 
-* Double-click the file "/SupportFiles/LabWarden.pkg".
+	LabWarden.pkg
+	
+If the installer package isn't available, you can run the command-line installer which can be found in the "util" directory:
 
-* Reboot
+	sudo Install
 
-The installer installs the following files and directories:
+The installer will install the following files and directories:
 
-* /Library/LaunchAgents/...LabWarden.appwarden.plist
-* /Library/LaunchAgents/...LabWarden.LoginWindow.plist
-* /Library/LaunchAgents/...LabWarden.LoginWindowPoll.plist
-* /Library/LaunchAgents/...LabWarden.UserAtDesktop.plist
-* /Library/LaunchAgents/...LabWarden.UserPoll.plist
-* /Library/LaunchDaemons/...LabWarden.Boot.plist
-* /Library/LaunchDaemons/...LabWarden.SystemPoll.plist
-* /usr/LabWarden/
+	/Library/LaunchAgents/...labWarden.appwarden.plist
+	/Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
+	/Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
+	/Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
+	/Library/LaunchAgents/...labWarden.Usr-Poll.plist
+	/Library/LaunchDaemons/...labWarden.ADwarden.plist
+	/Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
+	/Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/...labWarden.Sys-Boot.plist
+	/Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+	/usr/LabWarden/
 
-You should note that LabWarden overwrites any existing Login and Logout hooks 
+You should note that by default, LabWarden does not make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
 
-There are a number of example mobileconfigs, policy configs and printer configs included with LabWarden. These can be found in the following directory.
+After installation, you should reboot.
 
-	/SupportFiles/LabWardenConfigs/Examples
+
+## Uninstalling
+
+To uninstall you should double-click the following uninstaller package which can be found in the "SupportFiles" directory.
+
+	LabWarden-Uninstaller.pkg
+	
+If the uninstaller package isn't available, you can uninstall from a shell by typing the following:
+
+	sudo /usr/local/LabWarden/util/Uninstall
+
+The uninstaller will uninstall the following files and directories:
+
+	/Library/LaunchAgents/...labWarden.appwarden.plist
+	/Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
+	/Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
+	/Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
+	/Library/LaunchAgents/...labWarden.Usr-Poll.plist
+	/Library/LaunchDaemons/...labWarden.ADwarden.plist
+	/Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
+	/Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/...labWarden.Sys-Boot.plist
+	/Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+	/usr/LabWarden/
+
+After you uninstall, you should reboot.
 	
 
 ## Quick Demo 1
 
-This example shows how to deploy a PolicyBanner to a group of workstations.
+The following is a quick demo that attempts to show what LabWarden is all about - so that you can quickly decide if it's of any use to you. 
+
+This demo shows how to manually deploy the "Gen-ExamplePolicy" policy to a workstation.
+
+The "Gen-ExamplePolicy" policy is an example policy that uses the 'say' command to speak when it receives different events.
+
+This demonstrates how the LabWarden provided custom policies work - how they only execute when triggered by an event, and how they initiate a different action depending on the event
+
+It also hints at how you could use LabWarden to deploy your own custom policy script that does something specific when triggered by a particular event.
+
+* Download, then install LabWarden as per the installation instructions.
+* Open the directory "/SupportFiles/Examples/MobileConfig/LabWarden"
+* Double-click the file "LW-Gen-ExamplePolicy.mobileconfig".
+
+You will be asked if you wish to install the mobileconfig...
+
+>![AD Group Members Tab, Members](images/Gen-ExamplePolicy-Install.jpg "Install mobileconfig")
+
+* Click "Continue".
+
+The "Gen-ExamplePolicy" will be installed...
+
+>![AD Group Members Tab, Members](images/Gen-ExamplePolicy-Policy.jpg "Mobileconfig is installed")
+
+Before the policy is activated, the LabWarden internal list of known configs must be updated. This is done automatically every 5 minutes.
+
+If you do not wish to wait 5 minutes, type the following in a terminal:
+
+	sudo /usr/local/LabWarden/util/gpupdate -force
+
+The policy settings will be read from the mobileconfig, and the policy will be enabled.
+
+Now that the policy is enabled - we can test it - try the following.
+
+* Log in
+* Launch an application
+* Quit an application
+* Switch to another user
+* Log out
+* Reboot
+
+When you are done testing - uninstall the mobileconfig, then update the list of known configs via the command:
+
+	sudo /usr/local/LabWarden/util/gpupdate -force
+	
+A quick description of the available policies can be found in the "LabWarden Policies (brief)" section later.
+
+Please read this section and if you decide you have no use for LabWarden, follow the uninstall instructions from the "Uninstalling" section above.
+
+## Quick Demo 2
+
+This example shows how to deploy a PolicyBanner to a group of AD bound workstations.
 
 Download, then install LabWarden as per the installation instructions.
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyBanner" directory for the file "PolicyBanner.rtf".
+Look in the "/SupportFiles/Examples/MobileConfig/LabWarden/" directory for the file "LW-Sys-PolicyBanner.mobileconfig".
 
 Open the file in a text editor.
 
->![AD Group Members Tab, Members](images/PolicyBannerRTF.jpg "PolicyBanner Text")
+	<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+	<plist version="1.0">
+	<dict>
+		<key>PayloadContent</key>
+		<array>
+			<dict>
+				<key>5FA0F0B2-2B68-4ACD-B650-5B44AE436C75</key>
+				<dict>
+					<key>Config</key>
+					<dict>
+						<key>Text</key>
+						<string>Anyone whose behaviour
+	is not in accordance with this Code of Practice
+	may be subject to withdrawal of network access
+	and subject to the disciplinary procedure.
+	
+	This is in keeping with the
+	Disciplinary regulations.</string>
+						<key>Title</key>
+						<string>By clicking Accept,
+	you are agreeing to abide by the
+	Acceptable Use Policy.</string>
+					</dict>
+					<key>Name</key>
+					<string>Sys-PolicyBanner</string>
+					<key>TriggeredBy</key>
+					<array>
+					<string>Sys-Boot</string>
+					</array>
+				</dict>
+				<key>PayloadEnabled</key>
+				<true/>
+				<key>PayloadIdentifier</key>
+				<string>5FA0F0B2-2B68-4ACD-B650-5B44AE436C75</string>
+				<key>PayloadType</key>
+				<string>com.github.execriez.LabWarden</string>
+				<key>PayloadUUID</key>
+				<string>5FA0F0B2-2B68-4ACD-B650-5B44AE436C75</string>
+				<key>PayloadVersion</key>
+				<integer>1</integer>
+			</dict>
+		</array>
+		<key>PayloadDescription</key>
+		<string></string>
+		<key>PayloadDisplayName</key>
+		<string>LW Sys-PolicyBanner</string>
+		<key>PayloadIdentifier</key>
+		<string>AD787CCA-C943-4B1F-A06C-CEAD6479EE57</string>
+		<key>PayloadOrganization</key>
+		<string></string>
+		<key>PayloadRemovalDisallowed</key>
+		<true/>
+		<key>PayloadScope</key>
+		<string>System</string>
+		<key>PayloadType</key>
+		<string>Configuration</string>
+		<key>PayloadUUID</key>
+		<string>AD787CCA-C943-4B1F-A06C-CEAD6479EE57</string>
+		<key>PayloadVersion</key>
+		<integer>1</integer>
+	</dict>
+	</plist>
 	
 Edit the file to reflect your own acceptable use or IT policy, then save the changes.
 
 Next, in a shell type:
 
-	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/LabWardenConfigs/Examples/PolicyBanner/PolicyBanner.rtf
+	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/Examples/MobileConfig/LabWarden/LW-Sys-PolicyBanner.mobileconfig
 	
-Replace ~/Desktop/... with the location of the PolicyBanner.rtf file.
+Replace ~/Desktop/... with the location of the "LW-Sys-PolicyBanner.mobileconfig" file.
 
 This will create a subfolder containing the packed version of the mobileconfig file. Take a look at the file.
 
@@ -103,7 +229,7 @@ Run an MMC as a user who has permission to create and edit AD groups.
 
 Create an AD group in a convenient OU.
 
-In the example, I have named the group "osx-wgp-gpo-PolicyBanner". The name doesn't matter (except to yourself and other sysadmins).
+In the example, I have named the group "osx-wgp-gpo-LW-Sys-PolicyBanner". The name doesn't matter (except to yourself and other sysadmins).
 
 Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
 
@@ -120,7 +246,7 @@ There is generally a delay (typically 10 minutes) between updating AD and experi
 Also, LabWarden generally only updates it's policies at defined intervals. If you want to see the changes applied to a workstation immediately - do the following:
 
 	Wait 10 minutes (typically)
-	In a Terminal, type the following:
+	Or in a Terminal, type the following:
 		sudo /usr/local/LabWarden/util/gpupdate -force
 
 >The Policy Banner will be shown on the login window of all associated workstations:
@@ -128,15 +254,15 @@ Also, LabWarden generally only updates it's policies at defined intervals. If yo
 >![AD Group Members Tab, Members](images/PolicyBannerPopupMac.jpg "Policy Banner")
 >
 
-## Quick Demo 2
+## Quick Demo 3
 
-This example shows how to deploy the SetSafariHomepage mobileconfig to a user or group of users.
+This example shows how to deploy the Mac-SafariHomepage MacOS mobileconfig to a user or group of users. This particular file is a standard MacOS mobileconfig.
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/mobileconfig" directory for the file "SetSafariHomepage.mobileconfig".
+Look in the "/SupportFiles/Examples/MobileConfig/MacOS" directory for the file "Mac-SafariHomepage.mobileconfig".
 
 Open the file in a text editor.
 
-Edit the file to change the "HomePage", then save as a new file called "SetSafariHomepage-Student.mobileconfig".
+Edit the file to change the "HomePage", then save as a new file called "Mac-SafariHomepage-student.mobileconfig".
 
 	<key>mcx_preference_settings</key>
 	<dict>
@@ -152,7 +278,7 @@ Edit the file to change the "HomePage", then save as a new file called "SetSafar
 
 Next, in a shell type:
 
-	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/LabWardenConfigs/Examples/mobileconfig/SetSafariHomepage-Student.mobileconfig
+	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/Examples/MobileConfig/MacOS/Mac-SafariHomepage.mobileconfig
 	
 Replace ~/Desktop/... with the location of the modified mobileconfig.
 
@@ -172,7 +298,7 @@ Run an MMC as a user who has permission to create and edit AD groups.
 
 Create an AD group in a convenient OU.
 
-In the example, I have named the group "osx-wgp-gpo-SetSafariHomepage-Student". The name doesn't matter (except to yourself and other sysadmins).
+In the example, I have named the group "osx-wgp-gpo-Mac-SafariHomepage-Student". The name doesn't matter (except to yourself and other sysadmins).
 
 Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
 
@@ -194,24 +320,401 @@ Also, LabWarden generally only updates it's policies at defined intervals. If yo
 
 >Because you chose to apply the policy to a user or group of users - the mobileconfig will be pulled down as a "User Profile" and installed when an associated user logs in.
 >
->![AD Group Members Tab, Members](images/SafariUserProfileMac.jpg "User Policy")
+>![AD Group Members Tab, Members](images/Mac-SafariHomepage.jpg "User Policy")
 >
 >If you had chosen to apply the policy to a workstation, or group of workstations - the mobileconfig would be pulled down as a "Device Profile".
 
-## Quick Demo 3
+## Quick Demo 4
 
-This example shows how to deploy the "AppRestrict" script as a policy in order to prevent all non-admins from running a specific application.
+The Notes field in AD is limited to 1024 characters - so what do you do when you have a config that is too big to fit within this limit?
 
-AppRestrict is one of a number of example policy scripts that are included with LabWarden. 
+Take a look at the mobileconfig called **Mac-NoWebSpotlight.mobileconfig**
 
-Look in the "/SupportFiles/LabWardenConfigs/Examples/PolicyConfig" directory for the file "AppRestrict.LabWarden.plist".
+In a shell type 
 
-Open the file in a text editor.
+	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/SupportFiles/Examples/MobileConfig/MacOS/Mac-NoWebSpotlight.mobileconfig
+	
+Replace ~/Desktop/... with the location of the example mobileconfig.
 
-Edit the file as necessary. 
+This will create a subfolder containing the packed version of the mobileconfig file. 
 
-In this example we are restricting access to the Terminal, and are preventing Apps from running from the user home or from a non-local (mounted) drive. There is an exception for "PrinterProxy" and "Chrome" apps, because these are usually run from the users Library folder.
+Take a look at in the folder. There are two files "Mac-NoWebSpotlight-0.txt" and "Mac-NoWebSpotlight-1.txt". The mobileconfig was too big to compress into a single 1024 byte file - so was split into two.
 
+This is OK, we just need to copy the text into the Notes field of two groups and then make sure that the user or workstation is a member of both groups.
+
+The most logical solution is actually to create three groups.
+
+Run an MMC as a user who has permission to create and edit AD groups. Create the following two groups and copy the appropriate text into the relevant notes field:
+
+	osx-wgp-gpo-Mac-NoWebSpotlight-0
+	osx-wgp-gpo-Mac-NoWebSpotlight-1
+
+Next create the following group, and make it a member of the previous two groups:
+
+	osx-wgp-gpo-Mac-NoWebSpotlight
+
+Any user or workstation that is a member of the osx-wgp-gpo-Mac-NoWebSpotlight group, will get the complete mobileconfig.
+
+
+## MacOS mobileconfig files
+
+Here is a list of standard MacOS mobileconfig files included with LabWarden.
+
+	Mac-NoDSStoreOnNetwork.mobileconfig     - Stops .DS_Store files from being written to a network drive
+	Mac-NoNewDiskBackupOffer.mobileconfig   - Stops Time Machine from asking to use new drives as a backup
+	Mac-NoOffice2011Updates.mobileconfig    - Stops the initial Setup in MS Office 2011
+	Mac-NoReopenWindows.mobileconfig        - Stops open windows being re-opened at next login
+	Mac-NoWebSpotlight.mobileconfig         - Stops Spotlight from searching the web
+	Mac-NoiCloudSetup-10v9.mobileconfig     - Stops the initial iCloud setup
+	Mac-NoiCloudSetup-10v10.mobileconfig
+	Mac-NoiCloudSetup-10v11.mobileconfig
+	Mac-NoiCloudSetup-10v12.mobileconfig
+	Mac-NoiCloudSetup-10v13.mobileconfig
+	Mac-RightClick.mobileconfig            - Enables right click on the mouse
+	Mac-UKLocale.mobileconfig              - Enables the UK locale
+	Mac-SafariHomepage.mobileconfig        - Sets the homepage in Safari
+
+You can find other examples of OS X specific mobileconfigs on the web, these are good references (as of writing):
+
+<https://github.com/gregneagle/profiles>
+
+<https://github.com/nmcspadden/profiles>
+
+<https://github.com/amsysuk/public_config_profiles>
+
+## LabWarden Policies (brief)
+
+A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options.
+
+The goal of a LabWarden policy is to do things that cannot yet 	qbe achieved via a standard MacOS mobileconfig.
+
+LabWarden Policy Scripts can be triggered by the following System events:
+
+* Sys-Boot
+* Sys-LoginWindow
+* Sys-NetworkUp
+* Sys-NetworkDown
+* Sys-ConsoleUserLoggedIn
+* Sys-LoginWindowPoll
+* Sys-LoginWindowIdle
+* Sys-LoginWindowRestartOrShutdown
+* Sys-Poll
+* Sys-Idle
+* Sys-ConsoleUserLoggedIn
+* Sys-ConsoleUserLoggedOut
+* Sys-ConsoleUserSwitch
+* Sys-ActiveDirectoryUp
+* Sys-ActiveDirectoryDown
+
+
+...and by the following User events:
+
+* App-WillLaunch
+* App-DidLaunch
+* App-DidTerminate
+* Usr-ConsoleUserLoggedIn
+* Usr-AtDesktop
+* Usr-Poll
+* Usr-Idle
+
+Following is a brief list of Labwarden policies:
+
+### App-DeleteDataOnQuit
+Deletes application data when an application quits.
+
+### App-ExamplePolicy
+Example Application Policy script (A blank canvas).
+
+### App-FirefoxFirstSetup
+Creates a blank Firefox profile at first launch.
+
+### App-FirefoxFixForNetworkHomes
+Sets up Firefox so that it can run on network homes.
+
+### App-Restrict
+Restricts application usage depending on a blacklist or whitelist.
+
+### App-ShowHints
+Shows a hint when a specified application opened.
+
+### Gen-Debug
+Writes debug info to the policy prefs
+
+### Gen-ExamplePolicy
+Example General Policy script (A blank canvas)
+
+### Gen-OfficeHours
+Enforces User Access to Opening Hours and collects usage stats
+
+### Gen-UnloadAgentsAndDaemons
+Unloads (disables) specific Agents and Daemons.
+
+### Sys-ADCompCert8021XWiFi
+Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X.
+
+### Sys-AddEntriesToHostsFile
+Adds entries to the /etc/hosts file.
+
+### Sys-AddPrinter
+Adds a printer
+
+### Sys-ADTrustAccountProxyAccess
+Give certain processes access through proxy using AD workstation credentials.
+
+### Sys-ADUserExperience
+Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app.
+
+### Sys-Defaults
+Over-rides inbuilt hard-coded defaults.
+
+### Sys-DeleteFiles
+Deletes files from the system volume. It will reboot after the files have been successfully deleted.
+
+### Sys-DeleteOldUserProfiles
+Deletes outdated user profiles.
+
+### Sys-ExamplePolicy
+Example System Policy script (A blank canvas)
+
+### Sys-InstallPackageFromFolder
+Installs packages from a specified folder.
+
+### Sys-NetworkProxy
+Sets system Network Proxy options. 
+
+### Sys-PolicyBanner
+Sets a policy banner which is displayed at the Login Window. 
+
+### Sys-RemoteManagement
+Sets up remote access to a workstation.
+
+### Sys-RestartIfNetMounts
+Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted.
+
+### Sys-SleepSettings
+Sets system sleep options.
+
+### Sys-TimeServer
+Sets the system time (ntp) server.
+
+### Sys-Update
+Runs a custom update script.
+
+### Sys-WirelessForgetSSID
+Forgets wireless SSIDs and passwords.
+
+### Sys-WirelessSetState
+Turns wireless on or off, and defines whether non-admins can change the wireless state.
+
+### Sys-WorkstationInfo
+Updates the loginwindow text and RemoteDesktop Info Fields with workstation info.
+
+### Usr-CheckQuotaOnNetHome
+Checks if a users network drive is getting full.
+
+### Usr-CreateFolder
+Creates folders in the users home folder.
+
+### Usr-DefaultHandlers
+Sets the default handlers for specific file types.
+
+### UserDesktopWallpaperURI
+Sets the user Desktop Wallpaper. 
+
+### Usr-DockContent
+Sets the user Dock content (makes use of **dockutil**).
+
+### Usr-ExamplePolicy
+Example User Policy script (A blank canvas)
+
+### Usr-HomeMakePathRedirections
+Creates symbolic links between a network users network home and local home.
+
+### Usr-KeychainFix
+Attempts to fix Keychain issues caused by password reset issues.
+
+### Usr-SidebarContent
+Sets the user sidebar contents (makes use of **mysides**).
+
+### Usr-SpotlightSettingOnNetHome
+Enable or disable Spotlight on a users network home
+
+### Usr-SyncLocalHomeToNetwork
+Syncs specified folders from the users local home to network home.
+
+
+## Your Custom Policies
+
+If you have a custom script that you need to run - you should turn it into a custom policy.
+
+A policy is just a script and an associated mobileconfig.
+
+The script config contains the script options and a list of event(s) that trigger the script. 
+
+LabWarden Policy Scripts can be triggered by the following System events:
+
+* Sys-Boot
+* Sys-LoginWindow
+* Sys-NetworkUp
+* Sys-NetworkDown
+* Sys-ConsoleUserLoggedIn
+* Sys-LoginWindowPoll
+* Sys-LoginWindowIdle
+* Sys-LoginWindowRestartOrShutdown
+* Sys-Poll
+* Sys-Idle
+* Sys-ConsoleUserLoggedIn
+* Sys-ConsoleUserLoggedOut
+* Sys-ConsoleUserSwitch
+* Sys-ActiveDirectoryUp
+* Sys-ActiveDirectoryDown
+
+...and by the following User events:
+
+* App-WillLaunch
+* App-DidLaunch
+* App-DidTerminate
+* Usr-ConsoleUserLoggedIn
+* Usr-AtDesktop
+* Usr-Poll
+* Usr-Idle
+
+If the script is triggered by a system event, it will be called as root.
+
+If the script is triggered by a user event, it will be called as that user.
+
+You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
+
+Custom policies should be stored in the directory "/usr/local/LabWarden/Custom-Policies/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
+
+For a custom policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Custom-Policies/MyPolicy'.
+
+The accompanying mobileconfig file should be called 'MyPolicy.mobileconfig'. All policy options should be stored in the mobileconfig file.
+
+Take a look at the example custom policies and associated mobileconfigs for inspiration ( App-ExamplePolicy, Usr-ExamplePolicy, Sys-ExamplePolicy and Gen-ExamplePolicy ).
+
+If you need to deploy your custom policy via AD, then use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups 'Notes' field as described in the Quick Demo sections.
+
+
+## LabWarden Policies (detailed)
+
+Following is a detailed list of policy scripts. Policy script options are contained in an associated mobileconfig file.
+
+### App-DeleteDataOnQuit
+This policy script deletes application data when an application quits. It is called as the user and triggered by an **App-DidTerminate** event.
+
+
+	<key>Config</key>
+	<dict>
+		<key>AppData</key>
+		<array>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.adobe.AdobePremierePro</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Adobe/Common/Media Cache Files/</string>
+					<string>/Library/Application Support/Adobe/Common/Media Cache/</string>
+				</array>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>org.chromium.Chromium</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Chromium/Default/Pepper Data/</string>
+				</array>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.google.Chrome</string>
+				<key>Path</key>
+				<array>
+					<string>/Library/Application Support/Google/Chrome/Default/Pepper Data/</string>
+				</array>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>App-DeleteDataOnQuit</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-DidTerminate</string>
+	</array>
+
+The **AppData** array contains an **ApplicationBundleIdentifier** followed by a **Path** array containing the paths that should be deleted when the stated application quits. Paths are relative to the user home.
+
+In the above example, the ApplicationBundleIdentifier **com.apple.finder** is followed by the Path **/.Trash/**. This will cause the contents of **~/.Trash/** to be deleted when the Finder quits (at user log out).
+
+The config also contains entries for Google Chrome, Chromium and Adobe Premiere that will delete application data when each of these applications is quit.
+
+The example policy config should be configured to your own needs.
+
+### App-ExamplePolicy
+This is an example Application Policy script (A blank canvas). It is called as the user and triggered by the **App-WillLaunch** , **App-DidLaunch** and **App-DidTerminate** events.
+
+	<key>Config</key>
+	<dict>
+		<key>ExampleArray</key>
+		<array>
+			<string>First</string>
+			<string>Second</string>
+			<string>Third</string>
+		</array>
+		<key>ExampleBool</key>
+		<true/>
+		<key>ExampleNum</key>
+		<integer>42</integer>
+		<key>ExampleString</key>
+		<string>Example</string>
+	</dict>
+	<key>Name</key>
+	<string>App-ExamplePolicy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+		<string>App-DidLaunch</string>
+		<string>App-DidTerminate</string>
+	</array>
+	
+### App-FirefoxFirstSetup
+This policy script sets up Firefox first run behaviour. It is called as the user and triggered by an **App-WillLaunch** event.
+
+	<key>Name</key>
+	<string>App-FirefoxFirstSetup</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+	</array>
+	
+The policy creates a blank Firefox profile at first launch - so that users aren't asked to create one.
+
+There are no configurable parameters.
+
+### App-FirefoxFixForNetworkHomes
+This policy script sets up Firefox so that it can run on network homes. It is called as the user and triggered by the **App-WillLaunch** and **App-DidTerminate** events.
+
+	<key>Name</key>
+	<string>App-FirefoxFixForNetworkHomes</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+		<string>App-DidTerminate</string>
+	</array>
+
+When user homes are on the network (i.e. not forced local) - then Firefox has trouble placing file locks on the files places.sqlite-shm, webappsstore.sqlite-shm and cookies.sqlite-shm - preventing the Firefox from loading.
+
+This policy creates symbolic links to local versions of the files during application launch, and then deletes the symbolic links when the application quits.
+
+There are no configurable parameters.
+
+### App-Restrict
+This policy script restricts application usage depending on a blacklist or whitelist. It is called as the user and triggered by an **App-WillLaunch** event.
+
+The example config contains the following:
+
+	<key>Config</key>
+	<dict>
 		<key>BlackList</key>
 		<array>
 			<dict>
@@ -235,6 +738,18 @@ In this example we are restricting access to the Terminal, and are preventing Ap
 				<key>ApplicationName</key>
 				<string>.*</string>
 			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com\.citrixonline\.mac\.WebDeploymentApp</string>
+				<key>ApplicationName</key>
+				<string>Citrix Online Launcher</string>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com\.citrixonline\.GoToMeeting</string>
+				<key>ApplicationName</key>
+				<string>GoToMeeting.*</string>
+			</dict>
 		</array>
 		<key>OnlyAllowLocalApps</key>
 		<true/>
@@ -242,483 +757,17 @@ In this example we are restricting access to the Terminal, and are preventing Ap
 		<array>
 			<string>~/.*</string>
 		</array>
-
-In a shell type 
-
-	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/LabWardenConfigs/Examples/PolicyConfig/AppRestrict.LabWarden.plist
-	
-Replace ~/Desktop/... with the location of the example .LabWarden.plist file.
-
-This will create a subfolder containing the packed version of the script config file. Take a look at the file.
-
-Move to a PC containing the "Microsoft Management Console" (MMC).
-
-Open up the text file that we just created, then copy all the text.
-
-Run an MMC as a user who has permission to create and edit AD groups.
-
-Create an AD group in a convenient OU.
-
-In the example, I have named the group "osx-wgp-gpo-AppRestrict". The name doesn't matter (except to yourself and other sysadmins).
-
-Open up the properties for the group. In the "General" tab, paste the text into the "Notes" field.
-
->![AD Group General Tab, Notes](images/AppRestrictNotesPC.JPG "Policy Config")
-
-Select the "Members" tab and add a workstation, or group of workstations that you want to apply the policy to. This is the "Scope" of the policy.
-
->![AD Group Members Tab, Members](images/AppRestrictMembersPC.JPG "Policy Scope")
-
-Click "OK"
-
-There is generally a delay (typically 10 minutes) between updating AD and experiencing the changes.
-
-Also, LabWarden generally only updates it's policies at defined intervals. If you want to see the changes applied to a workstation immediately - do the following:
-
-	Wait 10 minutes (typically)
-	In a Terminal, type the following:
-		sudo /usr/local/LabWarden/util/gpupdate -force
-
->Because you chose to apply the policy to a workstation or group of workstations - the policy will affect every user who logs in.
-
->![AD Group Members Tab, Members](images/AppRestrictPopupMac.jpg "Policy Scope")
-
-## Quick Demo 4
-The Notes field in AD is limited to 1024 characters - so what do you do when you have a config that is too big to fit within this limit?
-
-Take a look at the mobileconfig called **DisableSpotlightWeb.mobileconfig**
-
-In a shell type 
-
-	/usr/local/LabWarden/util/PackForDeployment ~/Desktop/LabWarden/SupportFiles/LabWardenConfigs/Examples/mobileconfig/DisableSpotlightWeb.mobileconfig
-	
-Replace ~/Desktop/... with the location of the example mobileconfig.
-
-This will create a subfolder containing the packed version of the mobileconfig file. 
-
-Take a look at in the folder. There are two files "DisableSpotlightWeb-0.txt" and "DisableSpotlightWeb-1.txt". The mobileconfig was too big to compress into a single 1024 byte file - so was split into two.
-
-This is OK, we just need to copy the text into the Notes field of two groups and then make sure that the user or workstation is a member of both groups.
-
-The most logical solution is actually to create three groups.
-
-Run an MMC as a user who has permission to create and edit AD groups. Create the following two groups and copy the appropriate text into the relevant notes field:
-
-	osx-wgp-gpo-DisableSpotlightWeb-0
-	osx-wgp-gpo-DisableSpotlightWeb-1
-
-Next create the following group, and make it a member of the previous two groups:
-
-	osx-wgp-gpo-DisableSpotlightWeb
-
-Any user or workstation that is a member of the osx-wgp-gpo-DisableSpotlightWeb group, will get the complete mobileconfig.
-
-
-## Updating policy configs
-
-If you want to update an already deployed mobileconfig or LabWarden  policy config then you need to also update the config UUID. If the UUID is not altered, then any update will not take effect.
-
-For mobileconfigs, you should update the last "PayloadUUID" key.
-
-	<key>PayloadUUID</key>
-	<string>17E2B85F-E46D-4E8E-85F6-BC7BF63B031B</string>
-
-For LabWarden configs, you should update the "UUID" key.
-
-	<key>UUID</key>
-	<string>8FB255B2-B9C9-424A-9135-22C3F7065F70</string>
-
-A new UUID can be generated by typing the following in a shell.
-
-	uuidgen
-	
-Once a config is updated, and the UUID is renewed - you should deploy the config as normal. i.e. use **PackForDeployment** to package up the config, then copy the packed text into the Notes field of the relevant group.
-
-
-## Custom scripts and custom policies
-
-If you have a custom script that you need to run - you should turn it into a custom policy.
-
-A policy is just a script and an associated script config.
-
-The script config contains the script options and a list of event(s) that trigger the script. 
-
-Policy Scripts can be triggered by the following System events:
-
-* Boot
-* LoginWindow
-* NetworkUp
-* NetworkDown
-* LoginBegin
-* LogoutEnd
-* LoginWindowPoll
-* LoginWindowIdle
-* LoginWindowRestartOrShutdown
-
-...and by the following User events:
-
-* UserLogin
-* UserAtDesktop
-* AppWillLaunch
-* AppDidLaunch
-* AppDidTerminate
-* UserPoll
-* UserIdle
-* UserLogout
-
-If the script is triggered by a system event, it will be called as root.
-
-If the script is triggered by a user event, it will be called as that user.
-
-You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
-
-Custom policies should be stored in the directory "/usr/local/LabWarden/Policies/custom/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
-
-For a custom policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Policies/custom/MyPolicy'.
-
-The accompanying config file (which is stored in AD) should be called 'MyPolicy.LabWarden.plist'.
-
-Use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups 'Notes' field.
-
-Take a look at the example custom policies for inspiration ( AppExamplePolicy , SystemExamplePolicy and UserExamplePolicy ).
-
-Each policy has a line that includes the common library. This library (/usr/local/LabWarden/lib/CommonLib) sets up a number of useful LabWarden global variables. These are documented at the start of the CommonLib code (see below).
-
-	# 'CommonLib' should be included into scripts as follows:
-	#   . /usr/local/LabWarden/lib/CommonLib
-	#
-	# Take a look at the example policy scripts before getting bogged down with detail.
-	#  (AppExamplePolicy, SystemExamplePolicy and UserExamplePolicy)
-	#
-	# Enter 'CommonLib' with the following globals already defined
-	#  LW_sv_LoggedInUserName                - The name of the logged-in user, a null string signifies no-one is logged in
-	#                                        - The logged-in user may or may not be the user who is running the script
-	#
-	# 'CommonLib' calculates the following LabWarden globals:
-	#
-	#  LW_sv_LabWardenVersion                - Main code version
-	#  LW_sv_LabWardenSignature              - LabWarden signature (com.github.execriez.LabWarden)
-	#
-	#  LW_iv_LogMaxLength                    - Maximum length of LabWarden log(s)
-	#  LW_bv_LogIsActiveDefault              - Whether we should log by default (true/false)
-	#  LW_bv_LogIsActiveStatus               - Whether the log is currently active (true/false)
-	#
-	#  LW_sv_BinDirPath                      - Path to binaries such as rsync or CocoaDialog
-	#  LW_sv_SettingsDirPath                 - Path to main LabWarden settings files
-	#
-	#  LW_iv_ThisScriptStartEpoch            - When the script started running
-	#  LW_sv_ThisScriptFilePath              - Full source path of running script
-	#  LW_sv_ThisScriptDirPath               - Directory location of running script
-	#  LW_sv_ThisScriptFileName              - filename of running script
-	#  LW_sv_ThisScriptName                  - Filename without extension
-	#  LW_iv_ThisScriptPID                   - Process ID of running script
-	#
-	#  LW_sv_ThisScriptTempDirPath           - Temporary Directory for the currently running script
-	#
-	#  LW_sv_ThisUserTempDirPath             - Temporary Directory for the current user
-	#  LW_sv_ThisUserLogDirPath              - Directory where the user log is stored
-	#  LW_sv_ThisUserPrefDirPath             - Directory for user configs
-	#
-	#  LW_sv_ThisUserName                    - The name of the user that is running this script
-	#  LW_iv_ThisUserID                      - The user ID of the user that is running this script
-	#
-	#  LW_iv_LoggedInUserID                  - The user ID of the logged-in user
-	#  LW_bv_LoggedInUserIsAdmin             - Whether the logged-in user is an admin (true/false)
-	#  LW_bv_LoggedInUserIsLocal             - Whether the logged-in user account is local (true/false)
-	#  LW_bv_LoggedInUserIsMobile            - Whether the logged-in user account is mobile (true/false)
-	#
-	#  LW_sv_LoggedInUserHomeDirPath         - Home directory for the logged-in user
-	#  LW_sv_LoggedInUserLocalHomeDirPath    - Local home directory for the logged-in user (in /Users)
-	#  LW_sv_LoggedInUserHomeNetworkDirPath  - Network home directory path, i.e. /Volumes/staff/t/testuser
-	#  LW_sv_LoggedInUserHomeNetworkURI      - Network home directory URI, i.e smb://yourserver.com/staff/t/testuser
-	#  LW_bv_LoggedInUserHomeIsLocal         - Whether the logged-in user account is local (true/false)
-	#
-	#                                        - The logged-in user may or may not be the user who is running the script
-	#
-	#  LW_iv_BuildVersionStampAsNumber       - The build version represented as a number, i.e. 14F1808 translates to 29745664
-	#  LW_sv_BuildVersionStampAsString       - The build version represented as a string, i.e. 14F1808
-	#  LW_iv_SystemVersionStampAsNumber      - The system version represented as a number, i.e. 10.10.5 translates to 168428800
-	#  LW_sv_SystemVersionStampAsString      - The system version represented as a string, i.e. 10.10.5
-	#
-	#  LW_sv_IPv4PrimaryService              - A uuid like 9804EAB2-718C-42A7-891D-79B73F91CA4B
-	#  LW_sv_NetworkServiceDHCPOption15      - The domain advertised by DHCP
-	#  LW_sv_NetworkServiceInterfaceName     - i.e. Wi-Fi
-	#  LW_sv_NetworkServiceInterfaceDevice   - i.e. en1
-	#  LW_sv_NetworkServiceInterfaceHardware - i.e. Airport
-	#
-	#  LW_sv_ADTrustAccount                  - This is the account used by the workstation for AD services - i.e. workstationname$
-	#  LW_sv_ADComputerName                  - i.e. workstationname
-	#  LW_sv_ADDomainNameFlat                - i.e. yourdomain.yourcompany.com
-	#  LW_sv_ADDomainNameDNS                 - i.e. YOURDOMAIN
-	# And when LW_sv_ThisUserName=root, the following global is defined
-	#  LW_sv_ADTrustPassword                 - This is the password used by the workstation for AD services
-	#
-	# 'CommonLib' defines the following LabWarden functions:
-	#
-	#  LW_if_SystemIdleSecs
-	#  LW_sf_urlencode <string>                                        - URL encode a string
-	#  LW_sf_urldecode <string>                                        - URL decode a string
-	#  LW_nf_logmessage <messagetxt>                                   - Output message text to the log file
-	#  LW_nf_ShowNotification <Title> <Text>                           - Show a notification dialog
-	#  LW_nf_SetPlistProperty <plistfile> <property> <value>           - Set a property to a value in a plist file
-	#  LW_sf_GetPlistProperty <plistfile> <property> [defaultvalue]    - Get a property value from a plist file
-	#  LW_if_GetPlistArraySize <plistfile> <property>                  - Get an array property size from a plist file
-	#  LW_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
-	#  LW_sf_ResolveFilename <fileuri>                                 - Resolve a file URI to a local path (downloading the file if necessary)
-	#  LW_nf_QuickExit                                                 - Quickly exit a script
-	#  LW_nf_TriggerEvent <eventHistory> <event> [OptionalParam]       - Internal private function
-	#
-	#  Key:
-	#    LW_ - LabWarden global variable
-	#
-	#    bv_ - string variable with the values "true" or "false"
-	#    iv_ - integer variable
-	#    sv_ - string variable
-	#
-	#    nf_ - null function    (doesn't return a value)
-	#    bf_ - boolean function (returns string values "true" or "false"
-	#    if_ - integer function (returns an integer value)
-	#    sf_ - string function  (returns a string value)
-
-
-## Example mobileconfig files
-
-Here is a list of mobileconfig files included with LabWarden.
-
-	DisableDSStoreOnNetwork.mobileconfig      - Stops .DS_Store files from being written to a network drive
-	DisableOfferDisksForBackup.mobileconfig   - Stops Time Machine from asking to use new drives as a backup
-	DisableOffice2011Updates.mobileconfig     - Stops the initial Setup in MS Office 2011
-	DisableReopenWindowsOnLogin.mobileconfig  - Stops open windows being re-opened at next login
-	DisableSpotlightWeb.mobileconfig          - Stops Spotlight from searching the web
-	DisableiCloudSetup-10v9.mobileconfig      - Stops the initial iCloud setup
-	DisableiCloudSetup-10v10.mobileconfig
-	DisableiCloudSetup-10v11.mobileconfig
-	DisableiCloudSetup-10v12.mobileconfig
-	DisableiCloudSetup-10v13.mobileconfig
-	EnableRightClick.mobileconfig             - Enables right click on the mouse
-	EnableUKLocale.mobileconfig               - Enables the UK locale
-	SetSafariHomepage.mobileconfig            - Sets the homepage in Safari
-
-You can find other examples of OS X specific mobileconfigs on the web, these are good references (as of writing):
-
-<https://github.com/gregneagle/profiles>
-
-<https://github.com/nmcspadden/profiles>
-
-<https://github.com/amsysuk/public_config_profiles>
-
-## Example Policy Scripts
-
-LabWarden includes a number of custom Policy scripts that do things that a mobileconfig currently cannot do.
-
-Policy Scripts can be triggered by the following System events:
-
-* Boot
-* LoginWindow
-* NetworkUp
-* NetworkDown
-* LoginBegin
-* LogoutEnd
-* LoginWindowPoll
-* LoginWindowIdle
-* LoginWindowRestartOrShutdown
-* SystemPoll
-* SystemIdle
-
-...and by the following User events:
-
-* UserLogin
-* UserAtDesktop
-* AppWillLaunch
-* AppDidLaunch
-* AppDidTerminate
-* UserPoll
-* UserIdle
-* UserLogout
-
-Policy scripts are controlled via an associated configuration file of type .LabWarden.plist that holds script options (As seen in "Quick Demo 3").
-
-Following is a list of policy scripts and associated example configs...
-
-###AppDeleteDataOnQuit
-This policy script deletes application data when an application quits. It is called as the user and triggered by an **AppDidTerminate** event.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>AppData</key>
-			<array>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.apple.finder</string>
-					<key>Path</key>
-					<array>
-						<string>/.Trash/</string>
-					</array>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.adobe.AdobePremierePro</string>
-					<key>Path</key>
-					<array>
-						<string>/Library/Application Support/Adobe/Common/Media Cache Files/</string>
-						<string>/Library/Application Support/Adobe/Common/Media Cache/</string>
-					</array>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>org.chromium.Chromium</string>
-					<key>Path</key>
-					<array>
-						<string>/Library/Application Support/Chromium/Default/Pepper Data/</string>
-					</array>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.google.Chrome</string>
-					<key>Path</key>
-					<array>
-						<string>/Library/Application Support/Google/Chrome/Default/Pepper Data/</string>
-					</array>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>AppDeleteDataOnQuit</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>AppDidTerminate</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
-
-
-The **AppData** array contains an **ApplicationBundleIdentifier** followed by a **Path** array containing the paths that should be deleted when the stated application quits. Paths are relative to the user home.
-
-In the above example, the ApplicationBundleIdentifier **com.apple.finder** is followed by the Path **/.Trash/**. This will cause the contents of **~/.Trash/** to be deleted when the Finder quits (at user log out).
-
-The config also contains entries for Google Chrome, Chromium and Adobe Premiere that will delete application data when each of these applications is quit.
-
-The example policy config should be configured to your own needs.
-
-###AppFirstSetupFirefox
-This policy script sets up Firefox first run behaviour. It is called as the user and triggered by an **AppWillLaunch** event.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Name</key>
-		<string>AppFirstSetupFirefox</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>AppWillLaunch</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-	
-The policy creates a blank Firefox profile at first launch - so that users aren't asked to create one.
-
-There are no configurable parameters.
-
-###AppNetworkFixFirefox
-This policy script sets up Firefox so that it can run on network homes. It is called as the user and triggered by the **AppWillLaunch** and **AppDidTerminate** events.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Name</key>
-		<string>AppNetworkFixFirefox</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>AppWillLaunch</string>
-			<string>AppDidTerminate</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-When user homes are on the network (i.e. not forced local) - then Firefox has trouble placing file locks on the files places.sqlite-shm, webappsstore.sqlite-shm and cookies.sqlite-shm - preventing the Firefox from loading.
-
-This policy creates symbolic links to local versions of the files during application launch, and then deletes the symbolic links when the application quits.
-
-There are no configurable parameters.
-
-###AppRestrict
-This policy script restricts application usage depending on a blacklist or whitelist. It is called as the user and triggered by an **AppWillLaunch** event.
-
-The example config contains the following:
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>BlackList</key>
-			<array>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com\.apple\.Terminal</string>
-					<key>ApplicationName</key>
-					<string>Terminal</string>
-				</dict>
-			</array>
-			<key>ExceptionList</key>
-			<array>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com\.apple\.print\.PrinterProxy</string>
-					<key>ApplicationName</key>
-					<string>PrinterProxy</string>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com\.google\.Chrome\.app\..*</string>
-					<key>ApplicationName</key>
-					<string>.*</string>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com\.citrixonline\.mac\.WebDeploymentApp</string>
-					<key>ApplicationName</key>
-					<string>Citrix Online Launcher</string>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com\.citrixonline\.GoToMeeting</string>
-					<key>ApplicationName</key>
-					<string>GoToMeeting.*</string>
-				</dict>
-			</array>
-			<key>OnlyAllowLocalApps</key>
-			<true/>
-			<key>PathBlackList</key>
-			<array>
-				<string>~/.*</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>AppRestrict</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>AppWillLaunch</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
+	<key>Name</key>
+	<string>App-Restrict</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+	</array>
 
 This policy restricts what Apps users can launch.
+
+![AD Group Members Tab, Members](images/AppRestrictPopupMac.jpg "App-Restrict")
 
 If the **WhiteList** is not null, then these Applications (and only these) are allowed. When the WhiteList is not null, then it should at least contain:
 
@@ -732,7 +781,7 @@ If the **WhiteList** is not null, then these Applications (and only these) are a
 			</dict>
 		</array>
 
-Any Application in the **BlackList** is always disallowed for non-admins. The example BlackList contains the following, which prevents non-admins from launchin the Terminal App:
+Any Application in the **BlackList** is always disallowed for non-admins. The example BlackList contains the following, which prevents non-admins from launching the Terminal App:
 
 		<key>BlackList</key>
 		<array>
@@ -746,7 +795,7 @@ Any Application in the **BlackList** is always disallowed for non-admins. The ex
 
 Any Application defined in the **ExceptionList** is exempt from Whitelist/BlackList checking. This allows you to have Apps that will run from any location without having to implement a whitelist.
 
-The example ExceptionList contains the following, which allows the Printer Proxy App to run. The printer proxy App always runs from the user home - without this entry - user would not be able to print.
+The example ExceptionList contains the following, which allows the Printer Proxy App to run. The printer proxy App always runs from the user home - without this entry - the user would not be able to print.
 
 		<key>ExceptionList</key>
 		<array>
@@ -772,7 +821,7 @@ Regular expressions should be used. ~/ is expanded to the current user home befo
 
 Any application located at a path in the **PathBlackList** is always disallowed for non-admins.
 
-The example PathBlackList contains the following, which prevents users from launchin Applications from their home area.
+The example PathBlackList contains the following, which prevents users from launching Applications from their home area.
 
 		<key>PathBlackList</key>
 		<array>
@@ -788,8 +837,8 @@ Finally, the **OnlyAllowLocalApps** key prevents Apps from running from mounted 
 
 The example policy config should be configured to your own needs.
 
-###AppShowHints
-This policy script shows a hint when a specified application opened. It is called as the user and triggered by an **AppWillLaunch** event. This script uses CocoaDialog.
+### App-ShowHints
+This policy script shows a hint when a specified application opened. It is called as the user and triggered by an **App-WillLaunch** event. This script uses CocoaDialog.
 
 The config consista of a single array called **AppHint**. 
 
@@ -797,492 +846,96 @@ Each entry in the array should contain at least an **ApplicationBundleIdentifier
 
 You can also optionally define **IsAdmin**, **IsLocalAccount** and **IsLocalHome**. The message hint will only be shown if the status of these keys (true/false) match the status of the current user.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>AppHint</key>
-			<array>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.apple.logic10</string>
-					<key>IsAdmin</key>
-					<false/>
-					<key>IsLocalAccount</key>
-					<false/>
-					<key>IsLocalHome</key>
-					<false/>
-					<key>MessageContent</key>
-					<string>APPNAME works better off network</string>
-					<key>MessageTitle</key>
-					<string>ON NETWORK</string>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.adobe.AdobePremierePro</string>
-					<key>MessageContent</key>
-					<string>Setup your Media Cache File location (Premiere&gt;Preferences&gt;Media)</string>
-					<key>MessageTitle</key>
-					<string>NOW SET YOUR PREFS</string>
-				</dict>
-				<dict>
-					<key>ApplicationBundleIdentifier</key>
-					<string>com.apple.FinalCutPro</string>
-					<key>MessageContent</key>
-					<string>Final Cut Pro&gt;System Settings...&gt;Scratch Disks</string>
-					<key>MessageTitle</key>
-					<string>NOW SET YOUR PREFS</string>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>AppShowHints</string>
-		<key>TriggeredBy</key>
+		<key>AppHint</key>
 		<array>
-			<string>AppDidLaunch</string>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.apple.logic10</string>
+				<key>IsAdmin</key>
+				<false/>
+				<key>IsLocalAccount</key>
+				<false/>
+				<key>IsLocalHome</key>
+				<false/>
+				<key>MessageContent</key>
+				<string>APPNAME works better off network</string>
+			</dict>
+			<dict>
+				<key>ApplicationBundleIdentifier</key>
+				<string>com.adobe.AdobePremierePro</string>
+				<key>MessageContent</key>
+				<string>Setup your Media Cache File location (Premiere&gt;Preferences&gt;Media)</string>
+			</dict>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>App-ShowHints</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-DidLaunch</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
-###SystemUpdate
+### Gen-Debug
 
-This policy script handles software updates. It is called as root and triggered by the **LoginWindowIdle** and **ManualUpdate** events.
+Writes internal global variables info to the policy prefs. You should modify the **TriggeredBy** array to catch the events that you wish to debug.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Name</key>
+	<string>Gen-Debug</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Usr-AtDesktop</string>
+	</array>
+
+### Gen-ExamplePolicy
+
+This is an example General Policy script which could be used as a blank canvas for your own general policy. A general policy is one that could be called as root or user. This policy uses the 'say' command to speak whenever it is triggered by an event - and is useful in its current form as a way to determine when and if events are actually happening.
+
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>LoginWindowIdleShutdownSecs</key>
-			<integer>1200</integer>
-			<key>OutOfHoursEndTime</key>
-			<string>05:00</string>
-			<key>OutOfHoursPowerOn</key>
-			<true/>
-			<key>OutOfHoursStartTime</key>
-			<string>22:00</string>
-			<key>Script</key>
-			<dict>
-				<key>Exe</key>
-				<array>
-					<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
-					<string>192.168.0.3,sha1,0,-I,42000</string>
-				</array>
-			</dict>
-		</dict>
-		<key>Name</key>
-		<string>SystemUpdate</string>
-		<key>TriggeredBy</key>
+		<key>ExampleArray</key>
 		<array>
-			<string>LoginWindowIdle</string>
-			<string>ManualUpdate</string>
+			<string>First</string>
+			<string>Second</string>
+			<string>Third</string>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>ExampleBool</key>
+		<true/>
+		<key>ExampleNum</key>
+		<integer>42</integer>
+		<key>ExampleString</key>
+		<string>Example</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Gen-ExamplePolicy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+		<string>App-DidLaunch</string>
+		<string>App-DidTerminate</string>
+		<string>Usr-AtDesktop</string>
+		<string>Usr-Poll</string>
+		<string>Usr-Idle</string>
+		<string>Sys-Boot</string>
+		<string>Sys-ConsoleUserLoggedIn</string>
+		<string>Sys-ConsoleUserLoggedOut</string>
+		<string>Sys-ConsoleUserSwitch</string>
+		<string>Sys-Poll</string>
+		<string>Sys-Idle</string>
+		<string>Sys-LoginWindow</string>
+		<string>Sys-LoginWindowPoll</string>
+		<string>Sys-LoginWindowIdle</string>
+		<string>Sys-NetworkUp</string>
+		<string>Sys-NetworkDown</string>
+		<string>Sys-ActiveDirectoryUp</string>
+	</array>
 
-Updates are generally done out-of-hours. The policy config defines the start and end of the out-of-hours period via **OutOfHoursStartTime** and **OutOfHoursEndTime**.
+### Gen-OfficeHours
 
-	<key>OutOfHoursStartTime</key>
-	<string>22:00</string>
-	<key>OutOfHoursEndTime</key>
-	<string>05:00</string>
-	
-The **OutOfHoursPowerOn** variable defines whether or not we the policy schedules a power-on during the out-of hours period. If true, the workstation will power-on at a random time between the start and end of out-of-hours.
-
-	<key>OutOfHoursPowerOn</key>
-	<true/>
-	
-When a Mac is switched on out-of-hours, and then left idle at the log in screen - a software update will be performed. If a workstation is never switched on out-of-hours, then software updates will never be performed.
-
-The software update mechanism is determined from the **Script** key. This key holds an **Exe** array that consists of a script location, followed by script arguments.
-
-	<key>Script</key>
-	<dict>
-		<key>Exe</key>
-		<array>
-			<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
-			<string>192.168.0.3,sha1,0,-I,42000</string>
-		</array>
-	</dict>
-
-In the example above, a scheduled update will execute the following command:
-
-	/usr/local/LabWarden/lib/RadmindUpdate "192.168.0.3,sha1,0,-I, 42000"
-
-The purpose of the **Script** key is to define a script that deploys software to the workstation. There is no fixed mechanism imposed by LabWarden. You may use munki or you may use Radmind. This is all left to you and your own custom script.
-
-Finally, the **LoginWindowIdleShutdownSecs** key specifies how long we can be idle at the LoginWindow before performing the shutdown. You should note that a **gpupdate -force** will be performed before an idle shut-down.  
-
-	<key>LoginWindowIdleShutdownSecs</key>
-	<integer>1200</integer>
-
-A value of 0, indicates that we should not power off when idle.
-
-In order to get the SystemUpdate policy working for you, you should:
-
-* Create a custom software update script and make it available on the workstation.
-* Customise the SystemUpdate config.
-* Use PackForDeployment on the config.
-* Create a group, then copy the packed text to the group Notes field
-* Make your workstation(s) a member of the group
-
-The example policy config should be configured to your own needs.
-
-###SystemAddEntriesToHostsFile
-
-This policy adds entries to /etc/hosts. The policy is called as root and triggered by the **Boot** event.
-
-The config consists of a **Entry** array, containing an **IP4** key (IP address) and a **Host** array. 
-
-The specified hosts will resolve to the specified IP address.
-
-The example config may be of help to prevent user being nagged by a log in window when using Office 2016 behind a proxy.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Entry</key>
-			<array>
-				<dict>
-					<key>Host</key>
-					<array>
-						<string>prod-w.nexus.live.com.akadns.net</string>
-						<string>odc.officeapps.live.com</string>
-						<string>omextemplates.content.office.net</string>
-						<string>officeclient.microsoft.com</string>
-					</array>
-					<key>IP4</key>
-					<string>127.0.0.1</string>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemAddEntriesToHostsFile</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-###SystemDeleteFiles
-
-**USE WITH CAUTION**
-
-This policy deletes files from /. It will reboot after the files have been successfully deleted. It is called as root and triggered by the **Boot** event.
-
-The config consists of a **Path** array, containing a list of files and directories that should be deleted. Useful if you want to quickly delete a bunch of files from a number of workstations.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Path</key>
-			<array>
-				<string>/Applications/Utilities/Adobe Flash Player Install Manager.app/</string>
-				<string>/Library/Application Support/Adobe/Flash Player Install Manager/</string>
-				<string>/Library/Internet Plug-Ins/Flash Player.plugin/</string>
-				<string>/Library/Internet Plug-Ins/PepperFlashPlayer/</string>
-				<string>/Library/LaunchDaemons/com.adobe.fpsaud.plist</string>
-				<string>/Library/PreferencePanes/Flash Player.prefPane/</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemDeleteFiles</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###SystemDeleteOldUserProfiles
-
-**USE WITH CAUTION**
-
-This policy deletes outdated user profiles. It is called as root and triggered by the  **LoginWindowIdle** event.
-
-The **LoginMaxAgeDays** key defines how long to wait between logins before deleting the profile. The example below sets this at 62. This means that if a user does not log in for over 62 days, the users' profile will be deleted from /Users and from /private/var/folders.
-
-This LoginMaxAgeDays key deletes profiles for network users, not local users.
-
-The **UserCacheEarliestEpoch** key sets a value for the earliest profile creation epoch. Any user folders in /private/var/folders created before this epoch will be deleted. This is useful when updating from one OS to another - since old user profiles can cause issues.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>LoginMaxAgeDays</key>
-			<integer>62</integer>
-			<key>UserCacheEarliestEpoch</key>
-			<integer>1462365175</integer>
-		</dict>
-		<key>Name</key>
-		<string>SystemDeleteOldUserProfiles</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>LoginWindowIdle</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###SystemEstablish8021XWiFi
-
-This policy requests then installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X. It is called as root and triggered by the **NetworkUp** event.
-
-To successfully acquire a computer certificate from your certificate server, you need to configure the **CertAuthURL**, **CertTemplate** keys.
-
-The **SSIDSTR** key is the SSID of the Wi-Fi network to be used. The **ProxyType** key value should be set to either 'None' or 'Auto'.
-
-The **RenewCertBeforeDays** key allows the certificate to auto-renew when it is about to expire.
-
-The **RevokeCertBeforeEpoch** key allows the certificate to be revoked and renewed if it was issued before a particular date.
-
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>CertAuthURL</key>
-			<string>https://yourcaserer.yourdomain/certsrv</string>
-			<key>CertTemplate</key>
-			<string>Mac-Computer</string>
-			<key>ProxyType</key>
-			<string>Auto</string>
-			<key>RenewCertBeforeDays</key>
-			<integer>28</integer>
-			<key>RevokeCertBeforeEpoch</key>
-			<integer>0</integer>
-			<key>SSIDSTR</key>
-			<string>YourSSID</string>
-		</dict>
-		<key>Name</key>
-		<string>SystemEstablish8021XWiFi</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>NetworkUp</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-When the policy successfully completes, a device profile that is installed named after your Wi-Fi SSID. This profile contains the Wi-Fi settings and a Computer Certificate.
-
-If there are issues getting a computer certificate, examine the labwarden log. The log can be found here: 
-
-	/Library/Logs/com.github.execriez.LabWarden/LabWarden.log
-
-
-###SystemGiveSystemProxyAccess
-
-This policy gives specific processes access to the internet through a proxy using the Active Directory workstation credentials. It is called as root and triggered by the **Boot** event.
-
-The config consists of an array called **Proxy**. Each entry in the array contains **ProxyAddress**, **ProxyPort**, **ProxyProtocol** and **Process**. Process is an array of processes that will be given workstation credentials when accessing the internet via the proxy.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Proxy</key>
-			<array>
-				<dict>
-					<key>Process</key>
-					<array>
-						<string>/usr/sbin/ocspd</string>
-					</array>
-					<key>ProxyAddress</key>
-					<string>PROXYADDRESS</string>
-					<key>ProxyPort</key>
-					<string>PROXYPORT</string>
-					<key>ProxyProtocol</key>
-					<string>http</string>
-				</dict>
-				<dict>
-					<key>Process</key>
-					<array>
-						<string>/usr/sbin/ocspd</string>
-					</array>
-					<key>ProxyAddress</key>
-					<string>PROXYADDRESS</string>
-					<key>ProxyPort</key>
-					<string>PROXYPORT</string>
-					<key>ProxyProtocol</key>
-					<string>htps</string>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemGiveSystemProxyAccess</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###SystemInstallPackageFromFolder
-
-This policy installs packages from a specified folder. It is called as root and triggered by the **Boot** event.
-
-The config consists of a **Path** array, containing a list of folders that contain packages to install. A record of package installs is kept so that the same package is not installed more than once.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Path</key>
-			<array>
-				<string>/usr/local/Updates</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemInstallPackageFromFolder</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###SystemNetworkProxy
-This policy sets the web proxy. It is called as root and triggered by the **NetworkUp** event.
-
-The config contains the usual proxy options.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>AutoProxy</key>
-			<dict>
-				<key>Enabled</key>
-				<false/>
-				<key>URL</key>
-				<string></string>
-			</dict>
-			<key>FTPProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-			<key>GopherProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-			<key>ProxyAutoDiscovery</key>
-			<dict>
-				<key>Enabled</key>
-				<true/>
-			</dict>
-			<key>ProxyBypassDomains</key>
-			<array>
-				<string>*.local</string>
-				<string>169.254/16</string>
-				<string>127.0.0.1</string>
-				<string>localhost</string>
-			</array>
-			<key>SOCKSProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-			<key>SecureWebProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-			<key>StreamingProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-			<key>WebProxy</key>
-			<dict>
-				<key>Address</key>
-				<string></string>
-				<key>Enabled</key>
-				<false/>
-				<key>Port</key>
-				<integer>8080</integer>
-			</dict>
-		</dict>
-		<key>Name</key>
-		<string>SystemNetworkProxy</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>NetworkUp</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-
-##SystemOfficeHours
 This policy can restrict user logins to defined office-hours. It can also produce some simple stats that show how much a workstation is used during those hours. 
 
 ![AD Group Members Tab, Members](images/OfficeHours.jpg "Office Hours")
@@ -1356,9 +1009,9 @@ The **UnrestrictedHoursOnClosedDays** key specifies whether we should relax all 
 		<key>UnrestrictedHoursOnClosedDays</key>
 		<true/>
 
-The **LogoutUserIdleSecs** key specifies how long a user is allowed to be idle before being logged out. The value 1800 below means that users will be logged out after 30 mins of idleness. A value of 0 means that users will never be logged out. Users that are members of a group defined in the ForceLogoutExceptionGroup array will not be logged out.
+The **LogoutUsr-IdleSecs** key specifies how long a user is allowed to be idle before being logged out. The value 1800 below means that users will be logged out after 30 mins of idleness. A value of 0 means that users will never be logged out. Users that are members of a group defined in the ForceLogoutExceptionGroup array will not be logged out.
 
-		<key>LogoutUserIdleSecs</key>
+		<key>LogoutUsr-IdleSecs</key>
 		<integer>1800</integer>
 
 You should note that idle user logout can also be achieved via a mobileconfig.
@@ -1569,90 +1222,590 @@ The **HolidayHours** array specifies periods when a lab has modified opening tim
 		</dict>
 	</array>
 
-###SystemRemoteManagement
+
+### Gen-UnloadAgentsAndDaemons
+This policy unloads (disables) specific Agents and Daemons. It is called as root and triggered by the **Sys-Boot** and **Usr-ConsoleUserLoggedIn** events.
+
+The example config unloads the UserNotificationCenter. This can be useful to prevent unwanted pop-ups if behind a internet proxy.
+
+	<key>Config</key>
+	<dict>
+		<key>Unload</key>
+		<array>
+			<string>com.apple.UserNotificationCenter</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Gen-UnloadAgentsAndDaemons</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Usr-ConsoleUserLoggedIn</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+
+### Sys-ADCompCert8021XWiFi
+
+This policy requests then installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X. It is called as root and triggered by the **Sys-NetworkUp** event.
+
+To successfully acquire a computer certificate from your certificate server, you need to configure the **CertAuthURL**, **CertTemplate** keys.
+
+The **SSIDSTR** key is the SSID of the Wi-Fi network to be used. The **ProxyType** key value should be set to either 'None' or 'Auto'.
+
+The **RenewCertBeforeDays** key allows the certificate to auto-renew when it is about to expire.
+
+The **RevokeCertBeforeEpoch** key allows the certificate to be revoked and renewed if it was issued before a particular date.
+
+	<key>Config</key>
+	<dict>
+		<key>CertAuthURL</key>
+		<string>https://yourcaserver.yourdomain/certsrv</string>
+		<key>CertTemplate</key>
+		<string>Mac-Computer</string>
+		<key>ProxyType</key>
+		<string>Auto</string>
+		<key>RenewCertBeforeDays</key>
+		<integer>28</integer>
+		<key>RevokeCertBeforeEpoch</key>
+		<integer>0</integer>
+		<key>SSIDSTR</key>
+		<string>YourSSID</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-ADCompCert8021XWiFi</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+When the policy successfully completes, a device profile that is installed named after your Wi-Fi SSID. This profile contains the Wi-Fi settings and a Computer Certificate.
+
+If there are issues getting a computer certificate, examine the LabWarden system log. The log can be found here: 
+
+	/Library/Logs/com.github.execriez.labWarden.log
+
+
+### Sys-AddEntriesToHostsFile
+
+This policy adds entries to /etc/hosts. The policy is called as root and triggered by the **Sys-Boot** event.
+
+The config consists of a **Entry** array, containing an **IP4** key (IP address) and a **Host** array. 
+
+The entry will force the specified hosts to resolve to the specified IP address.
+
+	<key>Config</key>
+	<dict>
+		<key>Entry</key>
+		<array>
+			<dict>
+				<key>Host</key>
+				<array>
+					<string>prod-w.nexus.live.com.akadns.net</string>
+					<string>odc.officeapps.live.com</string>
+					<string>omextemplates.content.office.net</string>
+					<string>officeclient.microsoft.com</string>
+					<string>store.office.com</string>
+					<string>nexusrules.officeapps.live.com</string>
+					<string>nexus.officeapps.live.com</string>
+				</array>
+				<key>IP4</key>
+				<string>127.0.0.1</string>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-AddEntriesToHostsFile</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
+
+The example config (may) be of help to prevent user being nagged by a log in window when using Office 2016 behind a proxy.
+
+The example policy config should be configured to your own needs.
+
+
+### Sys-AddPrinter
+
+This policy adds a printer. The policy is called as root and triggered by the **Sys-Boot** and **Sys-Poll** events.
+
+The **DisplayName**, **DeviceURI**, **PPDURI**, **Options** and **Location** keys define printer options. 
+
+The **DeviceURI** key is the address of the printer queue, for example "lpd://192.168.0.5/" or "mdns://someprinter%20%40%20yourprintserver._ipp._tcp.local."
+
+The **PPDURI** key is the address of the printer PPD file, for example "file://localhost/Library/Printers/PPDs/Contents/Resources/printermodel.gz" or "http://yourprintserver:631/printers/someprinter.ppd"
+
+	<key>Config</key>
+	<dict>
+		<key>DeviceURI</key>
+		<string>smb://PRINTSRV.example.com/Marketing-Laser2020</string>
+		<key>DisplayName</key>
+		<string>Marketing-Laser2020</string>
+		<key>Location</key>
+		<string>Marketing</string>
+		<key>Options</key>
+		<string>-o printer-is-shared=false -o printer-error-policy=abort-job -o PageSize=A4 -o HPBookletPageSize=A4</string>
+		<key>PPDURI</key>
+		<string>file://localhost/Library/Printers/PPDs/Contents/Resources/HP Color LaserJet CP2020 Series.gz</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-AddPrinter</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Sys-Poll</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Sys-ADTrustAccountProxyAccess
+
+This policy gives specific processes access to the internet through a proxy using the Active Directory workstation credentials. The policy is only active when on the AD network to which the workstation is bound.
+
+It is called as root and triggered by the **Sys-Boot** and **Sys-NetworkUp** events.
+
+The config consists of an array called **Proxy**. Each entry in the array contains **ProxyAddress**, **ProxyPort**, **ProxyProtocol** and **Process**. Process is an array of processes that will be given workstation credentials when accessing the internet via the proxy.
+
+	<key>Config</key>
+	<dict>
+		<key>Proxy</key>
+		<array>
+		<dict>
+				<key>Address</key>
+				<string>PROXYADDRESS</string>
+				<key>Port</key>
+				<string>PROXYPORT</string>
+				<key>Process</key>
+				<array>
+					<string>/usr/sbin/ocspd</string>
+				</array>
+				<key>Protocol</key>
+				<string>http</string>
+			</dict>
+			<dict>
+				<key>Address</key>
+				<string>PROXYADDRESS</string>
+				<key>Port</key>
+				<string>PROXYPORT</string>
+				<key>Process</key>
+				<array>
+					<string>/usr/sbin/ocspd</string>
+				</array>
+				<key>Protocol</key>
+				<string>htps</string>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-ADTrustAccountProxyAccess</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+
+### Sys-ADUserExperience
+
+This policy sets how user homes on network accounts are handled. These are the options from the "User Experience" tab of the Directory Utility app. It is called as root and triggered by the **Sys-Boot** event.
+
+The **ActiveForDomain** array limits the policy to the specified domain(s) as determined by the DHCP server (option 15). Valid settings for the domain are null, "NONE", "ADDOMAIN", "your.company.domain" or "ALL". null and "NONE" will only match when there is no domain specified by DHCP. "ADDOMAIN" matches the active directory domain to which the workstation is bound. "ALL" matches all domains (including null).
+
+Note, if the **alldomains** option is set to 'true', '/Search' and '/Search/Contacts' are both set to search 'All Domains'.
+
+If **alldomains** is set to false, '/Search' and '/Search/Contacts' default are set to search the workstation domain.
+
+	<key>Config</key>
+	<dict>
+		<key>ActiveForDomain</key>
+		<array>
+			<string>ADDOMAIN</string>
+		</array>
+		<key>alldomains</key>
+		<true/>
+		<key>localhome</key>
+		<true/>
+		<key>mobile</key>
+		<false/>
+		<key>mobileconfirm</key>
+		<false/>
+		<key>preferredserver</key>
+		<string></string>
+		<key>protocol</key>
+		<string>smb</string>
+		<key>sharepoint</key>
+		<true/>
+		<key>useuncpath</key>
+		<true/>
+	</dict>
+	<key>Name</key>
+	<string>Sys-ADUserExperience</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+
+### Sys-Defaults
+
+This policy over-rides inbuilt hard-coded defaults. These are the current defaults that can be changed:
+
+	UseLoginhook                    - Whether we should use the com.apple.loginwindow LoginHook & LogoutHook (false)
+	LoadConfigsFromADnotes          - Whether we should load policy configs from the AD notes field (true)
+	MaxLogSizeBytes                 - Maximum length of LabWarden logs (81920 bytes)
+	LogIsActive                     - Whether we should log by default (true) 
+	GPforceAgeMinutes               - How old the policies need to be for gpupdate -force to do updates (1 minute)
+	GPquickAgeMinutes               - How old the policies need to be for gpupdate -quick to do updates (259200 minutes = 180 days)
+	GPdefaultAgeMinutes             - How old the policies need to be for gpupdate to do updates (360 minutes = 6 hours)
+	LogLevelTrap                    - The default logging level (6 = info)
+	NotifyLevelTrap                 - The default logging level (6 = info)
+
+Logs and notifications will not be shown unless the message has a level less than or equal to the relevant **LogLevelTrap** or **NotifyLevelTrap**
+
+Theses are the log level values.
+
+	(0) Emergency, system is unusable
+	(1) Alert, should be corrected immediately
+	(2) Critical, critical conditions (some kind of failure in the systems primary function)
+	(3) Error, error conditions
+	(4) Warning, may indicate that an error will occur if no action is taken
+	(5) Notice, events that are unusual, but not error conditions
+	(6) Informational, normal operational messages that require no action
+	(7) Debug, information useful for developing and debugging
+
+If you wish to show debug messages in the log files, change **LogLevelTrap** to 7 (Debug). If you wish to only show errors, change **LogLevelTrap** to 3 (Error).
+
+	<key>Config</key>
+	<dict>
+		<key>GPdefaultAgeMinutes</key>
+		<integer>360</integer>
+		<key>GPforceAgeMinutes</key>
+		<integer>1</integer>
+		<key>GPquickAgeMinutes</key>
+		<integer>259200</integer>
+		<key>LoadConfigsFromADnotes</key>
+		<true/>
+		<key>LogIsActive</key>
+		<true/>
+		<key>LogLevelTrap</key>
+		<integer>6</integer>
+		<key>MaxLogSizeBytes</key>
+		<integer>81920</integer>
+		<key>NotifyLevelTrap</key>
+		<integer>6</integer>
+		<key>UseLoginhook</key>
+		<false/>
+	</dict>
+	<key>Name</key>
+	<string>Sys-Defaults</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+
+### Sys-DeleteFiles
+
+**USE WITH CAUTION**
+
+This policy deletes files from /. It will reboot after the files have been successfully deleted. It is called as root and triggered by the **Sys-Boot** event.
+
+The config consists of a **Path** array, containing a list of files and directories that should be deleted. Useful if you want to quickly delete a bunch of files from a number of workstations.
+
+	<key>Config</key>
+	<dict>
+		<key>Path</key>
+		<array>
+			<string>/Applications/Utilities/Adobe Flash Player Install Manager.app/</string>
+			<string>/Library/Application Support/Adobe/Flash Player Install Manager/</string>
+			<string>/Library/Internet Plug-Ins/Flash Player.plugin/</string>
+			<string>/Library/Internet Plug-Ins/PepperFlashPlayer/</string>
+			<string>/Library/LaunchDaemons/com.adobe.fpsaud.plist</string>
+			<string>/Library/PreferencePanes/Flash Player.prefPane/</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-DeleteFiles</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Sys-DeleteOldUserProfiles
+
+**USE WITH CAUTION**
+
+This policy deletes outdated user profiles. It is called as root and triggered by the  **Sys-LoginWindowIdle** event.
+
+The **LoginMaxAgeDays** key defines how long to wait between logins before deleting the profile. The example below sets this at 62. This means that if a user does not log in for over 62 days, the users' profile will be deleted from /Users and from /private/var/folders.
+
+This LoginMaxAgeDays key deletes profiles for network users, not local users.
+
+The **UserCacheEarliestEpoch** key sets a value for the earliest profile creation epoch. Any user folders in /private/var/folders created before this epoch will be deleted. This is useful when updating from one OS to another - since old user profiles can cause issues.
+
+	<key>Config</key>
+	<dict>
+		<key>LoginMaxAgeDays</key>
+		<integer>62</integer>
+		<key>UserCacheEarliestEpoch</key>
+		<integer>1462365175</integer>
+	</dict>
+	<key>Name</key>
+	<string>Sys-DeleteOldUserProfiles</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-LoginWindowIdle</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Sys-ExamplePolicy
+
+This is an example System Policy script which could be used as a blank canvas for your own system policy. A system policy is one that is called as the root user. This policy uses the 'say' command to speak whenever it is triggered by an event - and is useful in its current form as a way to determine when and if events are actually happening.
+
+	<key>Config</key>
+	<dict>
+		<key>ExampleArray</key>
+		<array>
+			<string>First</string>
+			<string>Second</string>
+			<string>Third</string>
+		</array>
+		<key>ExampleBool</key>
+		<true/>
+		<key>ExampleNum</key>
+		<integer>42</integer>
+		<key>ExampleString</key>
+		<string>Example</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-ExamplePolicy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Sys-ConsoleUserLoggedIn</string>
+		<string>Sys-ConsoleUserLoggedOut</string>
+		<string>Sys-ConsoleUserSwitch</string>
+		<string>Sys-Poll</string>
+		<string>Sys-Idle</string>
+		<string>Sys-LoginWindow</string>
+		<string>Sys-LoginWindowPoll</string>
+		<string>Sys-LoginWindowIdle</string>
+		<string>Sys-NetworkUp</string>
+		<string>Sys-NetworkDown</string>
+		<string>Sys-ActiveDirectoryUp</string>
+	</array>
+
+### Sys-InstallPackageFromFolder
+
+This policy installs packages from a specified folder. It is called as root and triggered by the **Sys-Boot** event.
+
+The config consists of a **Path** array, containing a list of folders that contain packages to install. A record of package installs is kept so that the same package is not installed more than once.
+
+	<key>Config</key>
+	<dict>
+		<key>Path</key>
+		<array>
+			<string>/usr/local/Updates</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-InstallPackageFromFolder</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-LoginWindowIdle</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Sys-NetworkProxy
+This policy sets the web proxy. It is called as root and triggered by the **Sys-NetworkUp** event.
+
+The **ActiveForDomain** key limits the policy to a specified domain as determined by the DHCP server (option 15).
+
+The config contains the usual proxy options.
+
+	<key>Config</key>
+	<dict>
+		<key>ActiveForDomain</key>
+		<array>
+			<string>ALL</string>
+		</array>
+		<key>ExceptionsList</key>
+		<array>
+			<string>*.local</string>
+			<string>169.254/16</string>
+			<string>127.0.0.1</string>
+			<string>localhost</string>
+		</array>
+		<key>FTPEnable</key>
+		<false/>
+		<key>FTPPort</key>
+		<integer>8080</integer>
+		<key>FTPProxy</key>
+		<string></string>
+		<key>GopherEnable</key>
+		<false/>
+		<key>GopherPort</key>
+		<integer>8080</integer>
+		<key>GopherProxy</key>
+		<string></string>
+		<key>HTTPEnable</key>
+		<false/>
+		<key>HTTPPort</key>
+		<integer>8080</integer>
+		<key>HTTPProxy</key>
+		<string></string>
+		<key>HTTPSEnable</key>
+		<false/>
+		<key>HTTPSPort</key>
+		<integer>8080</integer>
+		<key>HTTPSProxy</key>
+		<string></string>
+		<key>ProxyAutoConfigEnable</key>
+		<false/>
+		<key>ProxyAutoConfigURLString</key>
+		<string></string>
+		<key>ProxyAutoDiscoveryEnable</key>
+		<true/>
+		<key>RTSPEnable</key>
+		<false/>
+		<key>RTSPPort</key>
+		<integer>8080</integer>
+		<key>RTSPProxy</key>
+		<string></string>
+		<key>SOCKSEnable</key>
+		<false/>
+		<key>SOCKSPort</key>
+		<integer>8080</integer>
+		<key>SOCKSProxy</key>
+		<string></string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-NetworkProxy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+
+### Sys-PolicyBanner
+
+This policy sets a policy banner which is displayed at the Login Window. It is called as root and triggered by the **Sys-Boot** event.
+
+The config consists of a **Title** key and a **Text** key. The banner displays the title in bold followed by the text in plain type.
+
+	<key>Config</key>
+	<dict>
+		<key>Title</key>
+		<string>By clicking Accept,
+	you are agreeing to abide by the
+	Acceptable Use Policy.</string>
+		<key>Text</key>
+		<string>Anyone whose behaviour
+	is not in accordance with this Code of Practice
+	may be subject to withdrawal of network access
+	and subject to the disciplinary procedure.
+
+	This is in keeping with the
+	Disciplinary regulations.</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-PolicyBanner</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
+
+![AD Group Members Tab, Members](images/PolicyBannerPopupMac.jpg "Policy Banner")
+
+
+### Sys-RemoteManagement
 
 This policy sets up remote user access via Apple's "Remote Desktop" application and via screen sharing using the Finder menu's "connect to Server..." with the address "vnc://someworkstation.local". 
 
 It can set up access for local users, and for directory users.
 
-It is called as root and triggered by the **Boot** and **NetworkUp** events.
+It is called as root and triggered by the **Sys-Boot** and **Sys-NetworkUp** events.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Groups</key>
-			<array>
-				<dict>
-					<key>Access</key>
-					<string>admin</string>
-					<key>Name</key>
-					<string>dirgroup1</string>
-				</dict>
-				<dict>
-					<key>Access</key>
-					<string>interact</string>
-					<key>Name</key>
-					<string>dirgroup2</string>
-				</dict>
-			</array>
-			<key>LocalUsers</key>
-			<array>
-				<dict>
-					<key>Name</key>
-					<string>localuser1</string>
-					<key>Privs</key>
-					<array>
-						<string>all</string>
-					</array>
-				</dict>
-				<dict>
-					<key>Name</key>
-					<string>localuser2</string>
-					<key>Privs</key>
-					<array>
-						<string>DeleteFiles</string>
-						<string>ControlObserve</string>
-						<string>TextMessages</string>
-						<string>ShowObserve</string>
-						<string>OpenQuitApps</string>
-						<string>GenerateReports</string>
-						<string>RestartShutDown</string>
-						<string>SendFiles</string>
-						<string>ChangeSettings</string>
-						<string>ObserveOnly</string>
-					</array>
-				</dict>
-			</array>
-			<key>Users</key>
-			<array>
-				<dict>
-					<key>Access</key>
-					<string>admin</string>
-					<key>Name</key>
-					<string>diruser1</string>
-				</dict>
-				<dict>
-					<key>Access</key>
-					<string>reports</string>
-					<key>Name</key>
-					<string>diruser4</string>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemRemoteManagement</string>
-		<key>TriggeredBy</key>
+		<key>Groups</key>
 		<array>
-			<string>Boot</string>
-			<string>NetworkUp</string>
+			<dict>
+				<key>Access</key>
+				<string>admin</string>
+				<key>Name</key>
+				<string>dirgroup1</string>
+			</dict>
+			<dict>
+				<key>Access</key>
+				<string>interact</string>
+				<key>Name</key>
+				<string>dirgroup2</string>
+			</dict>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>LocalUsers</key>
+		<array>
+			<dict>
+				<key>Name</key>
+				<string>localuser1</string>
+				<key>Privs</key>
+				<array>
+					<string>all</string>
+				</array>
+			</dict>
+			<dict>
+				<key>Name</key>
+				<string>localuser2</string>
+				<key>Privs</key>
+				<array>
+					<string>DeleteFiles</string>
+					<string>ControlObserve</string>
+					<string>TextMessages</string>
+					<string>ShowObserve</string>
+					<string>OpenQuitApps</string>
+					<string>GenerateReports</string>
+					<string>RestartShutDown</string>
+					<string>SendFiles</string>
+					<string>ChangeSettings</string>
+					<string>ObserveOnly</string>
+				</array>
+			</dict>
+		</array>
+		<key>Users</key>
+		<array>
+			<dict>
+				<key>Access</key>
+				<string>admin</string>
+				<key>Name</key>
+				<string>diruser1</string>
+			</dict>
+			<dict>
+				<key>Access</key>
+				<string>reports</string>
+				<key>Name</key>
+				<string>diruser4</string>
+			</dict>
+		</array>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-RemoteManagement</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Sys-NetworkUp</string>
+	</array>
 
 The **LocalUsers** array holds a list of local users who have access to ARD. This list contains a **Name** key and a **Privs** array. 
 
@@ -1685,225 +1838,205 @@ If you have some directory users who need to remotely view and control other peo
 They will then be able to connect to the remote screens of affected workstations via the Finder menu "connect to Server..." with the address "vnc://someworkstation.local".
 
 
-###SystemRestartIfNetMount
-This policy reboots if the workstation is at the LoginWindow and the system detects that there is a network drive mounted. This could indicate that a user has not been logged out properly - or that a screen is locked and someone has clicked "Switch User". It is called as root and triggered by the **LoginWindow** event.
+### Sys-RestartIfNetMounts
+This policy reboots if the workstation is at the LoginWindow and the system detects that there is a network drive mounted. This could indicate that a user has not been logged out properly - or that a screen is locked and someone has clicked "Switch User". It is called as root and triggered by the **Sys-LoginWindow** event.
 
 The policy has no configurable options.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Name</key>
+	<string>Sys-RestartIfNetMount</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-LoginWindow</string>
+	</array>
+
+### Sys-SleepSettings
+This policy system sleep options. It is called as root and triggered by the **Sys-LoginWindow** and **Sys-ConsoleUserLoggedIn** events.
+
+This allows different Battery/Power, DiskSleep, DisplaySleep, and SystemSleep options to be set depending on whether or not a user is logged in (Sys-ConsoleUserLoggedIn key) or whether the system is at the login window (Sys-LoginWindow key). The option units are specified in minutes.
+
+	<key>Config</key>
 	<dict>
-		<key>Name</key>
-		<string>SystemRestartIfNetMount</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>LoginWindow</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-###SystemSleepSettings
-This policy system sleep options. It is called as root and triggered by the **LoginWindow** and **LoginBegin** events.
-
-This allows different Battery/Power, DiskSleep, DisplaySleep, and SystemSleep options to be set depending on whether or not a user is logged in. The option units are specified in minutes.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
+		<key>Sys-ConsoleUserLoggedIn</key>
 		<dict>
-			<key>LoginBegin</key>
+			<key>Battery</key>
 			<dict>
-				<key>Battery</key>
-				<dict>
-					<key>DiskSleep</key>
-					<integer>3</integer>
-					<key>DisplaySleep</key>
-					<integer>2</integer>
-					<key>SystemSleep</key>
-					<integer>15</integer>
-				</dict>
-				<key>Power</key>
-				<dict>
-					<key>DiskSleep</key>
-					<integer>15</integer>
-					<key>DisplaySleep</key>
-					<integer>10</integer>
-					<key>SystemSleep</key>
-					<integer>0</integer>
-				</dict>
+				<key>DiskSleep</key>
+				<integer>3</integer>
+				<key>DisplaySleep</key>
+				<integer>2</integer>
+				<key>SystemSleep</key>
+				<integer>10</integer>
 			</dict>
-			<key>LoginWindow</key>
+			<key>Power</key>
 			<dict>
-				<key>Battery</key>
-				<dict>
-					<key>DiskSleep</key>
-					<integer>3</integer>
-					<key>DisplaySleep</key>
-					<integer>2</integer>
-					<key>SystemSleep</key>
-					<integer>0</integer>
-				</dict>
-				<key>Power</key>
-				<dict>
-					<key>DiskSleep</key>
-					<integer>15</integer>
-					<key>DisplaySleep</key>
-					<integer>10</integer>
-					<key>SystemSleep</key>
-					<integer>0</integer>
-				</dict>
+				<key>DiskSleep</key>
+				<integer>15</integer>
+				<key>DisplaySleep</key>
+				<integer>10</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
 			</dict>
 		</dict>
-		<key>Name</key>
-		<string>SystemSleepSettings</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>LoginWindow</string>
-			<string>LoginBegin</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>Sys-LoginWindow</key>
+		<dict>
+			<key>Battery</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>3</integer>
+				<key>DisplaySleep</key>
+				<integer>2</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
+			</dict>
+			<key>Power</key>
+			<dict>
+				<key>DiskSleep</key>
+				<integer>15</integer>
+				<key>DisplaySleep</key>
+				<integer>10</integer>
+				<key>SystemSleep</key>
+				<integer>0</integer>
+			</dict>
+		</dict>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-SleepSettings</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-LoginWindow</string>
+		<string>Sys-ConsoleUserLoggedIn</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
-###SystemTimeServer
-This policy sets the system time (ntp) server. It is called as root and triggered by the **Boot** event.
+### Sys-TimeServer
+This policy sets the system time (ntp) server. It is called as root and triggered by the **Sys-Boot** event.
 
-It has two configurable keys, **TimeServer** and **TimeZone**.
+It has three configurable keys, **ActiveForDomain**, **TimeServer** and **TimeZone**.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+The **ActiveForDomain** array limits the policy to the specified domain(s) as determined by the DHCP server (option 15).
+
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>TimeServer</key>
-			<string>time.euro.apple.com</string>
-			<key>TimeZone</key>
-			<string>Europe/London</string>
-		</dict>
-		<key>Name</key>
-		<string>SystemTimeServer</string>
-		<key>TriggeredBy</key>
+		<key>ActiveForDomain</key>
 		<array>
-			<string>Boot</string>
+			<string></string>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>TimeServer</key>
+		<string>time.euro.apple.com</string>
+		<key>TimeZone</key>
+		<string>Europe/London</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-TimeServer</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
-###SystemUnloadAgentsAndDaemons
-This policy unloads (disables) specific Agents and Daemons. It is called as root and triggered by the **Boot** event.
+### Sys-Update
 
-The example config unloads the UserNotificationCenter. This can be useful to prevent unwanted pop-ups if behind a internet proxy.
+This policy script handles software updates. It is called as root and triggered by the **Sys-LoginWindowIdle** and **ManualUpdate** events.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+The **ActiveForDomain** key limits the policy to a specified domain as determined by the DHCP server (option 15). Valid settings for the domain are null, "NONE", "ADDOMAIN", "your.company.domain" or "ALL". null and "NONE" will only match when there is no domain specified by DHCP. "ADDOMAIN" matches the active directory domain to which the workstation is bound. "ALL" matches all domains (including null).
+
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
+		<key>Sys-LoginWindowIdleShutdownSecs</key>
+		<integer>1200</integer>
+		<key>OutOfHoursEndTime</key>
+		<string>05:00</string>
+		<key>OutOfHoursPowerOn</key>
+		<true/>
+		<key>OutOfHoursStartTime</key>
+		<string>22:00</string>
+		<key>UpdateScript</key>
 		<dict>
-			<key>Unload</key>
+			<key>ActiveForDomain</key>
 			<array>
-				<string>/System/Library/LaunchDaemons/com.apple.UserNotificationCenter.plist</string>
+				<string>ALL</string>
+			</array>
+			<key>Exe</key>
+			<array>
+				<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+				<string>192.168.0.3,sha1,0,-I,42000</string>
 			</array>
 		</dict>
-		<key>Name</key>
-		<string>SystemUnloadAgentsAndDaemons</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-Update</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-LoginWindowIdle</string>
+		<string>ManualUpdate</string>
+	</array>
 
-The example policy config should be configured to your own needs.
+Updates are generally done out-of-hours. The policy config defines the start and end of the out-of-hours period via **OutOfHoursStartTime** and **OutOfHoursEndTime**.
 
-###SystemUserExperience
-This policy sets how user homes on network accounts are be handled. These are the options from the "User Experience" tab of the Directory Utility app. It is called as root and triggered by the **Boot** event.
+	<key>OutOfHoursStartTime</key>
+	<string>22:00</string>
+	<key>OutOfHoursEndTime</key>
+	<string>05:00</string>
+	
+The **OutOfHoursPowerOn** variable defines whether or not we the policy schedules a power-on during the out-of hours period. If true, the workstation will power-on at a random time between the start and end of out-of-hours.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>OutOfHoursPowerOn</key>
+	<true/>
+	
+When a Mac is switched on out-of-hours, and then left idle at the log in screen - a software update will be performed. If a workstation is never switched on out-of-hours, then software updates will never be performed.
+
+The software update mechanism is determined from the **Script** key. This key holds an **Exe** array that consists of a script location, followed by script arguments.
+
+	<key>Script</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>alldomains</key>
-			<true/>
-			<key>localhome</key>
-			<true/>
-			<key>mobile</key>
-			<false/>
-			<key>mobileconfirm</key>
-			<false/>
-			<key>preferredserver</key>
-			<string></string>
-			<key>protocol</key>
-			<string>smb</string>
-			<key>sharepoint</key>
-			<true/>
-			<key>useuncpath</key>
-			<true/>
-		</dict>
-		<key>Name</key>
-		<string>SystemUserExperience</string>
-		<key>TriggeredBy</key>
+		<key>Exe</key>
 		<array>
-			<string>Boot</string>
+			<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+			<string>192.168.0.3,sha1,0,-I,42000</string>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
 
-Note, if the 'alldomains' option is set to true, '/Search' and '/Search/Contacts' are both set to search 'All Domains'.
+In the example above, a scheduled update will execute the following command:
 
-If 'alldomains' is set to false, '/Search' and '/Search/Contacts' default are set to search the workstation domain.
+	/usr/local/LabWarden/lib/RadmindUpdate "192.168.0.3,sha1,0,-I, 42000"
+
+The purpose of the **Script** key is to define a script that deploys software to the workstation. There is no fixed mechanism imposed by LabWarden. You may use munki or you may use Radmind. This is all left to you and your own custom script.
+
+Finally, the **Sys-LoginWindowIdleShutdownSecs** key specifies how long we can be idle at the LoginWindow before performing a shutdown. You should note that a **gpupdate -force** will be performed before an idle shut-down.  
+
+	<key>Sys-LoginWindowIdleShutdownSecs</key>
+	<integer>1200</integer>
+
+A value of 0, indicates that we should not power off when idle.
 
 The example policy config should be configured to your own needs.
 
-###SystemWirelessForgetSSID
-This policy script forgets wireless SSIDs and passwords. It is called as root and triggered by an **Boot** event.
+
+### Sys-WirelessForgetSSID
+This policy script forgets wireless SSIDs and passwords. It is called as root and triggered by an **Sys-Boot** event.
 
 The config contains a single array called **SSID** containing the networks that should be forgotten.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>SSID</key>
-			<array>
-				<string>College</string>
-				<string>virginmedia1234567</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>SystemWirelessForgetSSID</string>
-		<key>TriggeredBy</key>
+		<key>SSID</key>
 		<array>
-			<string>Boot</string>
+			<string>College</string>
+			<string>virginmedia1234567</string>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-WirelessForgetSSID</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
 
-###SystemWirelessSetState
-This policy script turns wireless on or off, and defines whether non-admins can change the wireless state. It is called as root and triggered by an **Boot** event.
+### Sys-WirelessSetState
+This policy script turns wireless on or off, and defines whether non-admins can change the wireless state. It is called as root and triggered by an **Sys-Boot** event.
 
 The **RequireAdminIBSS** key defines whether you need to be an admin to create computer-to-computer networks.
 
@@ -1913,540 +2046,487 @@ The **RequireAdminPowerToggle** key defines whether you need to be an admin to t
 
 The **WirelessState** key should be set to either **on** or **off**.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>RequireAdminIBSS</key>
-			<false/>
-			<key>RequireAdminNetworkChange</key>
-			<false/>
-			<key>RequireAdminPowerToggle</key>
-			<true/>
-			<key>WirelessState</key>
-			<string>on</string>
-		</dict>
-		<key>Name</key>
-		<string>SystemWirelessSetState</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>Boot</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-		<key>UUID</key>
-		<string>9C237A22-0C84-4F9A-BB86-ED0C3E6D1EE6</string>
+		<key>RequireAdminIBSS</key>
+		<false/>
+		<key>RequireAdminNetworkChange</key>
+		<false/>
+		<key>RequireAdminPowerToggle</key>
+		<true/>
+		<key>WirelessState</key>
+		<string>on</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Sys-WirelessSetState</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
 
-###UserCheckQuotaOnNetHome
-This policy script checks if a users network drive is getting full. It is called as the user and triggered by an **UserPoll** event.
+### Sys-WorkstationInfo
+This policy updates the loginwindow text and RemoteDesktop Info Fields with workstation info. It is called as root and triggered by the **Sys-Boot** and **Sys-ActiveDirectoryUp** events.
+
+The **ShowHostnameAtLoginwindow** key defines whether the hostname is shown on line #1 of the login window text.
+
+The **ShowADpathAtLoginwindow** key defines whether the AD OU is shown on line #2 of the login window text.
+
+![AD Group Members Tab, Members](images/Sys-WorkstationInfo.jpg "Sys-WorkstationInfo")
+
+The **ShowADpathInRemoteDesktopInfo** key defines whether the AD OU is advertised in Computer Info 1, 2 & 3 of Remote Desktop.
+
+	<key>Config</key>
+	<dict>
+		<key>ShowADpathAtLoginwindow</key>
+		<true/>
+		<key>ShowADpathInRemoteDesktopInfo</key>
+		<true/>
+		<key>ShowHostnameAtLoginwindow</key>
+		<true/>
+	</dict>
+	<key>Name</key>
+	<string>Sys-WorkstationInfo</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+		<string>Sys-ActiveDirectoryUp</string>
+	</array>
+
+### Usr-CheckQuotaOnNetHome
+This policy script checks if a users network drive is getting full. It is called as the user and triggered by an **Usr-Poll** event.
 
 There are no configurable options.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Name</key>
-		<string>UserCheckQuotaOnNetHome</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserPoll</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Usr-CheckQuotaOnNetHome</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-Poll</string>
+	</array>
 
-###UserCreateFolder
-This policy creates folders in the users home folder. It is called as the user and triggered by an **UserLogin** event.
+### Usr-CreateFolder
+This policy creates folders in the users home folder. It is called as the user and triggered by an **Usr-ConsoleUserLoggedIn** event.
 
 The config contains a single array called **Path** containing the folders that should be created.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+Passing '/NETWORKHOME' as an option will create a link to the users network home in the root of the users local home. '/Desktop/NETWORKHOME' will create the link on the users local desktop, etc...
+
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
+		<key>Path</key>
+		<array>
+			<string>/Desktop/</string>
+			<string>/Documents/</string>
+			<string>/Downloads/</string>
+			<string>/Library/Preferences/</string>
+			<string>/Movies/</string>
+			<string>/Music/</string>
+			<string>/Pictures/</string>
+			<string>/NETWORKHOME/</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Usr-CreateFolder</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-ConsoleUserLoggedIn</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Usr-DefaultHandlers
+This policy sets the default handlers for specific file types. It is called as the user and triggered by an **Usr-AtDesktop** event. 
+
+This script uses **duti**. See the duti documentation for an explanation of the keys.
+
+	<key>Config</key>
+	<dict>
+		<key>Handler</key>
+		<array>
+			<dict>
+				<key>BundleID</key>
+				<string>com.apple.Safari</string>
+				<key>Role</key>
+				<string>all</string>
+				<key>UTI</key>
+				<string>public.html</string>
+			</dict>
+			<dict>
+				<key>BundleID</key>
+				<string>com.apple.Safari</string>
+				<key>Role</key>
+				<string>all</string>
+				<key>UTI</key>
+				<string>public.xhtml</string>
+			</dict>
+			<dict>
+				<key>BundleID</key>
+				<string>com.apple.Safari</string>
+				<key>UTI</key>
+				<string>http</string>
+			</dict>
+			<dict>
+				<key>BundleID</key>
+				<string>com.apple.Safari</string>
+				<key>UTI</key>
+				<string>https</string>
+			</dict>
+			<dict>
+				<key>BundleID</key>
+				<string>cx.c3.theunarchiver</string>
+				<key>Role</key>
+				<string>all</string>
+				<key>UTI</key>
+				<string>zip</string>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Usr-DefaultHandlers</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
+
+### UserDesktopWallpaperURI
+This policy allows you to set the user Desktop Wallpaper. 
+
+The policy is triggered by an **Usr-AtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
+
+Desktop wallpaper can be set using a standard mobileconfig, however this policy allows you to define a URI for the wallpaper image, which allows the image to be pulled from a server. 
+
+If a server location is specified in **UserDesktopWallpaperURI**, then it is important that the user has access to that resource without being asked for credentials. 
+
+	<key>Config</key>
+	<dict>
+		<key>DesktopWallpaperURI</key>
+		<string>smb://YOURSERVER/YOURSHARE/YOURFOLDER/desktop.bmp</string>
+	</dict>
+	<key>Name</key>
+	<string>Usr-DesktopWallpaperURI</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
+
+The example policy config should be configured to your own needs.
+
+### Usr-DockContent
+This policy allows you to set the user Dock and makes use of **dockutil**.
+
+The policy is triggered by an **Usr-AtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
+
+The config contains two arrays, **Add** and **Remove** that contain the items to add or remove from the users dock, in the form of a **URI** key and a **Label** key.
+
+The **Replace** key determines whether or not an item will be replaced it already exists in the dock.
+
+	<key>Config</key>
+	<dict>
+		<key>Add</key>
+		<array>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Downloads</string>
+			</dict>
+		</array>
+		<key>Remove</key>
+		<array>
+			<dict>
+				<key>Label</key>
+				<string>Mail</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string>Contacts</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string>Calendar</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+		</array>
+		<key>Replace</key>
+		<false/>
+	</dict>
+	<key>Name</key>
+	<string>Usr-DockContent</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
+
+### Usr-ExamplePolicy
+
+This is an example User Policy script which could be used as a blank canvas for your own user policy. A user policy is one that is called as a normal user. This policy uses the 'say' command to speak whenever it is triggered by an event - and is useful in its current form as a way to determine when and if events are actually happening.
+
+	<key>Config</key>
+	<dict>
+		<key>ExampleArray</key>
+		<array>
+			<string>First</string>
+			<string>Second</string>
+			<string>Third</string>
+		</array>
+		<key>ExampleBool</key>
+		<true/>
+		<key>ExampleNum</key>
+		<integer>42</integer>
+		<key>ExampleString</key>
+		<string>Example</string>
+	</dict>
+	<key>Name</key>
+	<string>Usr-ExamplePolicy</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+		<string>Usr-Poll</string>
+		<string>Usr-Idle</string>
+	</array>
+
+### Usr-HomeMakePathRedirections
+
+This policy creates symbolic links at a path within a network users home folder that points to files/folders in an "alternative" home. 
+
+With "Force local home directory on startup disk" enabled, the "alternate" home is the network home. For network homes, the alternate home is the local home.
+
+It is called as the user and triggered by the **Usr-AtDesktop** and **Usr-ConsoleUserLoggedIn** events.
+
+If the **MakePathRedirections** key in the config is set to **false**, then this policy will actively attempt to remove any existing redirections from the user home. This is useful if you have been using folder redirections, and then change your mind.
+
+If the **MakePathRedirections** key in the config is set to **true**, then this policy will act differently, depending on whether or not "Force local home directory on startup disk" is enabled.
+
+If "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility" then it is serviced by the **Usr-AtDesktop** event.
+
+In this situation the user home is local, so the policy will attempt to create symbolic links at a path within the user local home that point to files/directories in the users network home. These paths are defined in the config by the **Path** array within the **HomeIsLocal** key.
+
+If "Force local home directory on startup disk" is disabled in the "User experience" tab of "Directory Utility" then it is serviced by the **Usr-ConsoleUserLoggedIn** event.
+
+In this situation the user home is on the networkso the policy will attempt to create symbolic links at a path within the user network home that point to files/directories in the users local home. These paths are defined in the config by the **Path** array within the **HomeIsOnNetwork** key.
+
+The policy will never apply path redirections on a mobile user account as this would make no sense.
+
+	<key>Config</key>
+	<dict>
+		<key>HomeIsLocal</key>
 		<dict>
 			<key>Path</key>
 			<array>
 				<string>/Desktop/</string>
 				<string>/Documents/</string>
 				<string>/Downloads/</string>
-				<string>/Library/Preferences/</string>
 				<string>/Movies/</string>
 				<string>/Music/</string>
 				<string>/Pictures/</string>
 			</array>
 		</dict>
-		<key>Name</key>
-		<string>UserCreateFolder</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserLogin</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>HomeIsOnNetwork</key>
+		<dict>
+			<key>Path</key>
+			<array>
+				<string>/Library/Application Support/audacity/.audacity.sock</string>
+				<string>/Library/Application Support/CrashReporter/</string>
+				<string>/Library/Caches/com.apple.helpd/</string>
+				<string>/Library/Calendars/</string>
+				<string>/Library/com.apple.nsurlsessiond/</string>
+				<string>/Library/Containers/</string>
+				<string>/Library/IdentityServices/</string>
+				<string>/Library/Keychains/</string>
+				<string>/Library/Logs/DiagnosticReports/</string>
+				<string>/Library/Messages/</string>
+			</array>
+		</dict>
+		<key>MakePathRedirections</key>
+		<true/>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Usr-HomeMakePathRedirections</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-ConsoleUserLoggedIn</string>
+		<string>Usr-AtDesktop</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
-###UserDefaultHandlers
-This policy sets the default handlers for specific file types. It is called as the user and triggered by an **UserAtDesktop** event. 
-
-This script uses **duti**. See the duti documentation for an explanation of the keys.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Handler</key>
-			<array>
-				<dict>
-					<key>BundleID</key>
-					<string>com.apple.Safari</string>
-					<key>Role</key>
-					<string>all</string>
-					<key>UTI</key>
-					<string>public.html</string>
-				</dict>
-				<dict>
-					<key>BundleID</key>
-					<string>com.apple.Safari</string>
-					<key>Role</key>
-					<string>all</string>
-					<key>UTI</key>
-					<string>public.xhtml</string>
-				</dict>
-				<dict>
-					<key>BundleID</key>
-					<string>com.apple.Safari</string>
-					<key>UTI</key>
-					<string>http</string>
-				</dict>
-				<dict>
-					<key>BundleID</key>
-					<string>com.apple.Safari</string>
-					<key>UTI</key>
-					<string>https</string>
-				</dict>
-				<dict>
-					<key>BundleID</key>
-					<string>cx.c3.theunarchiver</string>
-					<key>Role</key>
-					<string>all</string>
-					<key>UTI</key>
-					<string>zip</string>
-				</dict>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>UserDefaultHandlers</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-###UserDesktopWallpaperURI
-This policy allows you to set the user Desktop Wallpaper. 
-
-The policy is triggered by an **UserAtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
-
-Desktop wallpaper can be set using a mobileconfig, however this policy script allows you to define a URI for the wallpaper image. This allows the image to be pulled from a server. 
-
-If a server location is specified in **UserDesktopWallpaperURI**, then it is important that the user has access to that resource without being asked for credentials. 
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>DesktopWallpaperURI</key>
-			<string>smb://YOURSERVER/YOURSHARE/YOURFOLDER/desktop.bmp</string>
-		</dict>
-		<key>Name</key>
-		<string>UserDesktopWallpaperURI</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###UserDockContent
-This policy allows you to set the user Dock and makes use of **dockutil**.
-
-The policy is triggered by an **UserAtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
-
-The config contains two arrays, **Add** and **Remove** that contain the items to add or remove from the users dock, in the form of a **URI** key and a **Label** key.
-
-The **Replace** key determines whether or not an item will be replaced it already exists in the dock.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Add</key>
-			<array>
-				<dict/>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Downloads</string>
-				</dict>
-			</array>
-			<key>Remove</key>
-			<array>
-				<dict>
-					<key>Label</key>
-					<string>Mail</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>Contacts</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>Calendar</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>Notes</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>Reminders</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>Messages</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>FaceTime</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>App Store</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-			</array>
-			<key>Replace</key>
-			<false/>
-		</dict>
-		<key>Name</key>
-		<string>UserDockContent</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-###UserKeychainFix
+### Usr-KeychainFix
 This policy attempts to fix Keychain issues caused by password reset issues. Users can be locked out of their keychain if they change their password on a PC, or on a workstation that has no access to the keychain in question. 
 
-This policy is no more or less successful than other solutions. It is called as the user and triggered by an **UserAtDesktop** event.
+This policy is no more or less successful than other solutions. It is called as the user and triggered by an **Usr-AtDesktop** event.
 
 There are no configurable options.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Name</key>
-		<string>UserKeychainFix</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Usr-KeychainFix</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
 
-###UserNoSpotlightOnNetHome
-This policy disables spotlight on the users network home. 
+### Usr-SidebarContent
+This policy allows you to set the user sidebar and makes use of **mysides**.
 
-Allowing lots of users to Build Spotlight indices on network volumes can be the  equivalent to a network volume DDOS. 
-
-It is called as the user and triggered by an **UserAtDesktop** event.
-
-There are no configurable options.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Name</key>
-		<string>UserNoSpotlightOnNetHome</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	/dict>
-	</plist>
-
-###UserHomeMakePathRedirections
-
-This policy creates symbolic links at a path within a network users home folder that points to files/folders in an "alternative" home. 
-
-With "Force local home directory on startup disk" enabled, the "alternate" home is the network home. For network homes, the alternate home is the local home.
-
-It is called as the user and triggered by the **UserAtDesktop** and **UserLogin** events.
-
-If the **MakePathRedirections** key in the config is set to **false**, then this policy will actively attempt to remove any existing redirections from the user home. This is useful if you have been using folder redirections, and then change your mind.
-
-If the **MakePathRedirections** key in the config is set to **true**, then this policy will act differently, depending on whether or not "Force local home directory on startup disk" is enabled.
-
-If "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility" then it is serviced by the **UserAtDesktop** event.
-
-In this situation the user home is local, so the policy will attempt to create symbolic links at a path within the user local home that point to files/directories in the users network home. These paths are defined in the config by the **Path** array within the **HomeIsLocal** key.
-
-If "Force local home directory on startup disk" is disabled in the "User experience" tab of "Directory Utility" then it is serviced by the **UserLogin** event.
-
-In this situation the user home is on the networkso the policy will attempt to create symbolic links at a path within the user network home that point to files/directories in the users local home. These paths are defined in the config by the **Path** array within the **HomeIsOnNetwork** key.
-
-The policy will never apply path redirections on a mobile user account as this would make no sense.
-
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
-	<dict>
-		<key>Config</key>
-		<dict>
-			<key>HomeIsLocal</key>
-			<dict>
-				<key>Path</key>
-				<array>
-					<string>/Desktop/</string>
-					<string>/Documents/</string>
-					<string>/Movies/</string>
-					<string>/Music/</string>
-					<string>/Pictures/</string>
-				</array>
-			</dict>
-			<key>HomeIsOnNetwork</key>
-			<dict>
-				<key>Path</key>
-				<array>
-					<string>/Library/Application Support/audacity/.audacity.sock</string>
-					<string>/Library/Application Support/CrashReporter/</string>
-					<string>/Library/Caches/com.apple.helpd/</string>
-					<string>/Library/Calendars/</string>
-					<string>/Library/com.apple.nsurlsessiond/</string>
-					<string>/Library/Containers/</string>
-					<string>/Library/IdentityServices/</string>
-					<string>/Library/Keychains/</string>
-					<string>/Library/Logs/DiagnosticReports/</string>
-					<string>/Library/Messages/</string>
-				</array>
-			</dict>
-			<key>MakePathRedirections</key>
-			<true/>
-		</dict>
-		<key>Name</key>
-		<string>UserHomeMakePathRedirections</string>
-		<key>TriggeredBy</key>
-		<array>
-			<string>UserLogin</string>
-			<string>UserAtDesktop</string>
-		</array>
-		<key>Type</key>
-		<string>Policy</string>
-	</dict>
-	</plist>
-
-The example policy config should be configured to your own needs.
-
-###UserSideBarContent
-This policy allows you to set the user Dock and makes use of **mysides**.
-
-The policy is triggered by an **UserAtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
+The policy is triggered by an **Usr-AtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
 
 The config contains two arrays, **Add** and **Remove** that contain the items to add or remove from the users sidebar, in the form of a **URI** key and a **Label** key.
 
 The **Replace** key determines whether or not an item will be replaced it already exists in the sidebar.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Add</key>
-			<array>
-				<dict/>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Desktop</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Documents</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Downloads</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Movies</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Music</string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string></string>
-					<key>URI</key>
-					<string>file://HOMEDIR/Pictures</string>
-				</dict>
-			</array>
-			<key>Remove</key>
-			<array>
-				<dict>
-					<key>Label</key>
-					<string>All My Files</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>iCloud</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-				<dict>
-					<key>Label</key>
-					<string>AirDrop</string>
-					<key>URI</key>
-					<string></string>
-				</dict>
-			</array>
-			<key>Replace</key>
-			<false/>
-		</dict>
-		<key>Name</key>
-		<string>UserSidebarContent</string>
-		<key>TriggeredBy</key>
+		<key>Add</key>
 		<array>
-			<string>UserAtDesktop</string>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Desktop</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Documents</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Downloads</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Movies</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Music</string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string></string>
+				<key>URI</key>
+				<string>file://HOMEDIR/Pictures</string>
+			</dict>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
+		<key>Remove</key>
+		<array>
+			<dict>
+				<key>Label</key>
+				<string>All My Files</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string>iCloud</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+			<dict>
+				<key>Label</key>
+				<string>AirDrop</string>
+				<key>URI</key>
+				<string></string>
+			</dict>
+		</array>
+		<key>Replace</key>
+		<false/>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Usr-SidebarContent</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
-###UserSyncLocalHomeToNetwork
+### Usr-SpotlightSettingOnNetHome
+
+This policy enables or disables spotlight indexing on a users network home. 
+
+It is called as the user and triggered by an **Usr-AtDesktop** event.
+
+On early MacOS versions, allowing multiple users to Build Spotlight indices on network volumes could cause a network volume DDOS. It's uncertain as to whether this is still the case, as Spotlight now caches some settings locally.
+
+The policy has a one configurable key **SpotlightEnabled**, that determines whether or not Spotlight is enabled for the user home.
+
+There are no configurable options.
+
+	<key>Config</key>
+	<dict>
+		<key>SpotlightEnabled</key>
+		<false/>
+	</dict>
+	<key>Name</key>
+	<string>Usr-SpotlightSettingOnNetHome</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+	</array>
+
+### Usr-SyncLocalHomeToNetwork
+
 This policy syncs specified folders from the users local home to network home. It is only relevant for network accounts where "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility".
 
-It is called as the user. Files are synced down from the network at a **UserAtDesktop** event. Files are synced back up to the etwork at a **UserLogout** event.
+It is called as the user. Files are synced down from the network at a **Usr-AtDesktop** event. Files are synced back up to the network at a **Usr-Logout** event.
 
-	<?xml version="1.0" encoding="UTF-8"?>
-	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-	<plist version="1.0">
+	<key>Config</key>
 	<dict>
-		<key>Config</key>
-		<dict>
-			<key>Path</key>
-			<array>
-				<string>/Library/Fonts/</string>
-				<string>/Library/Application Support/Firefox/</string>
-				<string>/Library/Application Support/Google/Chrome/</string>
-				<string>/Library/Application Support/Chromium/</string>
-				<string>/Library/Safari/</string>
-				<string>/Library/Application Support/Microsoft/</string>
-				<string>/Library/Application Support/Spotify/</string>
-				<string>/Library/Caches/com.apple.helpd/</string>
-				<string>/Library/Group Containers/</string>
-				<string>/Library/Preferences/com.microsoft.autoupdate2.plist</string>
-				<string>/Library/Preferences/com.microsoft.error_reporting.plist</string>
-				<string>/Library/Preferences/com.microsoft.office.plist</string>
-				<string>/Library/Preferences/com.microsoft.outlook.databasedaemon.plist</string>
-				<string>/Library/Preferences/com.microsoft.Word.plist</string>
-				<string>/Library/Preferences/com.microsoft.office.plist</string>
-				<string>/Library/Preferences/com.microsoft.Powerpoint.plist</string>
-				<string>/Library/Preferences/com.microsoft.Excel.plist</string>
-				<string>/Library/Preferences/com.microsoft.office.plist</string>
-				<string>/Library/Preferences/com.microsoft.outlook.office_reminders.plist</string>
-				<string>/Library/Preferences/com.microsoft.Outlook.plist</string>
-			</array>
-		</dict>
-		<key>Name</key>
-		<string>UserSyncLocalHomeToNetwork</string>
-		<key>TriggeredBy</key>
+		<key>Path</key>
 		<array>
-			<string>UserAtDesktop</string>
-			<string>UserLogout</string>
+			<string>/Library/Fonts/</string>
+			<string>/Library/Application Support/Firefox/</string>
+			<string>/Library/Application Support/Google/Chrome/</string>
+			<string>/Library/Application Support/Chromium/</string>
+			<string>/Library/Safari/</string>
+			<string>/Library/Application Support/Microsoft/</string>
+			<string>/Library/Application Support/Spotify/</string>
+			<string>/Library/Caches/com.apple.helpd/</string>
+			<string>/Library/Group Containers/</string>
+			<string>/Library/Preferences/com.microsoft.autoupdate2.plist</string>
+			<string>/Library/Preferences/com.microsoft.error_reporting.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.outlook.databasedaemon.plist</string>
+			<string>/Library/Preferences/com.microsoft.Word.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.Powerpoint.plist</string>
+			<string>/Library/Preferences/com.microsoft.Excel.plist</string>
+			<string>/Library/Preferences/com.microsoft.office.plist</string>
+			<string>/Library/Preferences/com.microsoft.outlook.office_reminders.plist</string>
+			<string>/Library/Preferences/com.microsoft.Outlook.plist</string>
 		</array>
-		<key>Type</key>
-		<string>Policy</string>
 	</dict>
-	</plist>
+	<key>Name</key>
+	<string>Usr-SyncLocalHomeToNetwork</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+		<string>Usr-Logout</string>
+	</array>
 
 The example policy config should be configured to your own needs.
 
@@ -2457,18 +2537,97 @@ LabWarden makes use of the following tools:
 
 * [AppWarden](https://github.com/execriez/AppWarden/ "AppWarden")
 * [CocoaDialog](https://mstratman.github.io/cocoadialog/ "CocoaDialog")
+* [ConsoleUserWarden](https://github.com/execriez/ConsoleUserWarden/ "ConsoleUserWarden")
 * [duti](https://github.com/moretension/duti "duti")
 * [dockutil](https://github.com/kcrawford/dockutil "dockutil")
 * [iHook](https://sourceforge.net/projects/ihook/ "iHook")
+* [LoginHookWarden](https://github.com/execriez/LoginHookWarden "LoginHookWarden")
 * [mysides](https://github.com/mosen/mysides "mysides")
-* [NetworkStateWarden](https://github.com/execriez/NetworkStateWarden/ "NetworkStateWarden")
+* [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden")
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
 
+2.0.6 - 27-May-2017
+
+* First public version 2 release.
+
+* Policies are now controlled via mobileconfig files. The old LabWarden.plist configs have been dropped and are no-longer supported.
+
+* The core code has been altered to allow policies to run independently of AD wherever possible. This allows LabWarden to be installed on systems that are not bound to AD.
+
+* Use of login hooks is now optional, allowing LabWarden to be installed side-by-side with systems that already use login hooks. Login hooks provide the events Sys-Login, Usr-Login, Usr-Logout and Sys-Logout. Use of standard login hooks can be enabled via the Sys-Defaults policy. 
+
+* Use of Sys-Login, Usr-Login and Sys-Logout events have be replaced by Sys-ConsoleUserLoggedIn, Usr-ConsoleUserLoggedIn and Sys-ConsoleUserLoggedOut events. Usr-Logout was trickier to replace because during this event, the user home is guaranteed to be available - which is not the case when the console user has logged out. 
+
+* Events have been renamed to more easily distinguish user events from system events. This is the current list of events: Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Logout, Sys-LoginWindowPoll, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll, Sys-Idle, Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-ActiveDirectoryUp, Sys-ActiveDirectoryDown, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-ConsoleUserLoggedIn, Usr-AtDesktop, Usr-Poll, Usr-Idle, Usr-Logout
+
+* Policies have been renamed. For example, AppExamplePolicy is now App-ExamplePolicy, SystemExamplePolicy is now Sys-ExamplePolicy, and UserExamplePolicy is now Usr-ExamplePolicy.
+
+* The policy parameter order is changed in this version. The order is now ${1}=ConfigFilePath, ${2}=ConfigEntryName, ${3}=EventHistory, ${4}=LoggedInUser, ${5}=OptionalParam. For this reason, old policies are no-longer supported. If you have written your own custom policy, please update it using the example policies as reference.
+
+* Policy parameter ${5} is currently used to pass the following info: Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event. User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+
+* LabWarden global variable names have changed from LW_ to GLB_ for compatibility with other projects.
+
+* Logging is more consistent, following a syslog approach. Log entries include a log level word - Emergency, Alert, Critical, Error, Warning, Notice, Information or Debug. This allows you to filter log results better in the console app.
+
+* Logs now have a maximum size. When they hit the limit, they are renamed as ".log.previous" and the log is started afresh.
+
+* Install, Uninstall and MakePackage.command altered to be more generic for compatibility with other projects.
+
+* Fixed issue with Makepackage.command that generated an uninstaller that was inconsistant when removing LabWarden LaunchAgents & LaunchDaemons.
+
+* Fixed bug that didn't allow spaces in filenames passed to 'PackForDeployment'
+
+* 'mobileconfig-shrink' now preserves newlines in property values
+
+* 'Constants' and 'CommonLib' moved from /lib to /inc and renamed to 'Constants.sh' and 'Common.sh' - in case some of the code is ever written in another language.
+ 
+* Makes use of 'ConsoleUserWarden', in order to provide the events Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut and Sys-ConsoleUserSwitch.
+
+* Makes use of 'ADWarden', in order to provide the events Sys-ActiveDirectoryUp and Sys-ActiveDirectoryDown
+
+* Added Sys-Defaults policy so that specific hard-coded constants can be altered by policy
+
+* Added Sys-AddPrinter policy.
+
+* Added Sys-PolicyBanner policy.
+
+* Added Sys-WorkstationInfo policy. This policy sets the loginwindow text and RemoteDesktop Info Fields with workstation info - which includes hostname and AD OU info. Equivalent code has been removed from gpupdate and the Sys-RemoteManagement policy.
+
+* gpupdate no longer attempts to update policies for all known users, it now only updates policies for users who are currently logged in.
+
+* Added Gen-ExamplePolicy policy, which is an example of a general policy that is not specifically system, user or application. This type of policy can be triggered by system or user triggers, meaning that it can be run as either root or a normal user.
+
+* Updated 'App-ExamplePolicy', 'Usr-ExamplePolicy' and 'Sys-ExamplePolicy' for consistancy and readability.
+
+* GLB_sv_LoggedInUserName is now set properly during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+
+* 'Debug' and 'Sys-OfficeHours' policies are renamed to 'Gen-Debug' and 'Gen-OfficeHours'
+
+* Sys-GiveSystemProxyAccess is renamed to Sys-ADTrustAccountProxyAccess and altered to allow muliple mobileconfig installs.
+
+* Added "ActiveForDomain" array key to "Sys-NetworkProxy", "Gen-OfficeHours", "Sys-TimeServer" and "Sys-Update" allowing you to have the policies active for specified domains. Valid domains are "", "ALL", "NONE", "ADDOMAIN", or "your.company.domain".
+
+* Sys-Establish8021XWiFi renamed to Sys-ADGet8021XCertForWiFi and trigger changed from Sys-Boot to Sys-ActiveDirectoryUp.
+
+* Sys-UserExperience renamed to Sys-ADUserExperience and trigger changed from Sys-Boot to Sys-ActiveDirectoryUp.
+
+* Sys-ADTrustAccountProxyAccess trigger Sys-NetworkUp changed to Sys-ActiveDirectoryUp.
+
+* The Usr-NoSpotlightOnNetHome policy is renamed to Usr-SpotlightSettingOnNetHome and altered so it can enable or disable spotlight on a users network home.
+
+* Policy Usr-CreateFolder altered so that passing 'NETWORKHOME' will create a link to the users network home.
+
+* The 'Legacy' and 'Custom' folders are now named 'Legacy-Policies', 'Custom-Policies' and 'Custom-PayloadHandlers'; and are in the root of the Labwarden folder. The 'Legacy-Policies' and 'Custom-PayloadHandlers' directories are currently empty.
+
+* There are probably other changes that I have forgotten.
+
+
 1.0.101 - 09-Dec-2016
 
-* The 'Legacy' and 'custom' folders have been moved into the root of the Labwarden folder.
+* The 'Legacy' and 'Custom' folders have been moved into the root of the Labwarden folder.
 
 * The 'Maintenance' policy has been split in two, to form a 'SystemUpdate' policy and a 'SystemOfficeHours' policy. The now legacy 'Maintenance' policy has been moved into the legacy folder. 
 
@@ -2557,11 +2716,11 @@ LabWarden makes use of the following tools:
 
 1.0.94 - 31-Aug-2016
 
-* Fix - A typo in the installer for update 1.0.93 meant that the LoginWindowPoll and LoginWindowIdle events were not installed.
+* Fix - A typo in the installer for update 1.0.93 meant that the Sys-LoginWindowPoll and Sys-LoginWindowIdle events were not installed.
 
 1.0.93 - 20-Aug-2016
 
-* Added SystemPoll, SystemIdle, LoginWindowPoll and UserIdle events. Idle events triggered during poll events - when there has been no user input for over 11 minutes.
+* Added Sys-Poll, Sys-Idle, Sys-LoginWindowPoll and Usr-Idle events. Idle events triggered during poll events - when there has been no user input for over 11 minutes.
 
 * Removed the 'FLUSHCACHE' option from gpupdate.
 
@@ -2632,8 +2791,8 @@ LabWarden makes use of the following tools:
 
 1.0.84 - 06 JUN 2016
 
-* Added NetworkUp and NetworkDown triggers.
-* Changed TriggeredBy property on SystemNetworkProxy policy script to be 'NetworkUp'.
+* Added Sys-NetworkUp and Sys-NetworkDown triggers.
+* Changed TriggeredBy property on SystemNetworkProxy policy script to be 'Sys-NetworkUp'.
 
 1.0.82 - 27 MAY 2016
 

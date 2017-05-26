@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# Short:    Uninstall Project (command-line)
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+#
+# Called as follows:    
+#   sudo Uninstall [<root_dirpath>]
+
+# ---
+
+# assume that all scripts are in a subdirectory off the main project directory
+GLB_sv_ProjectDirPath="$(dirname $(dirname ${0}))"
+
+# Include the CommonLib
+. "${GLB_sv_ProjectDirPath}/inc/Common.sh"
+
+# Exit if something went wrong unexpectedly
+if test -z "${GLB_sv_ProjectName}"
+then
+  exit 90
+fi
+
+# ---
+
+# Exit if not the root user
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Unable to run, try: sudo ${GLB_sv_ThisScriptName}"
+  exit 91
+fi
+
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
+
+if [ "${sv_RootDirPath}" = "/" ]
+then
+  sv_RootDirPath=""
+fi
+
+# ---
+
+if test -z "${sv_RootDirPath}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Uninstalling ${GLB_sv_ProjectName}."
+
+  # Remove all running LaunchAgent services
+  sv_UserName=$(stat -f '%Su' /dev/console)
+  if [ "${sv_UserName}" != "root" ]
+  then
+    while read sv_LaunchServiceName
+    do
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LaunchAgent service ${sv_LaunchServiceName} for user ${sv_UserName}"
+      sudo -u ${sv_UserName} launchctl remove "${sv_LaunchServiceName}"
+    done < <(sudo -u ${sv_UserName} launchctl list | grep "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
+  fi
+
+  # Remove all running LaunchDaemon services
+  while read sv_LaunchServiceName
+  do
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LaunchDaemon service ${sv_LaunchServiceName}"
+    launchctl remove "${sv_LaunchServiceName}"
+  done < <(launchctl list | grep "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
+
+  # Remove LoginHook
+  sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
+  if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
+    defaults write com.apple.loginwindow LoginHook ""
+  fi
+  
+  # Remove LogoutHook
+  sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
+  if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"
+    defaults write com.apple.loginwindow LogoutHook ""
+  fi
+
+  ## Remove config files
+  #if test -e "${GLB_sv_ProjectConfigDirPath}"
+  #then
+  #  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting config dir ${GLB_sv_ProjectConfigDirPath}"
+  #  rm -fR "${GLB_sv_ProjectConfigDirPath}"
+  #fi
+fi
+
+# Delete old LaunchAgent plists
+while read sv_LaunchServiceFileName
+do
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting LaunchAgent file ${sv_LaunchServiceFileName}"
+  rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LaunchServiceFileName}
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchAgents | grep "${GLB_sv_ProjectSignature}")
+
+# Delete old LaunchDaemon plists
+while read sv_LaunchServiceFileName
+do
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting LaunchDaemon file ${sv_LaunchServiceFileName}"
+  rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LaunchServiceFileName}
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchDaemons | grep "${GLB_sv_ProjectSignature}")
+
+# remove old install
+if test -d "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting project dir ${sv_RootDirPath}/usr/local/${GLB_sv_ProjectName}"
+  rm -fR "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
+fi
+  
+if test -z "${sv_RootDirPath}"
+then
+  pkgscripts 2>/dev/null --forget "${GLB_sv_ProjectSignature}"
+else
+  pkgscripts 2>/dev/null --forget "${GLB_sv_ProjectSignature}" --volume "${sv_RootDirPath}"
+fi
+
+exit 0

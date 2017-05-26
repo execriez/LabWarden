@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>E38563FF-0EA0-4A76-BF70-C6D1BEC0115F</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>HomeIsLocal</key>
+					<dict>
+						<key>Path</key>
+						<array>
+							<string>/Desktop/</string>
+							<string>/Documents/</string>
+							<string>/Downloads/</string>
+							<string>/Movies/</string>
+							<string>/Music/</string>
+							<string>/Pictures/</string>
+						</array>
+					</dict>
+					<key>HomeIsOnNetwork</key>
+					<dict>
+						<key>Path</key>
+						<array>
+							<string>/Library/Application Support/audacity/.audacity.sock</string>
+							<string>/Library/Application Support/CrashReporter/</string>
+							<string>/Library/Caches/com.apple.helpd/</string>
+							<string>/Library/Calendars/</string>
+							<string>/Library/com.apple.nsurlsessiond/</string>
+							<string>/Library/Containers/</string>
+							<string>/Library/IdentityServices/</string>
+							<string>/Library/Keychains/</string>
+							<string>/Library/Logs/DiagnosticReports/</string>
+							<string>/Library/Messages/</string>
+						</array>
+					</dict>
+					<key>MakePathRedirections</key>
+					<true/>
+				</dict>
+				<key>Name</key>
+				<string>Usr-HomeMakePathRedirections</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Usr-ConsoleUserLoggedIn</string>
+					<string>Usr-AtDesktop</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>E38563FF-0EA0-4A76-BF70-C6D1BEC0115F</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>E38563FF-0EA0-4A76-BF70-C6D1BEC0115F</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-HomeMakePathRedirections</string>
+	<key>PayloadIdentifier</key>
+	<string>7B2F5D16-AAD1-474F-A12C-ABFB6698ADAF</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>7B2F5D16-AAD1-474F-A12C-ABFB6698ADAF</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.Safari</key>
+				<dict>
+					<key>Set-Once</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>LastSafariVersionWithWelcomePage</key>
+								<string>999.0</string>
+								<key>HomePage</key>
+								<string>https://github.com/execriez</string>
+								<key>NewTabBehavior</key>
+								<integer>4</integer>
+								<key>NewWindowBehavior</key>
+								<integer>0</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>28508398-125C-4B91-931B-3D0C4D01D7AF</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>28508398-125C-4B91-931B-3D0C4D01D7AF</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Included custom settings:
+com.apple.Safari
+</string>
+	<key>PayloadDisplayName</key>
+	<string>Mac SafariHomepage</string>
+	<key>PayloadIdentifier</key>
+	<string>FCD6135A-036C-4EFE-88AD-19D5E45956C0</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>FCD6135A-036C-4EFE-88AD-19D5E45956C0</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

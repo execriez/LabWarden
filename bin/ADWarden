@@ -1,0 +1,53 @@
+#!/bin/bash
+#
+# Short:    Do something when the Active Directory connects or disconnects
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Called by LaunchDaemon as follows:    
+#   ADWarden
+#
+
+# ---
+
+sv_TempDir="/tmp/root"
+
+if ! test -d "${sv_TempDir}"
+then
+  mkdir -p "${sv_TempDir}"
+  chown root:admin "${sv_TempDir}"
+  chmod 770 "${sv_TempDir}"
+fi
+
+if test -f "${sv_TempDir}/Sys-ActiveDirectoryUp"
+then
+  bv_LastActiveDirectoryUp="true"
+
+else
+  bv_LastActiveDirectoryUp="false"
+
+fi
+
+dscl 2>&1 localhost -read /Search/Computers/$(hostname -s)$ name
+if [ $? -ne 0 ]
+then
+  if [ "${bv_LastActiveDirectoryUp}" = "true" ]
+  then
+    rm -f "${sv_TempDir}/Sys-ActiveDirectoryUp"
+    sv_event="Sys-ActiveDirectoryDown"
+  fi
+
+else
+  if [ "${bv_LastActiveDirectoryUp}" = "false" ]
+  then
+    touch "${sv_TempDir}/Sys-ActiveDirectoryUp"
+    sv_event="Sys-ActiveDirectoryUp"
+  fi
+
+fi
+
+if test -n "${sv_event}"
+then
+  /usr/local/LabWarden/lib/Trigger "${sv_event}" "$(whoami)" ""
+fi

@@ -1,0 +1,169 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets a policy banner which is displayed at the Login Window
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-Boot (as root)
+#
+#   ... see associated config 'PolicyBanner.mobileconfig'
+#
+# Called as follows:    
+#   Sys-PolicyBanner <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are not root
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# ---
+
+# ------------------
+# BEGIN YOUR CODE HERE
+  
+case ${sv_EventName} in
+
+Sys-Boot|Sys-PolicyInstall)
+  sv_RTFfile="/Library/Security/${sv_ConfigEntryName}.rtf"
+  if [ ! -e "${sv_RTFfile}" ]
+  then
+    # Install the PolicyBanner.rtf file
+    sv_Title="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Title")"
+    sv_Text="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Text")"
+    echo "{\rtf1\ansi\pard\qc\b\fs36" >"${sv_RTFfile}"
+    echo "${sv_Title}" | sed 's|$|\\|g' >>"${sv_RTFfile}"
+    echo '\b0' >>"${sv_RTFfile}"
+    echo '\' >>"${sv_RTFfile}"
+    echo "${sv_Text}" | sed 's|$|\\|g' >>"${sv_RTFfile}"
+    echo '}' >>"${sv_RTFfile}"
+    rm -f "/Library/Security/PolicyBanner.rtf"
+    ln -s "${sv_RTFfile}" "/Library/Security/PolicyBanner.rtf"
+  fi
+  # Do nothing
+  ;;
+  
+Sys-PolicyUninstall)
+  sv_RTFfile="/Library/Security/${sv_ConfigEntryName}.rtf"
+  if [ -e "${sv_RTFfile}" ]
+  then
+    # Uninstall the PolicyBanner.rtf file
+    rm -f "/Library/Security/PolicyBanner.rtf"
+    rm -f "${sv_RTFfile}"
+  fi
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# END YOUR CODE HERE
+# ------------------
+    
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

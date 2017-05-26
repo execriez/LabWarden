@@ -1,0 +1,360 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets system Network Proxy options
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-NetworkUp     (as root)
+#
+# Called as follows:    
+#   Sys-NetworkProxy <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# ---
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
+Sf_OptionIsActiveForThisDomain() # [subkey]
+{
+  local bv_IsActive
+  local iv_IsActiveForDomainCount
+  local sv_IsActiveForDomain
+  
+  sv_SubKey="${1}"
+  if test -n "${sv_SubKey}" 
+  then
+    # add a single colon to the subkey
+    sv_SubKey=$(echo "${sv_SubKey}:" | sed "s|[:]*$|:|")
+  fi
+  
+  # Note, config "ActiveForDomain" value can be null, ALL, NONE, ADDOMAIN or your.company.domain
+
+  bv_IsActive="false"
+  iv_IsActiveForDomainCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:${sv_SubKey}ActiveForDomain")"
+  for (( iv_IsActiveForDomainIndex=0; iv_IsActiveForDomainIndex<${iv_IsActiveForDomainCount}; iv_IsActiveForDomainIndex++ ))
+  do
+    sv_IsActiveForDomain=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:${sv_SubKey}ActiveForDomain:${iv_IsActiveForDomainIndex}")
+    if test -n "${sv_IsActiveForDomain}"
+    then
+      case ${sv_IsActiveForDomain} in
+      ALL)
+        bv_IsActive="true"
+        break 2
+        ;;
+        
+      NONE)
+        break 2
+        ;;
+        
+      ADDOMAIN)
+        sv_IsActiveForDomain="${GLB_sv_ADDomainNameDNS}"
+        ;;
+          
+      esac
+    fi
+    
+    if [ "${sv_IsActiveForDomain}" = "${GLB_sv_NetworkServiceDHCPOption15}" ]
+    then
+      bv_IsActive="true"
+      break
+    fi
+  done
+  
+  echo "${bv_IsActive}"
+}
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are not root
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# ---
+
+# Exit if there is no network
+if test -z "${GLB_sv_NetworkServiceInterfaceName}"
+then
+  GLB_nf_QuickExit "Policy aborted - no network"
+  exit 0
+fi
+  
+# ---
+
+case ${sv_EventName} in
+    
+Sys-Boot|Sys-PolicyUninstall)
+  # Remove all proxy settings from all interfaces
+  networksetup -listallnetworkservices | grep -v "*" | while read sv_NetworkServiceInterfaceName
+  do
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching all proxy settings off for ${sv_NetworkServiceInterfaceName}"
+    /usr/sbin/networksetup -setproxyautodiscovery "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setautoproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setwebproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setsecurewebproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setftpproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setsocksfirewallproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setstreamingproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setgopherproxystate "${sv_NetworkServiceInterfaceName}" off
+  done
+  ;;
+  
+Sys-NetworkUp|Sys-PolicyInstall)
+  
+  bv_ConfigActive=$(Sf_OptionIsActiveForThisDomain)
+    
+  if [ "${bv_ConfigActive}" = "true" ]
+  then
+
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching all proxy settings off for ${GLB_sv_NetworkServiceInterfaceName}"
+    /usr/sbin/networksetup -setproxyautodiscovery "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setautoproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setwebproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setsecurewebproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setftpproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setstreamingproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setgopherproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
+
+    bv_ProxyAutoDiscoveryEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoDiscoveryEnable")"
+    if [ "${bv_ProxyAutoDiscoveryEnable}" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching on 'Auto Proxy Discovery'"
+      /usr/sbin/networksetup -setproxyautodiscovery "${GLB_sv_NetworkServiceInterfaceName}" on
+    fi
+
+    bv_ProxyAutoConfigEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoConfigEnable")"
+    if [ "${bv_ProxyAutoConfigEnable}" = "true" ]
+    then
+      sv_ProxyAutoConfigURLString="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoConfigURLString")"
+      if test -n "${sv_ProxyAutoConfigURLString}"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Automatic Proxy Configuration' to ${sv_ProxyAutoConfigURLString}"
+        /usr/sbin/networksetup -setautoproxyurl "${GLB_sv_NetworkServiceInterfaceName}" "${sv_ProxyAutoConfigURLString}"
+        /usr/sbin/networksetup -setautoproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+      fi
+    fi
+
+    bv_HTTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPEnable")"
+    if [ "${bv_HTTPEnable}" = "true" ]
+    then
+      sv_HTTPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPProxy")"
+      if test -n "${sv_HTTPProxy}"
+      then
+        iv_HTTPPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPPort")"
+        if test -n "${iv_HTTPPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Web Proxy' to ${sv_HTTPProxy}:${iv_HTTPPort}"
+          /usr/sbin/networksetup -setwebproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_HTTPProxy}" "${iv_HTTPPort}" off
+          /usr/sbin/networksetup -setwebproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    bv_HTTPSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSEnable")"
+    if [ "${bv_HTTPSEnable}" = "true" ]
+    then
+      sv_HTTPSProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSProxy")"
+      if test -n "${sv_HTTPSProxy}"
+      then
+        iv_HTTPSPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSPort")"
+        if test -n "${iv_HTTPSPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Secure Web Proxy' to ${sv_HTTPSProxy}:${iv_HTTPSPort}"
+          /usr/sbin/networksetup -setsecurewebproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_HTTPSProxy}" "${iv_HTTPSPort}" off
+          /usr/sbin/networksetup -setsecurewebproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    bv_RTSPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPEnable")"
+    if [ "${bv_RTSPEnable}" = "true" ]
+    then
+      sv_RTSPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPProxy")"
+      if test -n "${sv_RTSPProxy}"
+      then
+        iv_RTSPPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPPort")"
+        if test -n "${iv_RTSPPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Secure Streaming Proxy' to ${sv_RTSPProxy}:${iv_RTSPPort}"
+          /usr/sbin/networksetup -setstreamingproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_RTSPProxy}" "${iv_RTSPPort}" off
+          /usr/sbin/networksetup -setstreamingproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    bv_FTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPEnable")"
+    if [ "${bv_FTPEnable}" = "true" ]
+    then
+      sv_FTPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPProxy")"
+      if test -n "${sv_FTPProxy}"
+      then
+        iv_FTPPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPPort")"
+        if test -n "${iv_FTPPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'FTP Proxy' to ${sv_FTPProxy}:${iv_FTPPort}"
+          /usr/sbin/networksetup -setftpproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_FTPProxy}" "${iv_FTPPort}" off
+          /usr/sbin/networksetup -setftpproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    bv_SOCKSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSEnable")"
+    if [ "${bv_SOCKSEnable}" = "true" ]
+    then
+      sv_SOCKSProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSProxy")"
+      if test -n "${sv_SOCKSProxy}"
+      then
+        iv_SOCKSPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSPort")"
+        if test -n "${iv_SOCKSPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'SOCKS Proxy' to ${sv_SOCKSProxy}:${iv_SOCKSPort}"
+          /usr/sbin/networksetup -setsocksfirewallproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_SOCKSProxy}" "${iv_SOCKSPort}" off
+          /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    bv_GopherEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherEnable")"
+    if [ "${bv_GopherEnable}" = "true" ]
+    then
+      sv_GopherProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherProxy")"
+      if test -n "${sv_GopherProxy}"
+      then
+        iv_GopherPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherPort")"
+        if test -n "${iv_GopherPort}"
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Gopher Proxy' to ${sv_GopherProxy}:${iv_GopherPort}"
+          /usr/sbin/networksetup -setgopherproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_GopherProxy}" "${iv_GopherPort}" off
+          /usr/sbin/networksetup -setgopherproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        fi
+      fi
+    fi
+
+    sv_ExceptionsList="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExceptionsList" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
+    if test -n "${sv_ExceptionsList}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting Proxy Bypass Domains"
+      /usr/sbin/networksetup -setproxybypassdomains "${GLB_sv_NetworkServiceInterfaceName}" ${sv_ExceptionsList}
+    fi
+  fi
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+  
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---
+
+# Notes to self
+# -display cisco CDP INFO
+#  tcpdump -nn -v -i en0 -s 1500 -c 1 'ether[20:2] == 0x2000'
+# -display tcp traffic
+#  nettop -m tcp
+# -display internet traffic
+#  tcpdump -i en0 -n port 80
+# -display traffic to a particular host (which you could pick out of the above outputs)
+#  tcpdump -i en0 -n host 95.140.226.15

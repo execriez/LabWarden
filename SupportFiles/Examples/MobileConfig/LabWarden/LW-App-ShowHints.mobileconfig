@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>A0F2EDC1-DDBF-4B3C-AA42-6B4536208700</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>AppHint</key>
+					<array>
+						<dict>
+							<key>ApplicationBundleIdentifier</key>
+							<string>com.apple.logic10</string>
+							<key>IsAdmin</key>
+							<false/>
+							<key>IsLocalAccount</key>
+							<false/>
+							<key>IsLocalHome</key>
+							<false/>
+							<key>MessageContent</key>
+							<string>APPNAME works better off network</string>
+						</dict>
+						<dict>
+							<key>ApplicationBundleIdentifier</key>
+							<string>com.adobe.AdobePremierePro</string>
+							<key>MessageContent</key>
+							<string>Setup your Media Cache File location (Premiere&gt;Preferences&gt;Media)</string>
+						</dict>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>App-ShowHints</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>App-DidLaunch</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>A0F2EDC1-DDBF-4B3C-AA42-6B4536208700</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>A0F2EDC1-DDBF-4B3C-AA42-6B4536208700</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW App-ShowHints</string>
+	<key>PayloadIdentifier</key>
+	<string>7F511298-F718-4B41-BBFC-CACAAC03D170</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>7F511298-F718-4B41-BBFC-CACAAC03D170</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

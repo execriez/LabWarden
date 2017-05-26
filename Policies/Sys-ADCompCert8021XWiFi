@@ -1,0 +1,362 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Required for 802.1X authentication
+#
+# Triggered by the following events:
+#   Sys-NetworkUp (as root)
+#
+# Called as follows:    
+#   Sys-ADGet8021XWiFiCert <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are not root
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+fi
+
+# Exit if the workstation is not bound to AD
+if test -z "${GLB_sv_ADDomainNameDNS}"
+then
+  GLB_nf_QuickExit "Policy aborted - Computer probably not bound to AD."
+fi
+
+# ---
+
+case ${sv_EventName} in
+    
+Sys-NetworkUp|Sys-PolicyInstall)
+  sv_CertTemplate="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:CertTemplate")"
+  sv_CertAuthURL="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:CertAuthURL")"
+  sv_SSIDSTR="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SSIDSTR")"
+
+  # Fashion a name for the generated certificate
+  sv_CertIdentifier="CertAuth-Certificate"
+  
+  # Fashion a name for the generated mobileconfig
+  sv_ConfigIdentifier="${sv_SSIDSTR}-8021XWiFi"
+
+  bv_RenewComputerCert="true"
+
+  sv_CertSerial="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:CertSerial")"
+  if test -n "${sv_CertSerial}"
+  then
+    sv_CertPemDirPath="${GLB_sv_ThisScriptTempDirPath}/Certs"
+    mkdir -p ${sv_CertPemDirPath}
+
+    # Read all Certs with the name of this hostname into a Certs directory
+    /usr/bin/security find-certificate -a -c "${GLB_sv_ADComputerName}" -p /Library/Keychains/System.keychain | awk 'dosplit==1{n++;dosplit=0} /-----END CERTIFICATE-----/ {dosplit=1} {print > ("'${sv_CertPemDirPath}/Cert'-" n ".pem")}'
+
+    while read sv_CertPemFilePath
+    do
+      sv_ThisCertSerial=$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -serial | cut -f2 -d=)
+      if [ "${sv_ThisCertSerial}" = "${sv_CertSerial}" ]
+      then
+        iv_CertStartEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -startdate | cut -f2 -d=)" "+%s")
+        iv_CertEndEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -enddate | cut -f2 -d=)" "+%s")
+
+        iv_RenewCertBeforeDays="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RenewCertBeforeDays")"
+
+        if [ $((${iv_CertEndEpoch}-(${iv_RenewCertBeforeDays}*24*60*60))) -gt ${GLB_iv_ThisScriptStartEpoch} ]
+        then
+          # Cert hasn't expired yet
+          iv_RevokeCertBeforeEpoch="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RevokeCertBeforeEpoch")"
+
+          if [ ${iv_CertStartEpoch} -ge ${iv_RevokeCertBeforeEpoch} ]
+          then
+            # Cert hasn't been revoked
+            bv_RenewComputerCert="false"
+            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Computer certificate is still valid"
+           fi
+        fi
+        break
+      fi
+    done < <(find ${sv_CertPemDirPath} -iname "*.pem")
+    
+  fi
+  
+  if [ "${bv_RenewComputerCert}" = "true" ]
+  then
+    # Define a browser user agent
+    sv_BrowserAgent="Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.5) Gecko/2008120122 Firefox/3.0.5"
+
+    # Define (temporary) file names
+    iv_CertKeyFilePath="${GLB_sv_ThisScriptTempDirPath}/${sv_CertIdentifier}.key"
+    sv_CertCsrFilePath="${GLB_sv_ThisScriptTempDirPath}/${sv_CertIdentifier}.csr"
+    sv_CertPemFilePath="${GLB_sv_ThisScriptTempDirPath}/${sv_CertIdentifier}.pem"
+    sv_CertPk12FilePath="${GLB_sv_ThisScriptTempDirPath}/${sv_CertIdentifier}.p12"
+    sv_MobileConfigFilePath="${GLB_sv_ThisScriptTempDirPath}/${sv_ConfigIdentifier}.mobileconfig"
+
+    # Generate a CSR file
+    /usr/bin/openssl req -new -batch -newkey rsa:2048 -nodes -outform PEM -keyout "${iv_CertKeyFilePath}" -out "${sv_CertCsrFilePath}"
+
+    # URL encode the CSR
+    sv_EncodedCertCsrFileContents="$(GLB_sf_urlencode "$(cat "${sv_CertCsrFilePath}")")"
+
+    # Post the Certificate request to the Web Enrollment page 
+    sv_ReqReplyContent="$(curl --connect-timeout 10 -k --ntlm -u ${GLB_sv_ADTrustAccount}:${GLB_sv_ADTrustPassword} -d CertRequest=${sv_EncodedCertCsrFileContents} -d SaveCert=yes -d Mode=newreq -d CertAttrib=CertificateTemplate:"${sv_CertTemplate}" ${sv_CertAuthURL}/certfnsh.asp)"
+
+    if test -z "${sv_ReqReplyContent}"
+    then
+      # Display an error status
+      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "CERTIFICATE REQUEST FAILED (it probably timed out)"
+      
+    else
+
+      # We need the ReqID from the server response
+      iv_ReqReplyID=$(echo "${sv_ReqReplyContent}" | grep "ReqID=" | grep -v "Renewal" | sed "s|\(.*ReqID=\)\(.*\)|\2|;s|\(^[0-9]*\)\(.*\)|\1|" | head -n 1)
+
+      if test -z "${iv_ReqReplyID}"
+      then
+        # Display an error status
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "CERTIFICATE REQUEST FAILED (read the server response below) ${sv_ReqReplyContent}"
+  
+      else
+        # Pull the computer cert down in PEM format
+        curl --connect-timeout 10 -k -o "${sv_CertPemFilePath}" -A "${sv_BrowserAgent}" --ntlm -u ${GLB_sv_ADTrustAccount}:${GLB_sv_ADTrustPassword} "${sv_CertAuthURL}/certnew.cer?ReqID=${iv_ReqReplyID}&Enc=b64"
+
+        # Get the certificate serial (so we can find it later if there are multiple certs with the same name)
+        sv_CertSerial=$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -serial | cut -f2 -d=)
+        GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:CertSerial" "${sv_CertSerial}"
+
+        # Pack the computer cert and private key into a PKCS12 file
+        openssl pkcs12 -export -in "${sv_CertPemFilePath}" -inkey "${iv_CertKeyFilePath}" -out "${sv_CertPk12FilePath}" -name "${sv_CertIdentifier}" -passout "pass:pass"
+
+        # Get the Wi-Fi proxy options
+        sv_ProxyType="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyType")"
+
+        # Generate some unique uuids for the payloads within the mobileconfig
+        sv_ConfigPayloadUUID=$(uuidgen)
+        sv_CertPayloadUUID=$(uuidgen)
+        sv_WiFiPayloadUUID=$(uuidgen)
+
+        # Create the mobile config
+        cat << HEREDOC > "${sv_MobileConfigFilePath}"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>Password</key>
+      <string>pass</string>
+      <key>PayloadCertificateFileName</key>
+      <string>${sv_CertIdentifier}.p12</string>
+      <key>PayloadContent</key>
+      <data>
+      </data>
+      <key>PayloadDescription</key>
+      <string>Configures certificate settings.</string>
+      <key>PayloadDisplayName</key>
+      <string>${sv_CertIdentifier}.p12</string>
+      <key>PayloadIdentifier</key>
+      <string>${sv_CertIdentifier}</string>
+      <key>PayloadType</key>
+      <string>com.apple.security.pkcs12</string>
+      <key>PayloadUUID</key>
+      <string>${sv_CertPayloadUUID}</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+    </dict>
+    <dict>
+      <key>AutoJoin</key>
+      <true/>
+      <key>EAPClientConfiguration</key>
+      <dict>
+        <key>AcceptEAPTypes</key>
+        <array>
+          <integer>13</integer>
+        </array>
+      </dict>
+      <key>EncryptionType</key>
+      <string>WPA</string>
+      <key>HIDDEN_NETWORK</key>
+      <true/>
+      <key>IsHotspot</key>
+      <false/>
+      <key>PayloadCertificateUUID</key>
+      <string>${sv_CertPayloadUUID}</string>
+      <key>PayloadDescription</key>
+      <string>Configure Wi-Fi</string>
+      <key>PayloadDisplayName</key>
+      <string>WiFi</string>
+      <key>PayloadIdentifier</key>
+      <string>${sv_WiFiPayloadUUID}</string>
+      <key>PayloadType</key>
+      <string>com.apple.wifi.managed</string>
+      <key>PayloadUUID</key>
+      <string>${sv_WiFiPayloadUUID}</string>
+      <key>PayloadVersion</key>
+      <real>1</real>
+      <key>ProxyType</key>
+      <string>${sv_ProxyType}</string>
+      <key>SSID_STR</key>
+      <string>${sv_SSIDSTR}</string>
+            <key>SetupModes</key>
+      <array>
+        <string>System</string>
+      </array>
+    </dict>
+  </array>
+  <key>PayloadDisplayName</key>
+  <string>WiFi (${sv_SSIDSTR})</string>
+  <key>PayloadIdentifier</key>
+  <string>${sv_ConfigIdentifier}</string>
+  <key>PayloadRemovalDisallowed</key>
+  <true/>
+  <key>PayloadScope</key>
+  <string>System</string>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>${sv_ConfigPayloadUUID}</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>
+HEREDOC
+
+        # Insert the pkcs12 file into the mobileconfig
+        /usr/libexec/PlistBuddy -c "Import PayloadContent:0:PayloadContent ${sv_CertPk12FilePath}" "${sv_MobileConfigFilePath}"
+
+        # Remove any previous payload
+        profiles >/dev/null 2>&1 -R -p "${sv_ConfigIdentifier}"
+
+        # Install the mobileconfig
+        profiles -I -F "${sv_MobileConfigFilePath}"
+        
+#        cp "${sv_MobileConfigFilePath}" /Users/local/Desktop/${sv_CertIdentifier}.mobileconfig
+#        chmod 777 /Users/local/Desktop/${sv_CertIdentifier}.mobileconfig
+
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Machine certificate installed/renewed."
+      fi
+    fi
+  fi
+  ;;
+
+Sys-PolicyUninstall)
+  # Get the SSID
+  sv_SSIDSTR="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SSIDSTR")"
+
+  # Remove any mobileconfig payload
+  profiles >/dev/null 2>&1 -R -p "${sv_ConfigIdentifier}"
+  ;;
+
+Sys-PolicyInstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

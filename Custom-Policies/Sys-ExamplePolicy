@@ -1,0 +1,245 @@
+#!/bin/bash
+#
+# Short:    Sys Policy Script - Example System Policy script (A blank canvas)
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-Boot                 (as root)
+#   Sys-LoginWindow          (as root)
+#   Sys-LoginWindowPoll      (as root)
+#   Sys-LoginWindowIdle      (as root)
+#   Sys-NetworkUp            (as root)
+#   Sys-NetworkDown          (as root)
+#   Sys-ActiveDirectoryUp    (as root)
+#   Sys-ConsoleUserLoggedIn  (as root)
+#   Sys-ConsoleUserLoggedOut (as root)
+#   Sys-ConsoleUserSwitch    (as root)
+#   Sys-Poll                 (as root)
+#   Sys-Idle                 (as root)
+#
+#   ... see associated config 'Sys-ExamplePolicy.mobileconfig'
+#
+# Called as follows:    
+#   Sys-ExamplePolicy <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user.
+# A null string signifies no-one is logged in, or this is a system event.
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# ------------------
+# BEGIN YOUR CODE HERE
+  
+# Read some values from the policy config
+bv_ExampleBool="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleBool")"
+iv_ExampleNum="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleNum")"
+sv_ExampleString="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleString")"
+sv_ExampleArray0="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleArray:0")"
+sv_ExampleArray1="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleArray:1")"
+sv_ExampleArray2="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExampleArray:2")"
+
+# We could do something with the values now
+
+# Here we are just outputting the values to the log if the log level is Debug
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleBool:${bv_ExampleBool}"
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleNum:${iv_ExampleNum}"
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleString:${sv_ExampleString}"
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleArray[0]:${sv_ExampleArray0}"
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleArray[1]:${sv_ExampleArray1}"
+GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "ExampleArray[2]:${sv_ExampleArray2}"
+
+# Lets handle the events
+
+# In this example we are just using the 'say' command to speak what is happening
+
+case ${sv_EventName} in
+
+Sys-Boot)
+  # (as root) - Do this at boot time
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName}" &
+  ;;
+
+Sys-LoginWindow)
+  # (as root) - Do this at loginwindow
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  sleep 2;say "${sv_EventName}" &
+  ;;
+
+Sys-LoginWindowPoll)
+  # (as root) - Do this at loginwindow regularly
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName}" &
+  ;;
+
+Sys-LoginWindowIdle)
+  # (as root) - Do this at loginwindow when idle
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  sleep 2;say "${sv_EventName}" &
+  ;;
+
+Sys-NetworkUp)
+  # (as root) - Do this when the primary network comes up or changes
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName} $(echo "${GLB_sv_NetworkServiceInterfaceDevice}" | sed "s|\(.\)|\1 |g")." &
+  ;;
+
+Sys-NetworkDown)
+  # (as root) - Do this when there is no primary network
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName}" &
+  ;;
+
+Sys-ActiveDirectoryUp)
+  # (as root) - Do this when Active Directory becomes available
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName}" &
+  ;;
+
+Sys-ConsoleUserLoggedIn)
+  # (as root) - Do this when a user logs in
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName} ${GLB_sv_LoggedInUserName}" &
+  ;;
+
+Sys-ConsoleUserLoggedOut)
+  # (as root) - Do this when a user logs out
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName} ${GLB_sv_LoggedInUserName}" &
+  ;;
+
+Sys-ConsoleUserSwitch)
+  # (as root) - Do this when a user switches to another user
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName} ${GLB_sv_LoggedInUserName}" &
+  ;;
+
+Sys-Poll)
+  # (as root) - Do this regularly in the background
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  say "${sv_EventName}" &
+  ;;
+
+Sys-Idle)
+  # (as root) - Do this regularly in the background
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Policy is speaking."
+  sleep 2;say "${sv_EventName}" &
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# Write a value to the local policy vars (root user and normal users have different local policies)
+GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LastRunEpoch" "${GLB_iv_ThisScriptStartEpoch}"
+
+# END YOUR CODE HERE
+# ------------------
+    
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

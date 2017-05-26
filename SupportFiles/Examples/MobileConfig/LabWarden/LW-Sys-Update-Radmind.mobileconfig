@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>LoginWindowIdleShutdownSecs</key>
+					<integer>1200</integer>
+					<key>OutOfHoursEndTime</key>
+					<string>05:00</string>
+					<key>OutOfHoursPowerOn</key>
+					<true/>
+					<key>OutOfHoursStartTime</key>
+					<string>22:00</string>
+					<key>UpdateScript</key>
+					<dict>
+						<key>ActiveForDomain</key>
+						<array>
+							<string>ALL</string>
+						</array>
+						<key>Exe</key>
+						<array>
+							<string>file://localhost/usr/local/LabWarden/lib/RadmindUpdate</string>
+							<string>192.168.0.3,sha1,0,-I,42000</string>
+						</array>
+					</dict>
+				</dict>
+				<key>Name</key>
+				<string>Sys-Update</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-LoginWindowIdle</string>
+					<string>Sys-ManualUpdate</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-Update (Radmind)</string>
+	<key>PayloadIdentifier</key>
+	<string>FC36EADD-372C-4936-BC9E-6CFFEB710B12</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>FC36EADD-372C-4936-BC9E-6CFFEB710B12</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

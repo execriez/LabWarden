@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>B1E4A3DB-9C43-4C23-9975-E7BBBC6FCF70</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/Applications/Utilities/Adobe Flash Player Install Manager.app/</string>
+						<string>/Library/Application Support/Adobe/Flash Player Install Manager/</string>
+						<string>/Library/Internet Plug-Ins/Flash Player.plugin/</string>
+						<string>/Library/Internet Plug-Ins/PepperFlashPlayer/</string>
+						<string>/Library/LaunchDaemons/com.adobe.fpsaud.plist</string>
+						<string>/Library/PreferencePanes/Flash Player.prefPane/</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-DeleteFiles</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Boot</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>B1E4A3DB-9C43-4C23-9975-E7BBBC6FCF70</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>B1E4A3DB-9C43-4C23-9975-E7BBBC6FCF70</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-DeleteFiles (FlashPlayer)</string>
+	<key>PayloadIdentifier</key>
+	<string>0E6CDE7E-09B8-476E-87A7-1BD4F2F56094</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>0E6CDE7E-09B8-476E-87A7-1BD4F2F56094</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Short:    Perform pre-install checks
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+#
+# Called as follows (by Install as root):    
+#   PreInstall
+
+# ---
+
+# assume that all scripts are in a subdirectory off the main project directory
+GLB_sv_ProjectDirPath="$(dirname $(dirname ${0}))"
+
+# Include the CommonLib
+. "${GLB_sv_ProjectDirPath}/inc/Common.sh"
+
+# Exit if something went wrong unexpectedly
+if test -z "${GLB_sv_ProjectName}"
+then
+  exit 90
+fi
+
+# ---
+
+# Exit if not the root user
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Unable to run, try: sudo ${GLB_sv_ThisScriptName}"
+  exit 91
+fi
+
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
+
+if [ "${sv_RootDirPath}" = "/" ]
+then
+  sv_RootDirPath=""
+fi
+
+# ---
+
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Performing pre-install checks"
+
+if test -z "${sv_RootDirPath}"
+then
+
+  if test -n "$(launchctl list | grep "${GLB_sv_ProjectSignature}")"
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ProjectName} is already installed and running."
+#    exit 92
+    "${GLB_sv_ProjectDirPath}/util/UnInstall"
+    iv_Error="$?"
+    if [ "${iv_Error}" != "0" ]
+    then
+      exit ${iv_Error}
+    fi
+  fi
+
+fi
+
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "OK to install."
+
+exit 0
+

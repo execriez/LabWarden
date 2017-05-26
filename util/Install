@@ -1,0 +1,148 @@
+#!/bin/bash
+#
+# Short:    Install Project (command-line)
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+#
+# Called as follows:    
+#   sudo Install [<root_dirpath>]
+
+# ---
+
+# assume that all scripts are in a subdirectory off the main project directory
+GLB_sv_ProjectDirPath="$(dirname $(dirname ${0}))"
+
+# Include the CommonLib
+. "${GLB_sv_ProjectDirPath}/inc/Common.sh"
+
+# Exit if something went wrong unexpectedly
+if test -z "${GLB_sv_ProjectName}"
+then
+  exit 90
+fi
+
+# ---
+
+# Exit if not the root user
+if [ "${GLB_sv_ThisUserName}" != "root" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Unable to run, try: sudo ${GLB_sv_ThisScriptName}"
+  exit 91
+fi
+
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
+
+if [ "${sv_RootDirPath}" = "/" ]
+then
+  sv_RootDirPath=""
+fi
+
+# ---
+
+if [ "${GLB_sv_ProjectDirPath}" = "${sv_RootDirPath}/usr/local/${GLB_sv_ProjectName}" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Cannot install from this folder; copy the folder somewhere else and try again."
+  exit 92
+fi
+
+# ---
+
+if test -z "${sv_RootDirPath}"
+then
+  "${GLB_sv_ProjectDirPath}/lib/PreInstall"
+  iv_Error="$?"
+  if [ "${iv_Error}" != "0" ]
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Cancelling install of ${GLB_sv_ProjectName}."
+    exit ${iv_Error}
+  fi
+
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing ${GLB_sv_ProjectName}."
+fi
+
+# Create a temporary directory private to this script
+sv_ThisScriptTempDirPath="$(mktemp -dq /tmp/Install-XXXXXXXX)"
+
+# -- Copy the main payload
+mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}"
+cp -pR "${GLB_sv_ProjectDirPath}/" "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/"
+
+# -- Remove any unwanted files
+find "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iname .DS_Store -exec rm -f {} \;
+rm -fR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/.git"
+rm -fR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/SupportFiles"
+find -d "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iregex ".*/Custom[^/]*/.*" -exec rm -fd {} \;
+mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
+mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
+
+# -- Copy the example Custom policies
+mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
+mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
+find -d "${GLB_sv_ProjectDirPath}/Custom-Policies" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/ \;
+find -d "${GLB_sv_ProjectDirPath}/Custom-PayloadHandlers" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/ \;
+
+# -- Copy into place
+cp -pR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/" "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}/
+chown -R root:wheel "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
+chmod -R 755 "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
+
+if test -n "${sv_RootDirPath}"
+then
+  mkdir -p "${sv_RootDirPath}"/Library/LaunchAgents
+  mkdir -p "${sv_RootDirPath}"/Library/LaunchDaemons
+  chown root:wheel "${sv_RootDirPath}"/Library
+  chmod 755 "${sv_RootDirPath}"/Library
+  chown root:wheel "${sv_RootDirPath}"/Library/LaunchAgents
+  chmod 755 "${sv_RootDirPath}"/Library/LaunchAgents
+  chown root:wheel "${sv_RootDirPath}"/Library/LaunchDaemons
+  chmod 755 "${sv_RootDirPath}"/Library/LaunchDaemons
+fi
+
+if [ "${GLB_sv_ProjectDirPath}" = "/usr/local/${GLB_sv_ProjectName}" ]
+then
+  sv_LaunchServiceSrcDirPath="/Library"
+  
+else
+  sv_LaunchServiceSrcDirPath="${GLB_sv_ProjectDirPath}/SupportFiles"
+
+fi
+
+# Copy LaunchAgents in-place
+find -d "${sv_LaunchServiceSrcDirPath}/LaunchAgents" -iname "${GLB_sv_ProjectSignature}*" -exec cp "{}" "${sv_RootDirPath}"/Library/LaunchAgents/ \;
+
+# Copy LaunchDaemons in-place
+find -d "${sv_LaunchServiceSrcDirPath}/LaunchDaemons" -iname "${GLB_sv_ProjectSignature}*" -exec cp "{}" "${sv_RootDirPath}"/Library/LaunchDaemons/ \;
+
+# Set the LaunchAgents privileges
+while read sv_LaunchServiceFileName
+do
+  chown root:wheel "${sv_LaunchServiceFileName}"
+  chmod 644 "${sv_LaunchServiceFileName}"
+done < <(find -d "${sv_RootDirPath}/Library/LaunchAgents" -iname "${GLB_sv_ProjectSignature}*")
+
+# Set the LaunchDaemons privileges
+while read sv_LaunchServiceFileName
+do
+  chown root:wheel "${sv_LaunchServiceFileName}"
+  chmod 644 "${sv_LaunchServiceFileName}"
+done < <(find -d "${sv_RootDirPath}/Library/LaunchDaemons" -iname "${GLB_sv_ProjectSignature}*")
+
+# Execute PostInstall check
+if test -z "${sv_RootDirPath}"
+then
+  "${GLB_sv_ProjectDirPath}/lib/PostInstall"
+  iv_Error="$?"
+  if [ "${iv_Error}" != "0" ]
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Cancelling install of ${GLB_sv_ProjectName}."
+    "${GLB_sv_ProjectDirPath}/util/Uninstall" "${sv_RootDirPath}"
+    exit ${iv_Error}
+  fi
+fi
+
+exit 0

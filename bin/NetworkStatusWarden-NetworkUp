@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Short:    Do something when the network comes up
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Called by NetworkStatusWarden as follows:    
+#   NetworkStatusWarden-NetworkUp <InterfaceName>
+
+# ---
+
+# -- Trigger the Sys-NetworkUp policy --
+
+/usr/local/LabWarden/lib/Trigger "Sys-NetworkUp" "$(whoami)" "${1}"

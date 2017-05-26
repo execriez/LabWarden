@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Short:    Do something when the active Console User switches
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Called by ConsoleUserWarden as follows:    
+#   ConsoleUserWarden-UserSwich <ActiveConsoleUser> <PreviousConsoleUser>
+#
+# Executes the following Triggers
+#   Sys-ConsoleUserSwitch "root" "<user>" (as root)
+#   Usr-ConsoleUserSwitch                 (as <user>)
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- passes the user logging in as first parameter --
+
+# Get user name
+GLB_sv_ThisUserName="${1}"
+
+# -- The following is executed as root --
+
+/usr/local/LabWarden/lib/Trigger "Sys-ConsoleUserSwitch" "$(whoami)" "${GLB_sv_ThisUserName}"
+
+# -- The following is executed as the user who is logging in --
+
+# 'HEREDOC' is quoted to prevent variable expansion.
+# This means that variables outside are not available.
+ 
+/usr/bin/su ${GLB_sv_ThisUserName} <<'HEREDOC'
+
+/usr/local/LabWarden/lib/Trigger "Usr-ConsoleUserSwitch"
+
+HEREDOC
+
+# -- We are back as the root user.

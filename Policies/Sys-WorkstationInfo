@@ -1,0 +1,204 @@
+#!/bin/bash
+#
+# Short:    Sys Policy Script - Update loginwindow text and RemoteDesktop Info Fields with workstation info
+# Author:   Mark J Swift
+# Version:  2.0.6
+# Modified: 27-May-2017
+#
+# Triggered by the following events:
+#   Sys-Boot                 (as root)
+#   Sys-ActiveDirectoryUp    (as root)
+#
+#   ... see associated config 'Sys-WorkstationInfo.mobileconfig'
+#
+# Called as follows:    
+#   Sys-WorkstationInfo <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.6"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+# This might be one of the following system events:
+#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
+# ...or one of the following User events:
+#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user.
+# A null string signifies no-one is logged in, or this is a system event.
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# ------------------
+
+# Lets handle the events
+
+# In this example we are just using the 'say' command to speak what is happening
+
+case ${sv_EventName} in
+
+Sys-Boot|Sys-PolicyInstall)
+  # (as root) - Do this at boot time
+
+  bv_ShowHostnameAtLoginwindow="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ShowHostnameAtLoginwindow")"
+  if [ "${bv_ShowHostnameAtLoginwindow}" =  "true" ]
+  then
+    sv_LoginwindowText1="${GLB_sv_Hostname}"
+
+    # Get line 2 of the Loginwindow text which we dont want to overwrite
+    sv_LoginwindowText2=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 2)
+
+    # Get line 3 of the Loginwindow text which we dont want to overwrite
+    sv_LoginwindowText3=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 3)
+
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting login window text line #1 to '${sv_LoginwindowText1}'"
+
+    # Update the Loginwindow Text
+    sv_LoginwindowText=$(echo "${sv_LoginwindowText1};${sv_LoginwindowText2};${sv_LoginwindowText3}" | tr ";" "\n")
+    /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
+  fi
+  ;;
+
+Sys-ActiveDirectoryUp)
+  # (as root) - Do this when Active Directory becomes available
+  
+  sv_Attr="distinguishedName";sv_Value="$(dscl 2>/dev/null localhost -read "/Search/Computers/${GLB_sv_ADTrustAccount}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
+|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')"
+
+  sv_ADpath=$(echo "${sv_Value}" | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${GLB_sv_ADDomainNameDNS}'||g;s|\.|,|g' | cut -d',' -f2-)
+
+  if test -n "${sv_ADpath}"
+  then
+  
+    bv_ShowADpathAtLoginwindow="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ShowADpathAtLoginwindow")"
+    if [ "${bv_ShowADpathAtLoginwindow}" = "true" ]
+    then
+      # Get line 1 of the existing Loginwindow text
+      sv_LoginwindowText1=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 1)
+
+      sv_LoginwindowText2="$(echo ${sv_ADpath} | sed "s|,| - |g")"
+
+      # Get line 3 of the existing Loginwindow text
+      sv_LoginwindowText3=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f 3)
+
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting login window text line #2 to '${sv_LoginwindowText2}'"
+
+      # Update the Loginwindow Text
+      sv_LoginwindowText=$(echo "${sv_LoginwindowText1};${sv_LoginwindowText2};${sv_LoginwindowText3}" | tr ";" "\n")
+      /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
+    fi
+
+    bv_ShowADpathInRemoteDesktopInfo="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ShowADpathInRemoteDesktopInfo")"
+    if [ "${bv_ShowADpathInRemoteDesktopInfo}" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting remote desktop computerinfo 1-3 to '$(echo "${sv_ADpath}" | cut -d"," -f1-3)'"
+
+      # Update the RemoteDesktop Computer Info Fields #1-3
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "$(echo "${sv_ADpath}" | cut -d"," -f1)" -set2 -2 "$(echo "${sv_ADpath}" | cut -d"," -f2)" -set3 -3 "$(echo "${sv_ADpath}" | cut -d"," -f3-)"
+    fi
+  fi
+
+  ;;
+
+Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# Write a value to the local policy vars (root user and normal users have different local policies)
+GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LastRunEpoch" "${GLB_iv_ThisScriptStartEpoch}"
+    
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

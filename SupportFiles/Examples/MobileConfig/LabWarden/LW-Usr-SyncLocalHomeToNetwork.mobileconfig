@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>4C3091C8-AC78-419B-9941-9A5E2900FD92</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/Library/Fonts/</string>
+						<string>/Library/Application Support/Firefox/</string>
+						<string>/Library/Application Support/Google/Chrome/Default</string>
+						<string>/Library/Application Support/Chromium/Default</string>
+						<string>/Library/Safari/</string>
+						<string>/Library/Application Support/Microsoft/</string>
+						<string>/Library/Application Support/Spotify/</string>
+						<string>/Library/Caches/com.apple.helpd/</string>
+						<string>/Library/Group Containers/</string>
+						<string>/Library/Preferences/com.microsoft.autoupdate2.plist</string>
+						<string>/Library/Preferences/com.microsoft.error_reporting.plist</string>
+						<string>/Library/Preferences/com.microsoft.office.plist</string>
+						<string>/Library/Preferences/com.microsoft.outlook.databasedaemon.plist</string>
+						<string>/Library/Preferences/com.microsoft.Word.plist</string>
+						<string>/Library/Preferences/com.microsoft.office.plist</string>
+						<string>/Library/Preferences/com.microsoft.Powerpoint.plist</string>
+						<string>/Library/Preferences/com.microsoft.Excel.plist</string>
+						<string>/Library/Preferences/com.microsoft.office.plist</string>
+						<string>/Library/Preferences/com.microsoft.outlook.office_reminders.plist</string>
+						<string>/Library/Preferences/com.microsoft.Outlook.plist</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Usr-SyncLocalHomeToNetwork</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Usr-AtDesktop</string>
+					<string>Usr-Poll</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>4C3091C8-AC78-419B-9941-9A5E2900FD92</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>4C3091C8-AC78-419B-9941-9A5E2900FD92</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-SyncLocalHomeToNetwork</string>
+	<key>PayloadIdentifier</key>
+	<string>9B0363AC-BEF2-4A8A-8925-67B6C94A9213</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>9B0363AC-BEF2-4A8A-8925-67B6C94A9213</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

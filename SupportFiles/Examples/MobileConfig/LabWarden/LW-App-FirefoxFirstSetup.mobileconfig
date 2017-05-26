@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>3DD4FBF4-9B66-40BF-AC7D-AA41BA2D055D</key>
+			<dict>
+				<key>Name</key>
+				<string>App-FirefoxFirstSetup</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>App-WillLaunch</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>3DD4FBF4-9B66-40BF-AC7D-AA41BA2D055D</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>3DD4FBF4-9B66-40BF-AC7D-AA41BA2D055D</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW App-FirefoxFirstSetup</string>
+	<key>PayloadIdentifier</key>
+	<string>5A3BD231-73FB-4AAE-BD43-E2B99919445B</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>5A3BD231-73FB-4AAE-BD43-E2B99919445B</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
