@@ -2492,7 +2492,7 @@ There are no configurable options.
 
 This policy syncs specified folders from the users local home to network home. It is only relevant for network accounts where "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility".
 
-It is called as the user. Files are synced down from the network at a **Usr-AtDesktop** event. Files are synced back up to the network at a **Usr-Logout** event.
+It is called as the user. Files are synced down from the network at a **Usr-AtDesktop** event. Files are synced back up to the network at a **Usr-Poll** event.
 
 	<key>Config</key>
 	<dict>
@@ -2500,8 +2500,8 @@ It is called as the user. Files are synced down from the network at a **Usr-AtDe
 		<array>
 			<string>/Library/Fonts/</string>
 			<string>/Library/Application Support/Firefox/</string>
-			<string>/Library/Application Support/Google/Chrome/</string>
-			<string>/Library/Application Support/Chromium/</string>
+			<string>/Library/Application Support/Google/Chrome/Default</string>
+			<string>/Library/Application Support/Chromium/Default</string>
 			<string>/Library/Safari/</string>
 			<string>/Library/Application Support/Microsoft/</string>
 			<string>/Library/Application Support/Spotify/</string>
@@ -2525,7 +2525,7 @@ It is called as the user. Files are synced down from the network at a **Usr-AtDe
 	<key>TriggeredBy</key>
 	<array>
 		<string>Usr-AtDesktop</string>
-		<string>Usr-Logout</string>
+		<string>Usr-Poll</string>
 	</array>
 
 The example policy config should be configured to your own needs.
