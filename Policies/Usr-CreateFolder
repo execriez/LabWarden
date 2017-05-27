@@ -39,10 +39,6 @@ sv_ConfigEntryName="${2}"
 sv_EventHistory="${3}"
 
 # Calculate the event that triggered this policy.
-# This might be one of the following system events:
-#   Sys-Boot, Sys-LoginWindow, Sys-NetworkUp, Sys-NetworkDown, Sys-Login, Sys-Logout, Sys-LoginWindowIdle, Sys-LoginWindowRestartOrShutdown, Sys-Poll
-# ...or one of the following User events:
-#   Usr-Login, Usr-AtDesktop, App-WillLaunch, App-DidLaunch, App-DidTerminate, Usr-Poll, Usr-Logout
 sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
 if test -z "${sv_EventName}"
 then

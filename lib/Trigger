@@ -15,7 +15,6 @@
 #   Sys-NetworkDown                  (as root)
 #   Sys-LoginWindowPoll              (as root)
 #   Sys-LoginWindowIdle              (as root)
-#   Sys-LoginWindowRestartOrShutdown (as root)
 #   Sys-Poll                         (as root)
 #   Sys-Idle                         (as root)
 #   Sys-ActiveDirectoryUp            (as root)

@@ -386,7 +386,7 @@ You can find other examples of OS X specific mobileconfigs on the web, these are
 
 A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options.
 
-The goal of a LabWarden policy is to do things that cannot yet 	qbe achieved via a standard MacOS mobileconfig.
+The goal of a LabWarden policy is to do things that cannot yet 	be achieved via a standard MacOS mobileconfig.
 
 LabWarden Policy Scripts can be triggered by the following System events:
 
@@ -397,7 +397,6 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Sys-ConsoleUserLoggedIn
 * Sys-LoginWindowPoll
 * Sys-LoginWindowIdle
-* Sys-LoginWindowRestartOrShutdown
 * Sys-Poll
 * Sys-Idle
 * Sys-ConsoleUserLoggedIn
@@ -405,6 +404,8 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Sys-ConsoleUserSwitch
 * Sys-ActiveDirectoryUp
 * Sys-ActiveDirectoryDown
+* Sys-PolicyInstall
+* Sys-PolicyUninstall
 
 
 ...and by the following User events:
@@ -416,6 +417,8 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Usr-AtDesktop
 * Usr-Poll
 * Usr-Idle
+* Usr-PolicyInstall
+* Usr-PolicyUninstall
 
 Following is a brief list of Labwarden policies:
 
@@ -560,7 +563,6 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Sys-ConsoleUserLoggedIn
 * Sys-LoginWindowPoll
 * Sys-LoginWindowIdle
-* Sys-LoginWindowRestartOrShutdown
 * Sys-Poll
 * Sys-Idle
 * Sys-ConsoleUserLoggedIn
@@ -568,6 +570,8 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Sys-ConsoleUserSwitch
 * Sys-ActiveDirectoryUp
 * Sys-ActiveDirectoryDown
+* Sys-PolicyInstall
+* Sys-PolicyUninstall
 
 ...and by the following User events:
 
@@ -578,6 +582,8 @@ LabWarden Policy Scripts can be triggered by the following System events:
 * Usr-AtDesktop
 * Usr-Poll
 * Usr-Idle
+* Usr-PolicyInstall
+* Usr-PolicyUninstall
 
 If the script is triggered by a system event, it will be called as root.
 
