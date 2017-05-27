@@ -10,16 +10,16 @@ If the uninstaller package isn't available, you can uninstall from a shell by ty
 
 The uninstaller will uninstall the following files and directories:
 
-  /Library/LaunchAgents/...labWarden.appwarden.plist
-  /Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
-  /Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
-  /Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
-  /Library/LaunchAgents/...labWarden.Usr-Poll.plist
-  /Library/LaunchDaemons/...labWarden.ADwarden.plist
-  /Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
-  /Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
-  /Library/LaunchDaemons/...labWarden.Sys-Boot.plist
-  /Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.Usr-Poll.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
   /usr/LabWarden/
 
 After you uninstall, you should reboot.

@@ -2,7 +2,7 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Called as follows:    
@@ -81,7 +81,7 @@ Sys-Boot)
     if test -z "${sv_CurrentLoginHookFilePath}"
     then
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing LoginHook ${sv_CurrentLoginHookFilePath}"
-      sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/${GLB_sv_ProjectName}/lib/LoginHook"
+      defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "/usr/local/${GLB_sv_ProjectName}/lib/LoginHook"
     else
       if test -z "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
       then
@@ -93,7 +93,7 @@ Sys-Boot)
     if test -z "${sv_CurrentLogoutHookFilePath}"
     then
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing LogoutHook ${sv_CurrentLoginHookFilePath}"
-      sudo defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/${GLB_sv_ProjectName}/lib/LogoutHook"
+      defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "/usr/local/${GLB_sv_ProjectName}/lib/LogoutHook"
     else
       if test -z "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
       then

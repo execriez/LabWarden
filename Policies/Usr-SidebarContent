@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy script - Sets the user sidebar contents (makes use of mysides)
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Reference: see https://GitHub.com/mosen - mysides, set the sidebar content 
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.6"
+sv_CodeVersion="2.0.7"
 
 if [ $# -eq 0 ]
 then
@@ -85,6 +85,16 @@ sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName
 
 # Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
 sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Sys-PolicyInstall & Sys-PolicyUninstall events (which are called as the root user) are ignored by user policies
+
+if [ "${sv_EventName}" = "Sys-PolicyInstall" ] || [ "${sv_EventName}" = "Sys-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
 
 # ---
 
@@ -204,16 +214,6 @@ Nf_AddEntry() # sv_ObjectFileURI sv_ObjectName - Add object with the given uri/n
 
 # ---
 
-# Sys-PolicyInstall & Sys-PolicyUninstall events (which are called as the root user) are ignored by user policies
-
-if [ "${sv_EventName}" = "Sys-PolicyInstall" ] || [ "${sv_EventName}" = "Sys-PolicyUninstall" ]
-then
-  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
-  exit 0
-fi
-
-# ---
-
 # Execute the Policy
 
 # Take a note of the Policy call
@@ -251,7 +251,7 @@ fi
 
 case ${sv_EventName} in
     
-Usr-AtDesktop)
+Usr-AtDesktop|Usr-PolicyInstall)
   # Remove Entries
   iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove")"
   for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
@@ -296,6 +296,10 @@ Usr-AtDesktop)
   done
   ;;
 
+Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
 *)
   GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
   ;;

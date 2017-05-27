@@ -224,7 +224,7 @@ then
     
     iv_LogLevel=${1}
     sv_Message="${2}"
-        
+    
     if test -z "${GLB_iv_LogLevelTrap}"
     then
       # Use the hard-coded value if the value is not set
@@ -927,15 +927,26 @@ then
   # Take a note when this script started running
   GLB_iv_ThisScriptStartEpoch=$(date -u "+%s")
   
+  # -- Get some info about this project
+  
+  GLB_sv_ProjectSignature="$(echo ${GLB_sv_ProjectDeveloper}.${GLB_sv_ProjectName} | tr [A-Z] [a-z])"
+  GLB_sv_ProjectMajorVersion="$(echo "${GLB_sv_ProjectVersion}" | cut -d"." -f1)"
+  
+  # Decide where the config/pref files go
+  GLB_sv_ProjectConfigDirPath="/Library/Preferences/SystemConfiguration/${GLB_sv_ProjectSignature}/V${GLB_sv_ProjectMajorVersion}"
+  
+  # Path to useful binaries
+  GLB_sv_BinDirPath="/usr/local/${GLB_sv_ProjectName}/bin"
+  
   # -- Set Defaults
   
   # Location of the system defaults file
   sv_SysDefaultsGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/Sys-Defaults.plist"
-  
+
   if test -f "${sv_SysDefaultsGlobalPrefFilePath}"
   then
     # Get a value from the global config
-    GLB_bv_LoadConfigsFromADnotes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LoadConfigsFromADnotes")"
+    GLB_bv_LoadConfigsFromADnotes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:LoadConfigsFromADnotes")"
     if test -z "${GLB_bv_LoadConfigsFromADnotes}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -943,7 +954,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_bv_UseLoginhook="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:UseLoginhook")"
+    GLB_bv_UseLoginhook="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:UseLoginhook")"
     if test -z "${GLB_bv_UseLoginhook}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -951,7 +962,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_bv_LogIsActive="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LogIsActive")"
+    GLB_bv_LogIsActive="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:LogIsActive")"
     if test -z "${GLB_bv_LogIsActive}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -959,7 +970,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_iv_MaxLogSizeBytes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:MaxLogSizeBytes")"
+    GLB_iv_MaxLogSizeBytes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:MaxLogSizeBytes")"
     if test -z "${GLB_iv_MaxLogSizeBytes}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -967,15 +978,15 @@ then
     fi
   
     # Get a value from the global config
-    GLB_iv_LogLevelTrap="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LogLevelTrap")"
+    GLB_iv_LogLevelTrap="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:LogLevelTrap")"
     if test -z "${GLB_iv_LogLevelTrap}"
     then
       # Use the hard-coded values if there is no global config entry
       GLB_iv_LogLevelTrap=${GLB_iv_LogLevelTrapDefault}
     fi
-  
+
     # Get a value from the global config
-    GLB_iv_NotifyLevelTrap="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NotifyLevelTrap")"
+    GLB_iv_NotifyLevelTrap="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:NotifyLevelTrap")"
     if test -z "${GLB_iv_NotifyLevelTrap}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -983,7 +994,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_iv_GPforceAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:GPforceAgeMinutes")"
+    GLB_iv_GPforceAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:GPforceAgeMinutes")"
     if test -z "${GLB_iv_GPforceAgeMinutes}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -991,7 +1002,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_iv_GPquickAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:GPquickAgeMinutes")"
+    GLB_iv_GPquickAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:GPquickAgeMinutes")"
     if test -z "${GLB_iv_GPquickAgeMinutes}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -999,7 +1010,7 @@ then
     fi
   
     # Get a value from the global config
-    GLB_iv_GPdefaultAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:GPdefaultAgeMinutes")"
+    GLB_iv_GPdefaultAgeMinutes="$(GLB_sf_GetPlistProperty "${sv_SysDefaultsGlobalPrefFilePath}" ":Sys-Defaults:GlobalPrefs:GPdefaultAgeMinutes")"
     if test -z "${GLB_iv_GPdefaultAgeMinutes}"
     then
       # Use the hard-coded values if there is no global config entry
@@ -1018,7 +1029,7 @@ then
   
     # Set the logging level
     GLB_iv_LogLevelTrap=${GLB_iv_LogLevelTrapDefault}
-  
+
     # Set the user notify dialog level
     GLB_iv_NotifyLevelTrap=${GLB_iv_NotifyLevelTrapDefault}
   
@@ -1033,17 +1044,6 @@ then
   
   fi
 
-  # -- Get some info about this project
-  
-  GLB_sv_ProjectSignature="$(echo ${GLB_sv_ProjectDeveloper}.${GLB_sv_ProjectName} | tr [A-Z] [a-z])"
-  GLB_sv_ProjectMajorVersion="$(echo "${GLB_sv_ProjectVersion}" | cut -d"." -f1)"
-  
-  # Decide where the config/pref files go
-  GLB_sv_ProjectConfigDirPath="/Library/Preferences/SystemConfiguration/${GLB_sv_ProjectSignature}/V${GLB_sv_ProjectMajorVersion}"
-  
-  # Path to useful binaries
-  GLB_sv_BinDirPath="/usr/local/${GLB_sv_ProjectName}/bin"
-  
   # -- Get some info about this script
   
   # Full source of this script

@@ -2,7 +2,7 @@
 #
 # Short:    Policy script - Deletes outdated user profiles
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Triggered by the following events:
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.6"
+sv_CodeVersion="2.0.7"
 
 if [ $# -eq 0 ]
 then
@@ -92,6 +92,16 @@ sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName
 
 # Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
 sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Usr-PolicyInstall & Usr-PolicyUninstall events (which are called as a normal user) are ignored by system policies
+
+if [ "${sv_EventName}" = "Usr-PolicyInstall" ] || [ "${sv_EventName}" = "Usr-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
 
 # ---
 

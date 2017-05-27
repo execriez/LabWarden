@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy script - Attempts to fix Keychain issues caused by password reset issues
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Triggered by the following events:
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.6"
+sv_CodeVersion="2.0.7"
 
 if [ $# -eq 0 ]
 then
@@ -159,6 +159,10 @@ EOF
   fi
   ;;
 
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
 *)
   GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
   ;;

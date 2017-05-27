@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy Script - Example User Policy script (A blank canvas)
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Triggered by the following events:
@@ -19,7 +19,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.6"
+sv_CodeVersion="2.0.7"
 
 if [ $# -eq 0 ]
 then
@@ -93,6 +93,16 @@ sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${
 
 # ---
 
+# Sys-PolicyInstall & Sys-PolicyUninstall events (which are called as the root user) are ignored by user policies
+
+if [ "${sv_EventName}" = "Sys-PolicyInstall" ] || [ "${sv_EventName}" = "Sys-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
+
+# ---
+
 # Execute the Policy
 
 # Take a note of the Policy call
@@ -157,7 +167,7 @@ Usr-Idle)
   sleep 2;say "${sv_EventName} ${GLB_sv_LoggedInUserName}" &
   ;;
 
-Sys-PolicyInstall|Sys-PolicyUninstall)
+Usr-PolicyInstall|Usr-PolicyUninstall)
   # Do nothing
   ;;
   

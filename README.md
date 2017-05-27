@@ -36,16 +36,16 @@ If the installer package isn't available, you can run the command-line installer
 
 The installer will install the following files and directories:
 
-	/Library/LaunchAgents/...labWarden.appwarden.plist
-	/Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
-	/Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
-	/Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
-	/Library/LaunchAgents/...labWarden.Usr-Poll.plist
-	/Library/LaunchDaemons/...labWarden.ADwarden.plist
-	/Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
-	/Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
-	/Library/LaunchDaemons/...labWarden.Sys-Boot.plist
-	/Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-Poll.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
 	/usr/LabWarden/
 
 You should note that by default, LabWarden does not make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
@@ -65,16 +65,16 @@ If the uninstaller package isn't available, you can uninstall from a shell by ty
 
 The uninstaller will uninstall the following files and directories:
 
-	/Library/LaunchAgents/...labWarden.appwarden.plist
-	/Library/LaunchAgents/...labWarden.Sys-LoginWindow.plist
-	/Library/LaunchAgents/...labWarden.Sys-LoginWindowPoll.plist
-	/Library/LaunchAgents/...labWarden.Usr-AtDesktop.plist
-	/Library/LaunchAgents/...labWarden.Usr-Poll.plist
-	/Library/LaunchDaemons/...labWarden.ADwarden.plist
-	/Library/LaunchDaemons/...labWarden.ConsoleUserWarden.plist
-	/Library/LaunchDaemons/...labWarden.NetworkStatusWarden.plist
-	/Library/LaunchDaemons/...labWarden.Sys-Boot.plist
-	/Library/LaunchDaemons/...labWarden.Sys-Poll.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-Poll.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
 	/usr/LabWarden/
 
 After you uninstall, you should reboot.
@@ -2547,6 +2547,16 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.7 - 27-May-2017
+
+* If a user policy was installed while a user was logged in, the policy did not always take effect if the events that triggered the policy had already passed. This version introduces the 'Usr-PolicyInstall' and 'Usr-PolicyUninstall' events. These are triggered if a user is logged in when a policy is installed or updated - the policy itself should decide what to do in this situation.
+
+* Updated all policies to recognise the 'Usr-PolicyInstall' and 'Usr-PolicyUninstall' events.
+
+* Updated 'LW-Sys-Defaults-Debug.mobileconfig' as it was missing 'UseLoginhook' and 'LoadConfigsFromADnotes' keys (which would have defaulted to the hard-coded values)
+
+* Fixed a bug in common.sh that meant default values were not being read from the Sys-Default policy.
 
 2.0.6 - 27-May-2017
 

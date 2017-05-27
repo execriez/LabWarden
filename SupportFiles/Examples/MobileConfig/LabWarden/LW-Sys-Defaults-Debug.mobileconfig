@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>DB0F1857-8F96-409B-835D-43347D1A6309</key>
+			<key>27B5C3E8-5AB8-4FBE-8514-9E840A376F47</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -15,6 +15,8 @@
 					<integer>1</integer>
 					<key>GPquickAgeMinutes</key>
 					<integer>259200</integer>
+					<key>LoadConfigsFromADnotes</key>
+					<true/>
 					<key>LogIsActive</key>
 					<true/>
 					<key>LogLevelTrap</key>
@@ -23,6 +25,8 @@
 					<integer>81920</integer>
 					<key>NotifyLevelTrap</key>
 					<integer>7</integer>
+					<key>UseLoginhook</key>
+					<false/>
 				</dict>
 				<key>Name</key>
 				<string>Sys-Defaults</string>
@@ -34,11 +38,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>DB0F1857-8F96-409B-835D-43347D1A6309</string>
+			<string>27B5C3E8-5AB8-4FBE-8514-9E840A376F47</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>DB0F1857-8F96-409B-835D-43347D1A6309</string>
+			<string>27B5C3E8-5AB8-4FBE-8514-9E840A376F47</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -48,7 +52,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-Defaults (Debug)</string>
 	<key>PayloadIdentifier</key>
-	<string>F2901872-47A9-4C41-B62B-2BAE10CC93D8</string>
+	<string>6B8070A2-73EE-42D7-AA5D-2E9A3700D54B</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -58,7 +62,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>F2901872-47A9-4C41-B62B-2BAE10CC93D8</string>
+	<string>6B8070A2-73EE-42D7-AA5D-2E9A3700D54B</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

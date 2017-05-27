@@ -99,6 +99,36 @@ sf_MakeConfigFile()   # PolicyName Tag ConfigType - returns string "<ConfigFileP
 
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
+sv_PolicyName="Sys-Defaults"
+sv_Tag="Debug"
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LogIsActive" "${GLB_bv_LogIsActiveDefault}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:MaxLogSizeBytes" "${GLB_iv_MaxLogSizeBytesDefault}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LogLevelTrap" "${GLB_iv_MsgLevelDebug}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NotifyLevelTrap" "${GLB_iv_MsgLevelDebug}"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPforceAgeMinutes" "${GLB_iv_GPforceAgeMinutesDefault}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPquickAgeMinutes" "${GLB_iv_GPquickAgeMinutesDefault}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPdefaultAgeMinutes" "${GLB_iv_GPdefaultAgeMinutesDefault}"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UseLoginhook" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LoadConfigsFromADnotes" "true"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+#exit 0
+# ---
+
 # ---
 sv_PolicyName="Usr-SyncLocalHomeToNetwork"
 sv_Tag=""
@@ -513,33 +543,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CertTe
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CertAuthURL" "https://yourcaserver.yourdomain/certsrv"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SSIDSTR" "YourSSID"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyType" "Auto"
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-#exit 0
-# ---
-
-sv_PolicyName="Sys-Defaults"
-sv_Tag="Debug"
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LogIsActive" "${GLB_bv_LogIsActiveDefault}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:MaxLogSizeBytes" "${GLB_iv_MaxLogSizeBytesDefault}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LogLevelTrap" "${GLB_iv_MsgLevelDebug}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NotifyLevelTrap" "${GLB_iv_MsgLevelDebug}"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPforceAgeMinutes" "${GLB_iv_GPforceAgeMinutesDefault}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPquickAgeMinutes" "${GLB_iv_GPquickAgeMinutesDefault}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GPdefaultAgeMinutes" "${GLB_iv_GPdefaultAgeMinutesDefault}"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 

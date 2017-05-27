@@ -2,7 +2,7 @@
 #
 # Short:    Constants (shell)
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Should be included into scripts as follows:
@@ -65,7 +65,7 @@ then
   GLB_sv_ProjectName="LabWarden"
   GLB_sv_ProjectInitials="LW"
   GLB_sv_ProjectDeveloper="com.github.execriez"
-  GLB_sv_ProjectVersion="2.0.6"
+  GLB_sv_ProjectVersion="2.0.7"
 
   # ---
 

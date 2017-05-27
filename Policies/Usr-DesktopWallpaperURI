@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy script - Sets the user Desktop Wallpaper
 # Author:   Mark J Swift
-# Version:  2.0.6
+# Version:  2.0.7
 # Modified: 27-May-2017
 #
 # Triggered by the following events:
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.6"
+sv_CodeVersion="2.0.7"
 
 if [ $# -eq 0 ]
 then
@@ -127,7 +127,7 @@ fi
 
 case ${sv_EventName} in
     
-Usr-AtDesktop)
+Usr-AtDesktop|Usr-PolicyInstall)
   sv_DesktopWallpaperURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:DesktopWallpaperURI")"
   if test -z "${sv_DesktopWallpaperURI}"
   then
@@ -146,6 +146,10 @@ Usr-AtDesktop)
   fi
   ;;
 
+Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
 *)
   GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
   ;;
