@@ -5,7 +5,7 @@
 
 ## Brief
 
-Custom Policies for MacOS that can be distributd via AD or an MDM
+Custom Policies for MacOS that can be distributed via AD or an MDM
 
 ## Introduction
 
@@ -382,43 +382,93 @@ You can find other examples of OS X specific mobileconfigs on the web, these are
 
 <https://github.com/amsysuk/public_config_profiles>
 
+## System Events (system policy triggers)
+
+System events trigger policies that run as the root user:
+
+### Sys-Boot
+Triggered at boot up
+
+### Sys-LoginWindow
+Triggered at the login window
+
+### Sys-LoginWindowPoll
+Triggered every 5 minutes when at the login window
+
+### Sys-LoginWindowIdle
+Triggered after 5 minutes of no user interaction when at the login window. If the user remains idle, the event will retrigger every 5 minutes.
+
+### Sys-NetworkUp
+Triggered when the primary network comes up, or changes.
+
+### Sys-NetworkDown
+Triggered when the primary network goes down.
+
+### Sys-ConsoleUserLoggedIn
+Triggered after a user logs in.
+
+### Sys-ConsoleUserLoggedOut
+Triggered after a user logs out.
+
+### Sys-ConsoleUserSwitch
+Triggered when fast user switching to a new user.
+
+### Sys-Poll
+Triggered every 4 minutes
+
+### Sys-Idle
+Triggered after 4 minutes of no user interaction. If the user remains idle, the event will retrigger every 4 minutes.
+
+### Sys-ActiveDirectoryUp
+Triggered when Active Directory becomes available
+
+### Sys-ActiveDirectoryDown
+Triggered when Active Directory becomes unavailable
+
+### Sys-PolicyInstall
+Passed to a policy as an event when the policy is first installed
+
+### Sys-PolicyUninstall
+Passed to a policy as an event when the policy is uninstalled
+
+## User Events (user policy triggers)
+
+User events trigger policies that run as a normal logged-in user:
+
+### App-WillLaunch
+Triggered as an application is launching.
+
+### App-DidLaunch
+Triggered after an application has launched.
+
+### App-DidTerminate
+Triggered after an application has quit.
+
+### Usr-ConsoleUserLoggedIn
+Triggered after a user logs in.
+
+### Usr-AtDesktop
+Triggered when the desktop loads just after a user logs in.
+
+### Usr-Poll
+Triggered every 3 minutes when a user is logged in
+
+### Usr-Idle
+Triggered every 3 minutes when a user is logged and there has been no user interaction for over 3 minutes
+
+### Usr-PolicyInstall
+Passed to a policy as an event when the policy is first installed
+
+### Usr-PolicyUninstall
+Passed to a policy as an event when the policy is uninstalled
+
 ## LabWarden Policies (brief)
 
-A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options.
+The goal of a LabWarden policy is to do things that cannot yet be achieved via a standard MacOS mobileconfig.
 
-The goal of a LabWarden policy is to do things that cannot yet 	be achieved via a standard MacOS mobileconfig.
+A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options. One option in the mobileconfig is the 'TriggeredBy' key. This is an array that declares which events will trigger the policy.
 
-LabWarden Policy Scripts can be triggered by the following System events:
-
-* Sys-Boot
-* Sys-LoginWindow
-* Sys-NetworkUp
-* Sys-NetworkDown
-* Sys-ConsoleUserLoggedIn
-* Sys-LoginWindowPoll
-* Sys-LoginWindowIdle
-* Sys-Poll
-* Sys-Idle
-* Sys-ConsoleUserLoggedIn
-* Sys-ConsoleUserLoggedOut
-* Sys-ConsoleUserSwitch
-* Sys-ActiveDirectoryUp
-* Sys-ActiveDirectoryDown
-* Sys-PolicyInstall
-* Sys-PolicyUninstall
-
-
-...and by the following User events:
-
-* App-WillLaunch
-* App-DidLaunch
-* App-DidTerminate
-* Usr-ConsoleUserLoggedIn
-* Usr-AtDesktop
-* Usr-Poll
-* Usr-Idle
-* Usr-PolicyInstall
-* Usr-PolicyUninstall
+LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
 
 Following is a brief list of Labwarden policies:
 
@@ -554,40 +604,7 @@ A policy is just a script and an associated mobileconfig.
 
 The script config contains the script options and a list of event(s) that trigger the script. 
 
-LabWarden Policy Scripts can be triggered by the following System events:
-
-* Sys-Boot
-* Sys-LoginWindow
-* Sys-NetworkUp
-* Sys-NetworkDown
-* Sys-ConsoleUserLoggedIn
-* Sys-LoginWindowPoll
-* Sys-LoginWindowIdle
-* Sys-Poll
-* Sys-Idle
-* Sys-ConsoleUserLoggedIn
-* Sys-ConsoleUserLoggedOut
-* Sys-ConsoleUserSwitch
-* Sys-ActiveDirectoryUp
-* Sys-ActiveDirectoryDown
-* Sys-PolicyInstall
-* Sys-PolicyUninstall
-
-...and by the following User events:
-
-* App-WillLaunch
-* App-DidLaunch
-* App-DidTerminate
-* Usr-ConsoleUserLoggedIn
-* Usr-AtDesktop
-* Usr-Poll
-* Usr-Idle
-* Usr-PolicyInstall
-* Usr-PolicyUninstall
-
-If the script is triggered by a system event, it will be called as root.
-
-If the script is triggered by a user event, it will be called as that user.
+LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
 
 You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
 
@@ -2553,6 +2570,10 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.7 - 28-May-2017
+
+* Updated the readme and fixed some typos. 
 
 2.0.7 - 27-May-2017
 
