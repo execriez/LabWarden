@@ -2571,6 +2571,12 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.8 - 30-May-2017
+
+* Fixed a keyboard-mash-typo at the begining of 'Sys-ADUserExperience' (I suspect my cat walked across the keyboard).
+
+* Fixed a rare case where 'Sys-PolicyBanner' might fail to apply.
+
 2.0.7 - 28-May-2017
 
 * Updated the readme and fixed some typos. 

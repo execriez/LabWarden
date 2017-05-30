@@ -1273,7 +1273,7 @@ then
   
   else
     GLB_sv_ThisUserLogDirPath="${GLB_sv_LoggedInUserHomeDirPath}/Library/Logs"
-    GLB_sv_ThisUserPrefDirPath="${GLB_sv_LoggedInUserHomeDirPath}/Library/Preferences/${GLB_sv_ProjectSignature}/${GLB_sv_ADComputerName}"
+    GLB_sv_ThisUserPrefDirPath="${GLB_sv_LoggedInUserHomeDirPath}/Library/Preferences/${GLB_sv_ProjectSignature}/V${GLB_sv_ProjectMajorVersion}/${GLB_sv_ADComputerName}"
     
   fi
   

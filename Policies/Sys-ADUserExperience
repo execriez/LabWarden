@@ -1,9 +1,9 @@
-s#!/bin/bash
+#!/bin/bash
 #
 # Short:    Sys Policy script - Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.8
+# Modified: 30-May-2017
 #
 # Reference: Remove network home question mark from dock - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
 #
@@ -15,7 +15,7 @@ s#!/bin/bash
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.8"
 
 if [ $# -eq 0 ]
 then
