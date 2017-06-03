@@ -2,18 +2,18 @@
 #
 # Short:    Usr Policy script - Attempts to fix Keychain issues caused by password reset issues
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
-#   Usr-AtDesktop (as user)
+#   Usr-AtDesktop           (as user)
 #
 # Called as follows:    
 #   Usr-KeychainFix <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then

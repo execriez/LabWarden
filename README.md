@@ -2571,6 +2571,22 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.9 - 03-June-2017
+
+* Policies 'Usr-DockContent' and 'Usr-SidebarContent' fixed for an unlikely situation that might have caused them to get stuck in a loop if 'mysides' or 'dockutil' didn't do what was expected when removing items.
+
+* Policies 'Usr-DockContent' and 'Usr-SidebarContent' are now less intrusive, so once the dock or sidebar is setup they are less likely to be reloaded. The 'replace' option will no longer add an entry to the dock or sidebar if an identical entry already exists. File object entries will no longer be added if the file object doesn't actually exist.
+
+* Updated the versions of AppWarden, ConsoleUserWarden and NetworkStatusWarden to be backward compatible with MacOS 10.7 and later
+
+* The root user is now excluded from gpupdate user policy updates
+
+* Fix in gpupdate to cater for early versions of the "profiles -o" command that always added ".plist" to the end of a supplied filename.
+
+* Policy 'Sys-WorkstationInfo' now clears AD info from login window text and remote desktop info fields on workstations that are unbound.
+
+* A couple of function name changes in some policies for naming consistancy.
+
 2.0.8 - 30-May-2017
 
 * Fixed a keyboard-mash-typo at the begining of 'Sys-ADUserExperience' (I suspect my cat walked across the keyboard).

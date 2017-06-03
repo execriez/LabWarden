@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -124,7 +124,7 @@ fi
 
 # ---
 
-Nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home folder redirections
+nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home folder redirections
 {
   local sv_TargetHomeDirPath
   local sv_RedirectListFilePath
@@ -166,7 +166,7 @@ Nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home fol
   fi
 }
 
-Nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
+nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
 {
   local sv_TargetHomeDirPath
   local sv_SourceHomeDirPath
@@ -299,11 +299,11 @@ Nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
   fi
 }
 
-Nf_UnmakePathRedirections()
+nf_UnmakePathRedirections()
 {
   if test -s "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
   then
-    Nf_UndoPathRedir "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt" "${GLB_sv_LoggedInUserHomeDirPath}"
+    nf_UndoPathRedir "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt" "${GLB_sv_LoggedInUserHomeDirPath}"
   fi
 
   # Check if the Desktop was linked/unlinked
@@ -317,7 +317,7 @@ Nf_UnmakePathRedirections()
   rm -f "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
 }
 
-Nf_MakePathRedirections()
+nf_MakePathRedirections()
 {
   local sv_DoRedir
   local sv_LoggedInUserHomeAltDirPath
@@ -331,7 +331,7 @@ Nf_MakePathRedirections()
   if [ "${sv_DoRedir}" = "false" ]
   then
     # Config tells us to unmake any existing folder redirections
-    Nf_UnmakePathRedirections
+    nf_UnmakePathRedirections
     
   else
     # Config tells us to make folder redirections
@@ -357,14 +357,14 @@ Nf_MakePathRedirections()
       # The alternate home dir is unavailable - so remove any existing redirections
       # Shouldn't ever get here, because this condition is dealt with before this function is called
       GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Error, alternate home dir is unavailable."
-      Nf_UnmakePathRedirections
+      nf_UnmakePathRedirections
       
     else
       # There shouldn't be any folder redirections on the alternate home
       # If there are, these may have been left when swapping between "Network Homes" and "Force local homes".
       if test -s "${sv_LoggedInUserHomeAltDirPath}/.FolderRedir.txt"
       then
-        Nf_UndoPathRedir "${sv_LoggedInUserHomeAltDirPath}/.FolderRedir.txt" "${sv_LoggedInUserHomeAltDirPath}"
+        nf_UndoPathRedir "${sv_LoggedInUserHomeAltDirPath}/.FolderRedir.txt" "${sv_LoggedInUserHomeAltDirPath}"
       fi
       rm -f "${sv_LoggedInUserHomeAltDirPath}/.FolderRedir.txt"
 
@@ -416,14 +416,14 @@ Nf_MakePathRedirections()
       if test -s "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
       then
         GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Linking folders."
-        Nf_DoPathRedir  "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt" "${GLB_sv_LoggedInUserHomeDirPath}" "${sv_LoggedInUserHomeAltDirPath}"
+        nf_DoPathRedir  "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt" "${GLB_sv_LoggedInUserHomeDirPath}" "${sv_LoggedInUserHomeAltDirPath}"
       fi
 
       # Unlink files
       if test -s "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir-Unlink.txt"
       then
         GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Unlinking folders."
-        Nf_UndoPathRedir "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir-Unlink.txt" "${GLB_sv_LoggedInUserHomeDirPath}"
+        nf_UndoPathRedir "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir-Unlink.txt" "${GLB_sv_LoggedInUserHomeDirPath}"
       fi
 
       # Check if the Desktop was linked/unlinked
@@ -511,11 +511,11 @@ Usr-AtDesktop|Usr-PolicyInstall)
     then
       # "Force local home directory on startup disk" is enabled, but there is no network home mounted
         
-      Nf_UnmakePathRedirections
+      nf_UnmakePathRedirections
       GLB_nf_ShowNotification ${GLB_iv_MsgLevelWarn} "Network share is not available at present. Try Restarting."
 
     else
-      Nf_MakePathRedirections
+      nf_MakePathRedirections
 
     fi
         
@@ -536,11 +536,11 @@ Usr-ConsoleUserLoggedIn)
     then
       # User home is on the network, but there is no local home
         
-      Nf_UnmakePathRedirections
+      nf_UnmakePathRedirections
       GLB_nf_QuickExit "Policy aborted - Local home is unavailable - that's odd."
     
     else
-      Nf_MakePathRedirections
+      nf_MakePathRedirections
 
     fi
         
@@ -548,7 +548,7 @@ Usr-ConsoleUserLoggedIn)
   ;;
 
 Usr-PolicyUninstall)
-  Nf_UnmakePathRedirections
+  nf_UnmakePathRedirections
   ;;
   
 *)

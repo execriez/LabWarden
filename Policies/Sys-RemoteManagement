@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets up remote access to a workstation
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # references:
 #  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
@@ -17,7 +17,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -106,7 +106,7 @@ fi
 # ---
 
 # Setup ARD
-Nf_SetupARD()
+nf_SetupARD()
 {
   local iv_ARDglobalResetEpoch
   local sv_ARDgroupName
@@ -179,7 +179,7 @@ Nf_SetupARD()
 }
 
 # set ARD privileges for local users
-Nf_SetLocalUsersARDprivs()
+nf_SetLocalUsersARDprivs()
 {
   local iv_ObjectCount
   local iv_LoopCount
@@ -241,7 +241,7 @@ Nf_SetLocalUsersARDprivs()
 }
 
 # remove ARD privileges from local users
-Nf_RemoveLocalUsersARDprivs()
+nf_RemoveLocalUsersARDprivs()
 {
   local iv_ObjectCount
   local iv_LoopCount
@@ -258,7 +258,7 @@ Nf_RemoveLocalUsersARDprivs()
 }
 
 # Add directory users to appropriate ARD groups
-Nf_AddDirUsersToARDgroups()
+nf_AddDirUsersToARDgroups()
 {
   local iv_ObjectCount
   local iv_LoopCount
@@ -322,7 +322,7 @@ Nf_AddDirUsersToARDgroups()
 }
 
 # Remove directory users from appropriate ARD groups
-Nf_RemoveDirUsersFromARDgroups()
+nf_RemoveDirUsersFromARDgroups()
 {
   local iv_ObjectCount
   local iv_LoopCount
@@ -403,7 +403,7 @@ Nf_RemoveDirUsersFromARDgroups()
 }
 
 # Add directory groups to appropriate ARD groups
-Nf_AddDirGroupsToARDgroups()
+nf_AddDirGroupsToARDgroups()
 {
   local iv_ObjectCount
   local iv_ObjectCount2
@@ -469,7 +469,7 @@ Nf_AddDirGroupsToARDgroups()
 }
 
 # Remove directory groups from appropriate ARD groups
-Nf_RemoveDirGroupsFromARDgroups()
+nf_RemoveDirGroupsFromARDgroups()
 {
   local iv_ObjectCount
   local iv_LoopCount
@@ -543,16 +543,16 @@ fi
 case ${sv_EventName} in
 
 Sys-Poll|Sys-PolicyInstall)
-  Nf_SetupARD
-  Nf_SetLocalUsersARDprivs
-  Nf_AddDirGroupsToARDgroups
-  Nf_AddDirUsersToARDgroups
+  nf_SetupARD
+  nf_SetLocalUsersARDprivs
+  nf_AddDirGroupsToARDgroups
+  nf_AddDirUsersToARDgroups
   ;;
   
 Sys-PolicyUninstall)
-  Nf_RemoveLocalUsersARDprivs
-  Nf_RemoveDirUsersFromARDgroups
-  Nf_RemoveDirGroupsFromARDgroups
+  nf_RemoveLocalUsersARDprivs
+  nf_RemoveDirUsersFromARDgroups
+  nf_RemoveDirGroupsFromARDgroups
 
   # Force other policies to setup users again (in case this policy uninstalls a user that another policy has also added)
   GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ARDresetEpoch" ${GLB_iv_ThisScriptStartEpoch}

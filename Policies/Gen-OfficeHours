@@ -2,8 +2,8 @@
 #
 # Short:    Gen Policy script - Enforces User Access to Opening Hours and collects usage stats
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot            (as root)
@@ -19,7 +19,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -121,7 +121,7 @@ sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${
 
 # ---
 
-Sf_ShowTidyDateTime() # display date/time as today/tomorrow, etc
+sf_ShowTidyDateTime() # display date/time as today/tomorrow, etc
 {
   local iv_ThisEpoch
   local iv_ThisZerohourEpoch
@@ -159,7 +159,7 @@ Sf_ShowTidyDateTime() # display date/time as today/tomorrow, etc
 #      HolidayHours,<OpenTimeEpoch>,<CloseTimeEpoch>,<StartOfRestrictedEpoch>,<EndOfRestrictedEpoch>"
 #  or  NormalHours,<OpenTimeEpoch>,<CloseTimeEpoch>,,"
 #  or  ClosedDays,,,<StartOfCloseEpoch>,<EndOfCloseEpoch>"
-Sf_GetSlotForEpoch()   # epoch
+sf_GetSlotForEpoch()   # epoch
 {
   local iv_ThisEpoch
   local iv_ThisDayOfWeek
@@ -286,7 +286,7 @@ Sf_GetSlotForEpoch()   # epoch
 # Find an open or close slot relative to a given epoch
 # Returns a string as follows:
 # <SlotType>,<OpenEpoch>,<CloseEpoch>
-Sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch> 
+sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch> 
 {
   local sv_ThisTimeSlot
   local sv_ThisPosition
@@ -308,7 +308,7 @@ Sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch>
 #    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_ThisZerohourEpoch ${iv_ThisZerohourEpoch}"
     for (( iv_Index=0; iv_Index<14; iv_Index++ )) # If we can't get it after 14 attempts, give up
     do
-      sv_InfoString="$(Sf_GetSlotForEpoch ${iv_ThisZerohourEpoch})"
+      sv_InfoString="$(sf_GetSlotForEpoch ${iv_ThisZerohourEpoch})"
 #      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "sv_InfoString ${sv_InfoString}"
       sv_SlotType="$(echo ${sv_InfoString} | cut -d"," -f1)"
       case ${sv_SlotType} in
@@ -394,7 +394,7 @@ Sf_ScanForSlot() # <"open"|"close">,<"before"|"after">,<epoch>
 #  iv_CurrOpenEpoch
 #  iv_CurrCloseEpoch
 #  iv_NextOpenEpoch
-Nf_GetOfficeHours() #epoch
+nf_GetOfficeHours() #epoch
 {
   local iv_ThisEpoch
   local sv_InfoString
@@ -403,7 +403,7 @@ Nf_GetOfficeHours() #epoch
 
   bv_OfficeHoursAreValid="false"
 
-  sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_ThisEpoch})"
+  sv_InfoString="$(sf_ScanForSlot "open" "before" ${iv_ThisEpoch})"
   iv_CurrOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
   if test -n "${iv_CurrOpenEpoch}"
   then
@@ -411,26 +411,26 @@ Nf_GetOfficeHours() #epoch
     iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
     if test -z "${iv_CurrCloseEpoch}"
     then
-      sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_CurrOpenEpoch})"
+      sv_InfoString="$(sf_ScanForSlot "close" "after" ${iv_CurrOpenEpoch})"
       iv_CurrCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
     fi
     
     if test -n "${iv_CurrCloseEpoch}"
     then
-      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CurrCloseEpoch})"
+      sv_InfoString="$(sf_ScanForSlot "open" "after" ${iv_CurrCloseEpoch})"
       iv_NextOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
       if test -n "${iv_NextOpenEpoch}"
       then
         iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
         if test -z "${iv_NextCloseEpoch}"
         then
-          sv_InfoString="$(Sf_ScanForSlot "close" "after" ${iv_NextOpenEpoch})"
+          sv_InfoString="$(sf_ScanForSlot "close" "after" ${iv_NextOpenEpoch})"
           iv_NextCloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
         fi
         
         if test -n "${iv_NextCloseEpoch}"
         then
-          sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_NextCloseEpoch})"
+          sv_InfoString="$(sf_ScanForSlot "open" "after" ${iv_NextCloseEpoch})"
           iv_SubsequentOpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
           if test -n "${iv_SubsequentOpenEpoch}"
           then
@@ -446,7 +446,7 @@ Nf_GetOfficeHours() #epoch
 
 }
 
-Nf_UpgradefromV1() # copy V2 prefs from V1
+nf_UpgradefromV1() # copy V2 prefs from V1
 {
   local sv_OldPolicyGlobalPrefFilePath
   local iv_FirstAuditEpoch
@@ -501,7 +501,7 @@ Nf_UpgradefromV1() # copy V2 prefs from V1
   fi
 }
 
-Nf_SetupPolicy() # determine if the policy is active
+nf_SetupPolicy() # determine if the policy is active
 {
   local iv_StartDay
   local iv_StartMonth
@@ -549,7 +549,7 @@ Nf_SetupPolicy() # determine if the policy is active
         # Enable policy.
         
         GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Calculating opening and closing times."
-        Nf_GetOfficeHours ${GLB_iv_ThisScriptStartEpoch}
+        nf_GetOfficeHours ${GLB_iv_ThisScriptStartEpoch}
         if [ "${bv_OfficeHoursAreValid}" = "false" ]
         then
           GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive" "false"
@@ -583,7 +583,7 @@ Nf_SetupPolicy() # determine if the policy is active
   fi
 }
 
-Nf_SetupAudit() # setup audit counts for first time
+nf_SetupAudit() # setup audit counts for first time
 {
   local iv_StartDay
   local iv_StartMonth
@@ -651,7 +651,7 @@ Nf_SetupAudit() # setup audit counts for first time
 }
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-Sf_OptionIsActiveForThisDomain() # [subkey]
+sf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -700,7 +700,7 @@ Sf_OptionIsActiveForThisDomain() # [subkey]
   echo "${bv_IsActive}"
 }
 
-Nf_SetupForceLogout() # Check if force logouts are in effect
+nf_SetupForceLogout() # Check if force logouts are in effect
 {
   local bv_ForceLogoutIsActive
   local iv_ForceLogoutEarlyLoginSecs
@@ -721,7 +721,7 @@ Nf_SetupForceLogout() # Check if force logouts are in effect
   then
     # Policy is active
 
-    bv_ForceLogoutIsActive=$(Sf_OptionIsActiveForThisDomain "ForceLogout")
+    bv_ForceLogoutIsActive=$(sf_OptionIsActiveForThisDomain "ForceLogout")
     
     if [ "${bv_ForceLogoutIsActive}" = "true" ]
     then
@@ -779,7 +779,7 @@ Nf_SetupForceLogout() # Check if force logouts are in effect
   fi
 }
 
-Nf_UpdateTotCounts() # update tot counts since last audit
+nf_UpdateTotCounts() # update tot counts since last audit
 {
   local iv_AuditEpoch
   local iv_LastAuditEpoch
@@ -810,7 +810,7 @@ Nf_UpdateTotCounts() # update tot counts since last audit
     iv_OfficeHoursTimeSecs=0
     iv_OutOfHoursTimeSecs=0
 
-    sv_InfoString="$(Sf_ScanForSlot "open" "before" ${iv_AuditEpoch})"
+    sv_InfoString="$(sf_ScanForSlot "open" "before" ${iv_AuditEpoch})"
     iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
     iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
 
@@ -835,7 +835,7 @@ Nf_UpdateTotCounts() # update tot counts since last audit
         break
       fi
       
-      sv_InfoString="$(Sf_ScanForSlot "open" "after" ${iv_CloseEpoch})"
+      sv_InfoString="$(sf_ScanForSlot "open" "after" ${iv_CloseEpoch})"
       iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
       iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
       iv_AuditEpoch=${iv_OpenEpoch}
@@ -883,7 +883,7 @@ Nf_UpdateTotCounts() # update tot counts since last audit
   fi  
 }
 
-Nf_UpdateUseCounts() # update use counts since last audit
+nf_UpdateUseCounts() # update use counts since last audit
 {
   local bv_AuditIsActive
   local iv_LastAuditEpoch
@@ -933,7 +933,7 @@ Nf_UpdateUseCounts() # update use counts since last audit
   fi
 }
 
-Sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or null
+sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or null
 {
   local sv_LoginStatusMessage
   local bv_ForceLogoutIsActive
@@ -979,10 +979,10 @@ Sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or 
 
       if [ ${iv_RemainingUntilClosedSecs} -lt ${iv_ForceLogoutEarlyWarningSecs} ] 
       then
-        sv_LoginStatusMessage="Login time-limit - Closing $(Sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
+        sv_LoginStatusMessage="Login time-limit - Closing $(sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
         
       else
-        sv_LoginStatusMessage="Login enabled - Closing $(Sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
+        sv_LoginStatusMessage="Login enabled - Closing $(sf_ShowTidyDateTime ${iv_CurrCloseEpoch})"
         
       fi
 
@@ -996,11 +996,11 @@ Sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or 
       then
         # It is before the next possible login
         
-        sv_LoginStatusMessage="Login disabled - Open $(Sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
+        sv_LoginStatusMessage="Login disabled - Open $(sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
       else
         # It is after the next possible login
       
-        sv_LoginStatusMessage="Login enabled - Open $(Sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
+        sv_LoginStatusMessage="Login enabled - Open $(sf_ShowTidyDateTime ${iv_NextOpenEpoch})"
       fi
     fi
       
@@ -1009,7 +1009,7 @@ Sf_LoginStatusMessage() # Check status of login - enabled, warning, disabled or 
   echo "${sv_LoginStatusMessage}"
 }
 
-Nf_UpdateLoginwindowText() # update usage percentage display on login window
+nf_UpdateLoginwindowText() # update usage percentage display on login window
 {
   local bv_AuditIsActive
   local sv_DisplayText
@@ -1042,7 +1042,7 @@ Nf_UpdateLoginwindowText() # update usage percentage display on login window
       
     fi
 
-    sv_LoginStatusMessage="$(Sf_LoginStatusMessage)"
+    sv_LoginStatusMessage="$(sf_LoginStatusMessage)"
     if test -n "${sv_LoginStatusMessage}"
     then
       sv_DisplayText="${sv_DisplayText} (${sv_LoginStatusMessage})"
@@ -1100,7 +1100,7 @@ Nf_UpdateLoginwindowText() # update usage percentage display on login window
   /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
 }
 
-Nf_ForceUserLogout() # Force user logout. Could be better
+nf_ForceUserLogout() # Force user logout. Could be better
 {
   # cycle through usual apps and kill them dead (unsaved changes will be lost)
   ps -ax | grep "/Applications/" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1 | while read iv_JobID
@@ -1125,26 +1125,26 @@ case ${sv_EventName} in
     
 Sys-Boot|Sys-PolicyInstall)
   # (as root) Setup Working Hours
-  Nf_UpgradefromV1
-  Nf_SetupPolicy
+  nf_UpgradefromV1
+  nf_SetupPolicy
   bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
   if [ "${bv_PolicyIsActive}" = "true" ]
   then
-    Nf_SetupAudit
-    Nf_SetupForceLogout
+    nf_SetupAudit
+    nf_SetupForceLogout
   fi
   
-  Nf_UpdateLoginwindowText
+  nf_UpdateLoginwindowText
   ;;
   
 Sys-NetworkUp)
   bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
   if [ "${bv_PolicyIsActive}" = "true" ]
   then
-    Nf_SetupForceLogout
+    nf_SetupForceLogout
   fi
   
-  Nf_UpdateLoginwindowText
+  nf_UpdateLoginwindowText
   ;;
 
 Sys-Poll)
@@ -1154,12 +1154,12 @@ Sys-Poll)
   # If this setting is null - we have probably just installed the policy
   if test -z "${bv_PolicyIsActive}"
   then
-    Nf_SetupPolicy
+    nf_SetupPolicy
     bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
     if [ "${bv_PolicyIsActive}" = "true" ]
     then
-      Nf_SetupAudit
-      Nf_SetupForceLogout
+      nf_SetupAudit
+      nf_SetupForceLogout
     fi
   fi
   
@@ -1170,12 +1170,12 @@ Sys-Poll)
 
     if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOpenEpoch} ] || [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_NextOpenEpoch} ]
     then
-      Nf_SetupPolicy
+      nf_SetupPolicy
       bv_PolicyIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:PolicyIsActive")
       if [ "${bv_PolicyIsActive}" = "true" ]
       then
-        Nf_SetupAudit
-        Nf_SetupForceLogout
+        nf_SetupAudit
+        nf_SetupForceLogout
       fi
     fi 
   
@@ -1183,13 +1183,13 @@ Sys-Poll)
     bv_AuditIsActive=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:AuditIsActive")
     if [ "${bv_AuditIsActive}" = "true" ]
     then
-      Nf_UpdateUseCounts    
-      Nf_UpdateTotCounts
+      nf_UpdateUseCounts    
+      nf_UpdateTotCounts
     fi
 
   fi
 
-  Nf_UpdateLoginwindowText
+  nf_UpdateLoginwindowText
   ;;
   
 Usr-AtDesktop|Usr-Poll)
@@ -1256,13 +1256,13 @@ Usr-AtDesktop|Usr-Poll)
                 GLB_nf_ShowNotification ${GLB_iv_MsgLevelNotice} "If your session remains idle, you will be logged off in about ${iv_RemainingUntilLogoutSecs} seconds."
               else
                 GLB_nf_ShowNotification ${GLB_iv_MsgLevelWarn} "Your session has been idle too long. The system is logging you off."
-                Nf_ForceUserLogout
+                nf_ForceUserLogout
               fi
             fi
           fi
     
           # Check for closing time
-          sv_LoginStatusMessage="$(Sf_LoginStatusMessage)"
+          sv_LoginStatusMessage="$(sf_LoginStatusMessage)"
           if test -n "${sv_LoginStatusMessage}"
           then
             sv_LoginStatusWord="$(echo ${sv_LoginStatusMessage} | cut -d" " -f2)"
@@ -1275,7 +1275,7 @@ Usr-AtDesktop|Usr-Poll)
         
             disabled)
               GLB_nf_ShowNotification ${GLB_iv_MsgLevelWarn} "${sv_LoginStatusMessage}"
-              Nf_ForceUserLogout
+              nf_ForceUserLogout
               break
               ;;
           

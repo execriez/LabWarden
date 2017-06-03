@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets system Network Proxy options
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-NetworkUp     (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -102,7 +102,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-Sf_OptionIsActiveForThisDomain() # [subkey]
+sf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -197,7 +197,7 @@ Sys-Boot|Sys-PolicyUninstall)
   
 Sys-NetworkUp|Sys-PolicyInstall)
   
-  bv_ConfigActive=$(Sf_OptionIsActiveForThisDomain)
+  bv_ConfigActive=$(sf_OptionIsActiveForThisDomain)
     
   if [ "${bv_ConfigActive}" = "true" ]
   then

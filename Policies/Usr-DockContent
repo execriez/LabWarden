@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Dock content (makes use of dockutil)
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Reference: https://github.com/kcrawford - dockutil, set the dock content 
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -94,6 +94,37 @@ fi
 
 # ---
 
+nf_RawReloadList() # Reload the list without checks
+{
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Reloading dock"
+  /usr/bin/killall Dock >/dev/null 2>&1
+}
+
+nf_RawRemoveEntry() # ObjectName - Delete object with the given name without checks
+{
+  # Get object to delete
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing '${sv_ObjectName}' from dock."
+  "${GLB_sv_BinDirPath}"/dockutil  >/dev/null 2>&1 --remove "${sv_ObjectName}" --no-restart
+}
+
+nf_RawAddEntry() # ObjectFileURI ObjectName - Add object with the given uri/name without checks
+{
+  # Get object to add
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Adding '${sv_ObjectName}' '${sv_ObjectFileURI}' to dock."
+  "${GLB_sv_BinDirPath}"/dockutil >/dev/null 2>&1 --add "${sv_ObjectFileURI}" --label "${sv_ObjectName}" --no-restart --view grid
+}
+
+sf_RawGetURI() # ObjectName - Get URI for the object with the given name without checks
+{
+  GLB_sf_urldecode "$("${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --list | tr "\t" "," | grep -E "^${sv_ObjectName}," | cut -d ',' -f2 | sed 's|^[ ]*||' | head -n1)"
+}
+
 sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given URI
 {
   local sv_FileURI
@@ -101,102 +132,74 @@ sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given URI
   # Get URI
   sv_FileURI="${1}"
 
-  if [ -n "${sv_FileURI}" ]
+  # if it's a file URI - strip it back
+  if [ -n "$(echo "${sv_FileURI}" | grep -E 'file://')" ]
   then
-  
-    # if it's not a URI - make it into one
-    if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
-    then
-      sv_FileURI="file://${sv_FileURI}"
-    fi
+    sv_FileURI="$(echo "${sv_FileURI}" | sed 's|^file://||')"
+  fi
 
-    # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
-    sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_sv_LoggedInUserHomeDirPath}"|;s|LOCALHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|;s|NETWORKHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+  # if it's not a URI - its a file path so remove any trailing / (we will add one later if necessary)
+  if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
+  then
+    sv_FileURI="$(echo "${sv_FileURI}" | sed 's|[/]*$||')"  
+  fi
+    
+  # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
+  sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_sv_LoggedInUserHomeDirPath}"|;s|LOCALHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|;s|NETWORKHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
 
-    # make ALTHOME substitutions to the given URI
-    if [ "${GLB_bv_LoggedInUserHomeIsLocal}" = "true" ]
-    then
-      # The user home is local, so the alternative home is the network home
-      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+  # make ALTHOME substitutions to the given URI
+  if [ "${GLB_bv_LoggedInUserHomeIsLocal}" = "true" ]
+  then
+    # The user home is local, so the alternative home is the network home
+    sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
 
-    else
-      # The user home is on the network, so the alternative home is the local home
-      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|")"
+  else
+    # The user home is on the network, so the alternative home is the local home
+    sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|")"
  
-    fi
+  fi
   
-    # Check if its become a null URI
-    if [ "${sv_FileURI}" = "file://" ]
+  # if it's not a URI - its a file path
+  if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
+  then
+    if test -z "${sv_FileURI}"
     then
-      sv_FileURI=""
+      # If the filepath is null we must be referencing the root of the drive
+      sv_FileURI="/"
+    else
+      if test -d "${sv_FileURI}"
+      then
+        # If the filepath references a directory, add a trailing /
+        sv_FileURI="${sv_FileURI}/"
+      fi
     fi
+    # Add the URI reference
+    sv_FileURI="file://${sv_FileURI}"
   fi
   
   echo "${sv_FileURI}"
 }
 
-Nf_RemoveEntry() # sv_ObjectFileURI sv_ObjectName - Delete all objects with the given uri/name from the sidebar
+nf_RemoveEntry() # ObjectFileURI ObjectName - Delete all objects with the given uri/name from the sidebar
 {
   local sv_ObjectFileURI
   local sv_ObjectName
-  local sv_ObjectFilePath
-  local bv_Result
+  local bv_ListModified
+  local iv_Count
+  local sv_ExistingURI
   
   # Get object to delete
   sv_ObjectFileURI="${1}"
   sv_ObjectName="${2}"
   
-  bv_Result="false"
+  bv_ListModified="false"
   
   sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
   
-  # dockutil cannot handle labels on dock items that are files (the label gets overwritten when the file alias is resolved)
-  sv_ObjectFilePath="$(echo ${sv_ObjectFileURI} | sed 's|^file://||')"
-  if [ -f "${sv_ObjectFilePath}" ]
-  then
-    sv_ObjectName=""
-  fi
-
-  # If there is no object name (label), create one
-  if [ -z "${sv_ObjectName}" ]
-  then
-    sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
-  fi
-    
-  if [ -n "${sv_ObjectName}" ]
-  then
-    # Remove all existing entries
-    while [ -n "$("${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --find "${sv_ObjectName}" | grep "was found in")" ]
-    do
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing ${sv_ObjectName} from dock."
-      "${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --remove "${sv_ObjectName}" --no-restart
-      bv_Result="true"
-    done
-  fi
-  
-  echo "${bv_Result}"
-}
-
-Nf_AddEntry() # sv_ObjectFileURI sv_ObjectName - Add object with the given uri/name to the sidebar
-{
-  local sv_ObjectFileURI
-  local sv_ObjectName
-  local sv_ObjectFilePath
-  local bv_Result
-  
-  # Get object to add
-  sv_ObjectFileURI="${1}"
-  sv_ObjectName="${2}"
-  
-  bv_Result="false"
-
-  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
-
   if [ -n "${sv_ObjectFileURI}" ]
   then
-    # dockutil cannot handle labels on dock items that are files (the label gets overwritten when the file alias is resolved)
-    sv_ObjectFilePath="$(echo ${sv_ObjectFileURI} | sed 's|^file://||')"
-    if [ -f "${sv_ObjectFilePath}" ]
+    # If the URI is a file path, the Label should match the file object
+    if [ -z "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
     then
       sv_ObjectName=""
     fi
@@ -209,18 +212,138 @@ Nf_AddEntry() # sv_ObjectFileURI sv_ObjectName - Add object with the given uri/n
     
     if [ -n "${sv_ObjectName}" ]
     then
-      # Only add the entry of it doesn't already exist
-      if [ -z "$("${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --find "${sv_ObjectName}" | grep "was found in")" ]
+      # Remove all existing entries with the given name (up to a maximum of 10)
+      for (( iv_Count = 0; i < 10; iv_Count++ )); do
+        sv_ExistingURI="$(sf_RawGetURI "${sv_ObjectName}")"
+        if [ -z "${sv_ExistingURI}" ]
+        then
+          break
+        else
+          nf_RawRemoveEntry "${sv_ObjectFileURI}" "${sv_ObjectName}"
+          bv_ListModified="true"
+        fi
+      done
+    
+      if [ "${bv_ListModified}" = "false" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Adding ${sv_ObjectName} to dock."
-        "${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --add "${sv_ObjectFileURI}" --label "${sv_ObjectName}" --no-restart --view grid
-        bv_Result="true"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Remove ignored - as ${sv_ObjectName} is not present."
+      fi
+  
+    fi
+  fi
+  
+  echo "${bv_ListModified}"
+}
+
+nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with the given uri/name to the dock
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  local bv_ReplaceEntry
+  local bv_ListModified
+  local bv_AddEntry
+  local sv_ExistingURI
+  
+  # Get object to add
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+  bv_ReplaceEntry="${3}"
+  
+  if [ -z "${bv_ReplaceEntry}" ]
+  then
+    bv_ReplaceEntry="false"
+  fi
+  
+  bv_ListModified="false"
+  bv_AddEntry="false"
+
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
+  
+  if [ -n "${sv_ObjectFileURI}" ]
+  then
+    # If the URI is a file path, the Label should match the file object
+    if [ -z "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+    then
+      sv_ObjectName=""
+    fi
+
+    # If there is no object name (label), create one
+    if [ -z "${sv_ObjectName}" ]
+    then
+      sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
+    fi
+
+    if [ -n "${sv_ObjectName}" ]
+    then
+      sv_ExistingURI="$(sf_RawGetURI "${sv_ObjectName}")"
+      
+      if [ -z "${sv_ExistingURI}" ]
+      then
+        bv_AddEntry="true"
+      
+      else
+        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}")"
+        
+        # Only add the entry if it doesn't already exist
+        if [ "${sv_ObjectFileURI}" = "${sv_ExistingURI}" ]
+        then
+          # If its a file object, check that it exists
+          if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+          then
+            if [ ! -e "$(echo "${sv_ObjectFileURI}" | sed 's|^file://||')" ]
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Entry '${sv_ObjectName}' exists; file object '${sv_ObjectFileURI}' doesn't exist."
+              bv_ListModified="$(nf_RemoveEntry "${sv_ExistingURI}" "${sv_ObjectName}")"
+              bv_ListModified="true"
+              
+            else
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add '${sv_ObjectName}' ignored; '${sv_ObjectFileURI}' is already present."
+              
+            fi
+            
+          else
+            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add '${sv_ObjectName}' ignored; '${sv_ObjectFileURI}' is already present."
+            
+          fi
+          
+        else
+          if [ "${bv_ReplaceEntry}" = "false" ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Update '${sv_ObjectName}' ignored; replace option is '${bv_ReplaceEntry}'."
+            
+          else
+            # We are replacing an existing entry
+            bv_ListModified="$(nf_RemoveEntry "${sv_ExistingURI}" "${sv_ObjectName}")"
+            bv_ListModified="true"
+          fi
+      
+        fi
+      fi
+      
+    fi
+
+    if [ "${bv_AddEntry}" = "true" ]
+    then
+      # If its a file object, check that it exists
+      if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+      then
+        if [ ! -e "$(echo "${sv_ObjectFileURI}" | sed 's|^file://||')" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add '${sv_ObjectName}' ignored; file object '${sv_ObjectFileURI}' doesn't exist."
+          bv_AddEntry="false"
+        fi
       fi
     fi
     
+    if [ "${bv_AddEntry}" = "true" ]
+    then
+      nf_RawAddEntry "${sv_ObjectFileURI}" "${sv_ObjectName}"
+      bv_ListModified="true"
+    fi
+        
   fi
-  
-  echo "${bv_Result}"
+
+  echo "${bv_ListModified}"
 }
 
 # ---
@@ -257,7 +380,7 @@ fi
 case ${sv_EventName} in
     
 Usr-AtDesktop|Usr-PolicyInstall)
-  bv_DockChanged="false"
+  bv_ListModified="false"
 
   # Remove Entries
   iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove")"
@@ -265,52 +388,35 @@ Usr-AtDesktop|Usr-PolicyInstall)
   do
     sv_ReqdObjectFileURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove:${iv_LoopCount}:URI")"
     sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Remove:${iv_LoopCount}:Label")"
-    if [ "$(Nf_RemoveEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}")" = "true" ]
+    if [ "$(nf_RemoveEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}")" = "true" ]
     then
-      bv_DockChanged="true"
-    else
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Remove from dock ignored - as ${sv_ReqdObjectLabel} is not present."
+      bv_ListModified="true"
     fi
   done
 
   # Check if we are replacing 
   bv_ReplaceEntries="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Replace")"
-
-  if [ "${bv_ReplaceEntries}" = "true" ]
+  if [ -z "${bv_ReplaceEntries}" ]
   then
-    # Delete them all first
-    iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add")"
-    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
-    do
-      sv_ReqdObjectFileURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:URI")"
-      sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:Label")"
-      if [ "$(Nf_RemoveEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}")" = "true" ]
-      then
-        bv_DockChanged="true"
-      else
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Remove from dock ignored - as ${sv_ReqdObjectLabel} ${sv_ReqdObjectFileURI} is not present."
-      fi
-    done
+    bv_ReplaceEntries="false"
   fi
-      
+
   # Add Entries
   iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add")"
   for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
   do
     sv_ReqdObjectFileURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:URI")"
     sv_ReqdObjectLabel="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Add:${iv_LoopCount}:Label")"
-    if [ "$(Nf_AddEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}")" = "true" ]
+    bv_Result="$(nf_AddEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}" "${bv_ReplaceEntries}")"
+    if [ "${bv_Result}" = "true" ]
     then
-      bv_DockChanged="true"
-    else
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add to dock ignored - as ${sv_ReqdObjectLabel} ${sv_ReqdObjectFileURI} is already present."
+      bv_ListModified="true"
     fi
   done
 
-  if [ "${bv_DockChanged}" = "true" ]
+  if [ "${bv_ListModified}" = "true" ]
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Reloading dock"
-    /usr/bin/killall Dock >/dev/null 2>&1
+    nf_RawReloadList
   fi
   ;;
 

@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 # ---
 
@@ -97,7 +97,7 @@ then
   if test -z "${sv_GPOuser}"
   then
     # If we are root and we didn't supply a user, Update/apply user policies (as root) for all users who are logged in
-    who -q | grep -Ev "^#" | grep -Ev "^root$" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
+    who -q | grep -Ev "^#" | tr " " "\n" | sort -u | grep -Ev "^$" | grep -Ev "^root$" | while read sv_GPOuser
     do
       "${0}" "${sv_GPoption}" "${sv_GPOuser}"
     done
@@ -113,7 +113,7 @@ fi
 
 # ---
 
-Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
+sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
 {
   local sv_ObjectContext
   local sv_ObjectName
@@ -182,7 +182,7 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
       do
         echo "${sv_GroupName}"
         echo "${sv_GroupName}">>"${sv_Temp1FilePath}"
-        Sf_BuildGroupMembershipCache "Groups" "${sv_GroupName}" | while read sv_SubGroupName
+        sf_BuildGroupMembershipCache "Groups" "${sv_GroupName}" | while read sv_SubGroupName
         do
           if [ "${sv_SubGroupName}" = "${sv_ObjectName}" ]
           then
@@ -245,7 +245,7 @@ Sf_BuildGroupMembershipCache() # <Context> <ObjectName> - List object membership
   
 }
 
-Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
+sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can be Users, Computers or Groups.
 {
   local sv_ObjectContext
   local sv_ObjectName
@@ -253,7 +253,7 @@ Sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can b
   sv_ObjectContext=${1}
   sv_ObjectName=${2}
 
-  Sf_BuildGroupMembershipCache "${sv_ObjectContext}" "${sv_ObjectName}" | sort -u
+  sf_BuildGroupMembershipCache "${sv_ObjectContext}" "${sv_ObjectName}" | sort -u
   
 }
 
@@ -411,7 +411,7 @@ then
           
           sv_UpdatedInfoPayloadDirPath=$(mktemp -d "${GLB_sv_ThisScriptTempDirPath}/XXXXXXXX")
 
-          Sf_ListGroups "${sv_ObjectContext}" "${sv_ObjectName}" | while read sv_ObjectGroup
+          sf_ListGroups "${sv_ObjectContext}" "${sv_ObjectName}" | while read sv_ObjectGroup
           do
             if test -e "${GLB_sv_ProjectConfigDirPath}/Cache/Notes/Groups/${sv_ObjectGroup}.txt"
             then
@@ -847,6 +847,7 @@ then
 
     sv_ProfilesFilePath="${sv_ConfigTmpDirPath}/object.xml"
     rm -f "${sv_ProfilesFilePath}"
+    rm -f "${sv_ProfilesFilePath}.plist"
 
     if [ "${sv_ObjectContext}" = "Computers" ]
     then
@@ -855,6 +856,12 @@ then
     else
       profiles -Lv -U ${sv_ObjectName} -o "${sv_ProfilesFilePath}"
 
+    fi
+    
+    # Bug fix for early versions of the profiles command that add .plist to the end of the supplied filename
+    if [ -f "${sv_ProfilesFilePath}.plist" ]
+    then
+      sv_ProfilesFilePath="${sv_ProfilesFilePath}.plist"
     fi
 
     iv_TopLevelKeyCount=$(GLB_if_GetPlistArraySize ${sv_ProfilesFilePath} ":${sv_TopLevelKeyName}")

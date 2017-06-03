@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>com.github.execriez.labwarden.appwarden</string>
+	<string>com.github.execriez.labwarden.AppWarden</string>
 	<key>Program</key>
-	<string>/usr/local/LabWarden/bin/appwarden</string>
+	<string>/usr/local/LabWarden/bin/AppWarden</string>
 	<key>RunAtLoad</key>
 	<true/>
 	<key>KeepAlive</key>

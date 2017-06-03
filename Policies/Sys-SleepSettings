@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets system sleep options
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-LoginWindow          (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -102,7 +102,7 @@ fi
 
 # ---
 
-Nf_SetSystemSleepSettings() # Trigger
+nf_SetSystemSleepSettings() # Trigger
 {
   local sv_Trigger
   local iv_PowerSystemSleepSecs
@@ -180,7 +180,7 @@ fi
 case ${sv_EventName} in
     
 Sys-LoginWindow|Sys-ConsoleUserLoggedIn)
-  Nf_SetSystemSleepSettings "${sv_EventName}"
+  nf_SetSystemSleepSettings "${sv_EventName}"
   ;;
 
 Sys-PolicyInstall|Sys-PolicyUninstall)

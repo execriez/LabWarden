@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Give certain processes access through proxy using AD workstation credentials
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot            (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -102,7 +102,7 @@ fi
 
 # ---
 
-Nf_RemoveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg yourproxy.your.domain) port (eg 8080)
+nf_RemoveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg yourproxy.your.domain) port (eg 8080)
 {
   local iv_ProxyPort
   local sv_AllowAccessDirPathList
@@ -127,7 +127,7 @@ Nf_RemoveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server 
   security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
 }
 
-Nf_GiveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg yourproxy.your.domain) port (eg 8080) appPath (eg /usr/sbin/ocspd)
+nf_GiveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (eg yourproxy.your.domain) port (eg 8080) appPath (eg /usr/sbin/ocspd)
 {
   local iv_ProxyPort
   local sv_AllowAccessDirPathList
@@ -201,7 +201,7 @@ Sys-Boot|Sys-NetworkUp|Sys-PolicyUninstall)
         iv_ProxyPort="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Proxy:${iv_LoopCount1}:Port")"
         if test -n "${iv_ProxyPort}"
         then
-          Nf_RemoveADTrustAccountProxyAccess "${sv_ProxyProtocol}" "${sv_ProxyAddress}" "${iv_ProxyPort}"
+          nf_RemoveADTrustAccountProxyAccess "${sv_ProxyProtocol}" "${sv_ProxyAddress}" "${iv_ProxyPort}"
 
           if [ "${bv_SetupProxyAccess}" = "true" ]
           then
@@ -224,7 +224,7 @@ Sys-Boot|Sys-NetworkUp|Sys-PolicyUninstall)
 
             if test -n "${sv_ProcessList}"
             then
-              Nf_GiveADTrustAccountProxyAccess "${sv_ProxyProtocol}" "${sv_ProxyAddress}" "${iv_ProxyPort}" "${sv_ProcessList}"
+              nf_GiveADTrustAccountProxyAccess "${sv_ProxyProtocol}" "${sv_ProxyAddress}" "${iv_ProxyPort}" "${sv_ProcessList}"
             fi
             
           fi

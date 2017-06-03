@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy Script - Update loginwindow text and RemoteDesktop Info Fields with workstation info
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot                 (as root)
@@ -16,7 +16,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -136,10 +136,31 @@ Sys-Boot|Sys-PolicyInstall)
 
     GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting login window text line #1 to '${sv_LoginwindowText1}'"
 
+    # If we are not bound to AD, clear anything that might contain old AD bind info
+    if test -z "${GLB_sv_ADDomainNameDNS}"
+    then
+      sv_LoginwindowText2=""
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing login window text line #2"
+    fi
+
     # Update the Loginwindow Text
     sv_LoginwindowText=$(echo "${sv_LoginwindowText1};${sv_LoginwindowText2};${sv_LoginwindowText3}" | tr ";" "\n")
     /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
   fi
+
+  bv_ShowADpathInRemoteDesktopInfo="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ShowADpathInRemoteDesktopInfo")"
+  if [ "${bv_ShowADpathInRemoteDesktopInfo}" = "true" ]
+  then
+    # If we are not bound to AD, clear anything that might contain old AD bind info
+    if test -z "${GLB_sv_ADDomainNameDNS}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting remote desktop computerinfo 1-3 to 'Unbound,,'"
+
+      # Update the RemoteDesktop Computer Info Fields #1-3
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set1 -1 "Unbound" -set2 -2 "" -set3 -3 ""
+    fi
+  fi
+
   ;;
 
 Sys-ActiveDirectoryUp)

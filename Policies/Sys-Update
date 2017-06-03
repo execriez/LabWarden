@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Runs a custom update script
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-ManualUpdate    (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -103,7 +103,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-Sf_OptionIsActiveForThisDomain() # [subkey]
+sf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -152,7 +152,7 @@ Sf_OptionIsActiveForThisDomain() # [subkey]
   echo "${bv_IsActive}"
 }
 
-Nf_DoUpdate()
+nf_DoUpdate()
 {
   local bv_UpdateScriptActive
   local iv_UpdateExeArgCount
@@ -161,7 +161,7 @@ Nf_DoUpdate()
   local iv_UpdateExeArgIndex
   
   # Note, only active when on the specified domain(s) - can be null, ALL, NONE, ADDOMAIN or your.company.domain
-  bv_UpdateScriptActive=$(Sf_OptionIsActiveForThisDomain "UpdateScript")
+  bv_UpdateScriptActive=$(sf_OptionIsActiveForThisDomain "UpdateScript")
     
   if [ "${bv_UpdateScriptActive}" = "false" ]
   then
@@ -240,7 +240,7 @@ Sys-ManualUpdate)
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Running a manual Update."
   
   # Perform a workstation update (software and group policies)
-  Nf_DoUpdate
+  nf_DoUpdate
   ;;
   
 Sys-LoginWindowIdle)
@@ -359,7 +359,7 @@ Sys-LoginWindowIdle)
     
     if [ "${bv_DoUpdate}" = "true" ]
     then
-      Nf_DoUpdate
+      nf_DoUpdate
       
       # If no next update can be determined, assume it's OK sometime after 4:00am
       if test -z "${iv_NextOutOfHoursUpdateEpoch}"

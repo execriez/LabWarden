@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
@@ -117,7 +117,7 @@ iv_MaxDeletes=$(echo "${sv_Param}" | cut -d"," -f5)
 # ---
 
 # urlencode/urldecode functions - thanks to https://gist.github.com/cdown/1163649
-Sf_urlencode() {
+sf_urlencode() {
     # urlencode <string>
 
     local length="${#1}"
@@ -132,38 +132,38 @@ Sf_urlencode() {
 }
 
 # Save a message to the log file
-Nf_showmessage()   # messagetxt
+nf_showmessage()   # messagetxt
 {
   echo "$(date '+%d %b %Y %H:%M:%S') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]: ${1}"
   sleep 2
 }
 
-Nf_showerror()   # messagetxt
+nf_showerror()   # messagetxt
 {
-  Nf_showmessage "${1}"
+  nf_showmessage "${1}"
 
   if test -n "${sv_FailURI}"
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(Sf_urlencode "${1}") "${sv_FailURI}"
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(sf_urlencode "${1}") "${sv_FailURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      Nf_showmessage "NOTE, cannot connect to ${sv_FailURI}"
+      nf_showmessage "NOTE, cannot connect to ${sv_FailURI}"
     fi
   fi
 }
 
-Nf_showsuccess()   # messagetxt
+nf_showsuccess()   # messagetxt
 {
-  Nf_showmessage "${1}"
+  nf_showmessage "${1}"
 
   if test -n "${sv_SuccessURI}"
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(Sf_urlencode "") "${sv_SuccessURI}"
+    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(sf_urlencode "") "${sv_SuccessURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      Nf_showmessage "NOTE, cannot connect to ${sv_SuccessURI}"
+      nf_showmessage "NOTE, cannot connect to ${sv_SuccessURI}"
     fi
   fi
 }
@@ -176,11 +176,11 @@ sv_SystemVersionStampAsString="$(sw_vers -productVersion)"
 
 if test -n "${sv_NotifyURI}"
 then
-  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(Sf_urlencode "${sv_SystemVersionStampAsString}") "${sv_NotifyURI}"
+  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") "${sv_NotifyURI}"
   if [ $? != "0" ]
   then
     # Some kind of error occurred
-    Nf_showerror "ERROR, cannot connect to ${sv_NotifyURI}"
+    nf_showerror "ERROR, cannot connect to ${sv_NotifyURI}"
     exit 0
   fi
 fi
@@ -192,7 +192,7 @@ fi
 sv_fsdiffCompareSysPath="/"
 sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
 
-Nf_showmessage "NOTE, checking server $sv_RadServer for transcript changes"
+nf_showmessage "NOTE, checking server $sv_RadServer for transcript changes"
 
 /usr/local/bin/ktcheck 2>&1 -i -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer}
 iv_ErrCode="$?"
@@ -200,19 +200,19 @@ iv_ErrCode="$?"
 # Check exit status of ktcheck. If > 1, an error occurred.
 case "${iv_ErrCode}" in
 0)
-  Nf_showmessage "NOTE, no transcript changes found - no need to update"
+  nf_showmessage "NOTE, no transcript changes found - no need to update"
   exit 0
   ;;
 1)
-  Nf_showmessage "NOTE, Transcript changes found"
+  nf_showmessage "NOTE, Transcript changes found"
   ;;
 *)
-  Nf_showerror "ERROR, update aborted - ktcheck failed (${iv_ErrCode})"
+  nf_showerror "ERROR, update aborted - ktcheck failed (${iv_ErrCode})"
   exit 0
   ;;
 esac
 
-Nf_showmessage "NOTE, Examining the filesystem for differences..."
+nf_showmessage "NOTE, Examining the filesystem for differences..."
 
 # run fsdiff, redirecting output to a file.
 rm -f ${sv_fsdiffOutputFilePath}
@@ -241,7 +241,7 @@ case "${iv_ErrCode}" in
     ;;
   *)
     rm -f ${sv_fsdiffOutputFilePath}
-    Nf_showerror "ERROR, update aborted - fsdiff failed (${iv_ErrCode})"
+    nf_showerror "ERROR, update aborted - fsdiff failed (${iv_ErrCode})"
     exit 0
     ;;
   esac
@@ -249,7 +249,7 @@ case "${iv_ErrCode}" in
 esac
 
 # Fix for SIP on 10.11
-Nf_showmessage "NOTE, Removing SIP protected entries from transcript"
+nf_showmessage "NOTE, Removing SIP protected entries from transcript"
 /usr/local/${GLB_sv_ProjectName}/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
 
 # Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
@@ -263,7 +263,7 @@ then
     if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
     then
       rm -f ${sv_fsdiffOutputFilePath}
-      Nf_showerror "ERROR, update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
+      nf_showerror "ERROR, update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
       exit 0
     fi
   fi
@@ -272,7 +272,7 @@ fi
 # Apply the changes
 launchctl stop org.cups.cupsd
 
-Nf_showmessage "NOTE, Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+nf_showmessage "NOTE, Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
 /usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
 iv_ErrCode="$?"
 
@@ -283,17 +283,17 @@ launchctl start org.cups.cupsd
 case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  Nf_showsuccess "ATTENTION, apply successful - we should restart."
+  nf_showsuccess "ATTENTION, apply successful - we should restart."
   exit 0
   ;;
 1)
-  Nf_showerror "ERROR, apply failed - no changes made"
+  nf_showerror "ERROR, apply failed - no changes made"
   rm -f /private/var/radmind/client/error.T
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0
   ;;
 2)
-  Nf_showerror "ERROR, apply failed - changes made"
+  nf_showerror "ERROR, apply failed - changes made"
   rm -f /private/var/radmind/client/error.T
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0

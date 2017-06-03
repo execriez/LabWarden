@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Syncs specified folders from the users local home to network home
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.9
+# Modified: 03-Jun-2017
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.9"
 
 if [ $# -eq 0 ]
 then
@@ -93,7 +93,7 @@ fi
 
 # ---
 
-Nf_SyncFiles() # Src Dst
+nf_SyncFiles() # Src Dst
 {
   local sv_SrcDirPath
   local sv_DstDirPath
@@ -195,7 +195,7 @@ Usr-AtDesktop|Usr-PolicyInstall)
     then
       # Sync the prefs down
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Syncing down '${sv_ReqdObjectFilePath}'"
-      Nf_SyncFiles "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}" "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+      nf_SyncFiles "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}" "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
     fi
   done
 
@@ -222,7 +222,7 @@ Usr-Poll|Usr-PolicyUninstall)
       then
         # Sync the prefs back up
         GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Syncing up '${sv_ReqdObjectFilePath}'"
-        Nf_SyncFiles "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}" "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}"
+        nf_SyncFiles "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}" "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}"
       fi
     done
     GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:SyncIsActive" "false"
