@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Deletes files from the system volume
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -161,7 +161,8 @@ Sys-Boot)
     
   else
     # Restart if there are any system files removed
-    GLB_nf_RestartNow "ATTENTION, system files have been removed - we need to restart."
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "System files have been removed - we need to restart."
+    GLB_nf_CreateNamedFlag "Restart"
     
   fi
   ;;
@@ -182,7 +183,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # We might never get here, but I don't suppose that matters
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

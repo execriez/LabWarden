@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Required for 802.1X authentication
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -360,7 +360,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

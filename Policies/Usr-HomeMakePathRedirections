@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.9"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -124,6 +124,12 @@ fi
 
 # ---
 
+nf_ReloadFinder() # Reload the Finder
+{
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Reloading the Finder" 
+  pkill -U ${GLB_sv_ThisUserName} Finder
+}
+
 nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home folder redirections
 {
   local sv_TargetHomeDirPath
@@ -158,11 +164,12 @@ nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home fol
           else
             /bin/rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
           fi
+
         fi
       fi
       
     done < "${sv_RedirectListFilePath}"
-    
+  
   fi
 }
 
@@ -292,11 +299,13 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
           # Create link - source file/folder -to- target link
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating link for folder '${sv_ReqdLinkFilePath}'."
           /bin/ln -sf "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+
         fi
       fi
     done < "${sv_RedirectListFilePath}"
-    
+
   fi
+
 }
 
 nf_UnmakePathRedirections()
@@ -310,11 +319,12 @@ nf_UnmakePathRedirections()
   if test -n "$(printf "$(cat "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt")" | grep -E "^/Desktop/$")"
   then
     # Kill the Finder (Refreshes Desktop)
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Folder redirections removed and Finder reloaded"
-    pkill -U ${GLB_iv_ThisUserID} Finder
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Folder redirections removed - Finder needs to be reloaded"
+    nf_ReloadFinder
   fi
 
   rm -f "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
+
 }
 
 nf_MakePathRedirections()
@@ -430,8 +440,8 @@ nf_MakePathRedirections()
       if test -n "$(printf "$(cat "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir-Unlink.txt";cat "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir-Link.txt")" | grep -E "^/Desktop/$")"
       then
         # Kill the Finder (Refreshes Desktop)
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Folders redirected and Finder reloaded."
-        pkill -U ${GLB_iv_ThisUserID} Finder
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Folders redirected - Finder needs to be reloaded."
+        nf_ReloadFinder
       fi
 
       # Delete temporary files
@@ -447,9 +457,11 @@ nf_MakePathRedirections()
         GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "There are no defined folder redirections."
         rm -f "${GLB_sv_LoggedInUserHomeDirPath}/.FolderRedir.txt"
         
-      fi
+      fi      
+      
     fi     
   fi
+
 }
 
 # ---
@@ -556,14 +568,14 @@ GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by
 ;;
 
 esac
-    
+
 # ---
 
 # Take a note that the Policy is complete
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

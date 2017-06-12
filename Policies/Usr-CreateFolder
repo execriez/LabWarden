@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates folders in the users home folder
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Usr-ConsoleUserLoggedIn (as user)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -139,6 +139,7 @@ Usr-ConsoleUserLoggedIn|Usr-AtDesktop|Usr-PolicyInstall)
     then
       if test -n "$(echo "${sv_ReqdObjectFilePath}" | grep -E "/NETWORKHOME$")"
       then
+        # Instead of creating a folder, we are creating a link to the users network home
         if test -n "${GLB_sv_LoggedInUserHomeNetworkDirPath}"
         then
           if [ "${GLB_sv_LoggedInUserHomeNetworkDirPath}" != "${GLB_sv_LoggedInUserHomeDirPath}" ]
@@ -146,7 +147,7 @@ Usr-ConsoleUserLoggedIn|Usr-AtDesktop|Usr-PolicyInstall)
             sv_ReqdObjectDirPath=$(echo "${sv_ReqdObjectFilePath}" | sed "s|/NETWORKHOME$||")
             if test -n "${sv_ReqdObjectDirPath}"
             then
-              if ! test -e "${sv_ReqdObjectDirPath}"
+              if ! test -e "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
               then
                 GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating folder ${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
                 /bin/mkdir -p "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectDirPath}"
@@ -157,7 +158,8 @@ Usr-ConsoleUserLoggedIn|Usr-AtDesktop|Usr-PolicyInstall)
           fi
         fi
       else
-        if ! test -e "${sv_ReqdObjectFilePath}"
+        # Only create the folder if it doesn't already exist
+        if ! test -e "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating folder ${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
           /bin/mkdir -p "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
@@ -189,7 +191,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

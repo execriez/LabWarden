@@ -532,6 +532,9 @@ Example System Policy script (A blank canvas)
 ### Sys-InstallPackageFromFolder
 Installs packages from a specified folder.
 
+### Sys-UpdatePackage
+Updates an installed package to a later version
+
 ### Sys-NetworkProxy
 Sets system Network Proxy options. 
 
@@ -1651,6 +1654,35 @@ The config consists of a **Path** array, containing a list of folders that conta
 
 The example policy config should be configured to your own needs.
 
+### Sys-UpdatePackage
+This policy updates an installed package to a later version. It is called as root and triggered by the **Sys-NetworkUp** event.
+
+The **PackageID** specifies the id for the package.
+
+The **VersionString** key specifies the a minimum version of the package that should be running.
+
+If the running version is less than the **VersionString**, then the policy will attempt to install the update package from the location specified in the **URI** key.
+
+	<key>Config</key>
+	<dict>
+		<key>PackageID</key>
+		<string>com.github.execriez.labwarden</string>
+		<key>URI</key>
+		<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
+		<key>VersionString</key>
+		<string>2.0.10</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-UpdatePackage</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+The package URI could point to a package on the internet, or on your local network. The package needs to be in a location that is accessible.
+
+The example config shows how the running version of LabWarden can be updated to a a later version. Once an updated version of LabWarden is published, an updated policy config should be pushed to your workstations (i.e. via an MDM or AD). The policy will then install the update from the published location. 
+
 ### Sys-NetworkProxy
 This policy sets the web proxy. It is called as root and triggered by the **Sys-NetworkUp** event.
 
@@ -2570,6 +2602,27 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.10 - 12-June-2017
+
+* Created the policy 'Sys-UpdatePackage' as a way to update already installed packages to a later version. Added an example 'LW-Sys-UpdatePackage.mobileconfig' that shows how to use the policy to update LabWarden to the latest version. Added a policy description to the Readme.
+
+* Fixed bug in gpupdate that would attempt to call a policy script with 'Sys-PolicyInstall' or 'Sys-PolicyUninstall' events even if the policy script didn't actually exist.
+
+* Fixed bug in gpupdate that could make LabWarden-Events.plist inaccessible to normal users after a policy was uninstalled. Symptom was that user policies did always not run after a policy was updated.
+
+* Fixed a bug in common.sh that would incorrectly calculate the 'UserDefinedName' of a network interface if there were more than one interface. This caused an issue with the policy 'Sys-NetworkProxy'
+
+* mysides binary updated.
+
+* The policy 'Usr-CreateFolder' now doesn't create folders if they already exist.
+
+* Install, Uninstall and MakePackage.command no longer leave temporary files hanging around.
+
+* Commented out the trigger at the bottom of each policy, that triggered an event with an event name equal to the policy name. Seems like code for the sake of code at the moment. Might uncomment at some point if it becomes useful. 
+
+* The internal function 'GLB_sf_ResolveFilename' in 'common.sh' is renamed as 'GLB_sf_ResolveFileURItoPath' which better describes its purpose. References in 'Sys-AddPrinter', 'Sys-Update' and 'Usr-DesktopWallpaperURI' are all updated accordinglyly.
+
 
 2.0.9 - 03-June-2017
 

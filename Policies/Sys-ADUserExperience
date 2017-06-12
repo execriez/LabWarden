@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Reference: Remove network home question mark from dock - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.9"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -447,7 +447,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

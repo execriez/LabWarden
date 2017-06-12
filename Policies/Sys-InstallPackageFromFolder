@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs packages from a specified folder
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -146,7 +146,8 @@ Sys-LoginWindowIdle)
   if [ "${bv_PackagesInstalled}" = "true" ]
   then
     # Restart if there are any packages installed
-    GLB_nf_RestartNow "ATTENTION, packages installed - we need to restart."
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Packages installed - we need to restart."
+    GLB_nf_CreateNamedFlag "Restart"
   
   else
     GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "No config defined - there's nothing to do."
@@ -170,7 +171,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # We might never get here, but I don't suppose that matters
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

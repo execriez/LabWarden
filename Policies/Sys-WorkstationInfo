@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy Script - Update loginwindow text and RemoteDesktop Info Fields with workstation info
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Boot                 (as root)
@@ -16,7 +16,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.9"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -223,7 +223,7 @@ GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

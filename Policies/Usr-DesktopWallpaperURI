@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Desktop Wallpaper
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -130,7 +130,7 @@ Usr-AtDesktop|Usr-PolicyInstall)
     GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Possible config error - DesktopWallpaperURI is not defined."
 
   else
-    sv_DesktopWallpaperFilePath=$(GLB_sf_ResolveFilename "${sv_DesktopWallpaperURI}")
+    sv_DesktopWallpaperFilePath=$(GLB_sf_ResolveFileURItoPath "${sv_DesktopWallpaperURI}")
     if test -z "${sv_DesktopWallpaperFilePath}"
     then
       GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Possible config error - DesktopWallpaperURI '${sv_DesktopWallpaperURI}' is not resolvable."
@@ -158,7 +158,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -164,28 +164,3 @@ GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
-
-# Have we been flagged to restart or shutdown
-if [ "${GLB_sv_ThisUserName}" = "root" ]
-then
-  if [ -e "${GLB_sv_ThisUserTempDirPath}/RestartNow" ] || [ -e "${GLB_sv_ThisUserTempDirPath}/ShutdownNow" ]
-  then
-    while [ -n "$(ls -1 "${GLB_sv_ThisUserTempDirPath}/ActiveEvents")" ]
-    do
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Waiting for events to finish in order to restart or shutdown"
-      sleep 1
-    done
-    if [ -e "${GLB_sv_ThisUserTempDirPath}/RestartNow" ]
-    then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
-      shutdown -r now
-    fi
-    if [ -e "${GLB_sv_ThisUserTempDirPath}/ShutdownNow" ]
-    then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
-      shutdown -h now
-    fi
-  fi
-
-fi
-

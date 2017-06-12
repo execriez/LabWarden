@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Runs a custom update script
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-ManualUpdate    (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.9"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -177,7 +177,7 @@ nf_DoUpdate()
       sv_UpdateExeURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:UpdateScript:Exe:0")"
       if test -n "${sv_UpdateExeURI}"
       then
-        sv_UpdateExeFilePath=$(GLB_sf_ResolveFilename "${sv_UpdateExeURI}")
+        sv_UpdateExeFilePath=$(GLB_sf_ResolveFileURItoPath "${sv_UpdateExeURI}")
         if ! test -e "${sv_UpdateExeFilePath}"
         then
           # Its possible that we are assuming the lib directory
@@ -374,7 +374,7 @@ Sys-LoginWindowIdle)
       GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NextUpdateEpoch" "${iv_NextOutOfHoursUpdateEpoch}"
       GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Next update will likely be $(date -r ${iv_NextOutOfHoursUpdateEpoch} "+%Y%m%d-%H:%M.%S")"
 
-      GLB_nf_RestartNow "ATTENTION, Update complete - restarting"
+      GLB_nf_CreateNamedFlag "Restart"
     fi
     
   fi
@@ -391,7 +391,8 @@ Sys-LoginWindowIdle)
     if [ ${iv_IdleSecs} -gt ${iv_LoginWindowIdleShutdownSecs} ]
     then
       # Shutdown if the workstation is still idle
-      GLB_nf_ShutdownNow "ATTENTION, workstation has been idle too long - we should shutdown"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Workstation has been idle too long - we should shutdown"
+      GLB_nf_CreateNamedFlag "Shutdown"
     fi
   fi
   ;;
@@ -412,7 +413,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

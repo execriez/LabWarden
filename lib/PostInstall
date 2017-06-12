@@ -2,8 +2,8 @@
 #
 # Short:    Perform post-install checks
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 #
 # Called as follows (by Install as root):    
@@ -75,6 +75,9 @@ fi
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ProjectName} installed OK."
 
 # "${GLB_sv_ProjectDirPath}/lib/CheckHooks"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
 
 exit 0
 

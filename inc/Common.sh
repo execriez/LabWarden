@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Common.sh
@@ -71,7 +71,7 @@ then
   #  GLB_sv_LoggedInUserLocalHomeDirPath    - Local home directory for the logged-in user (in /Users)
   #  GLB_sv_LoggedInUserHomeNetworkDirPath  - Network home directory path, i.e. /Volumes/staff/t/testuser
   #  GLB_sv_LoggedInUserHomeNetworkURI      - Network home directory URI, i.e smb://yourserver.com/staff/t/testuser
-  #  GLB_bv_LoggedInUserHomeIsLocal         - Whether the logged-in user account is local (true/false)
+  #  GLB_bv_LoggedInUserHomeIsLocal         - Whether the logged-in user home is on a local drive (true/false)
   #
   #                                         - The logged-in user may or may not be the user who is running the script
   #
@@ -106,7 +106,7 @@ then
   #  GLB_sf_GetPlistProperty <plistfile> <property> [defaultvalue]    - Get a property value from a plist file
   #  GLB_if_GetPlistArraySize <plistfile> <property>                  - Get an array property size from a plist file
   #  GLB_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
-  #  GLB_sf_ResolveFilename <fileuri>                                 - Resolve a file URI to a local path (downloading the file if necessary)
+  #  GLB_sf_ResolveFileURItoPath <fileuri>                            - Resolve a file URI to a local path (downloading the file if necessary)
   #  GLB_nf_QuickExit                                                 - Quickly exit a script
   #  GLB_nf_TriggeredList <ConfigPlist> <EventName>                   - Internal private function
   #  GLB_nf_TriggerEvent <eventHistory> <event> [OptionalParam]       - Internal private function
@@ -252,18 +252,97 @@ then
     fi
   }
   
-  GLB_nf_RestartNow()
+  GLB_bf_GrabNamedLock() # ; Flag MaxSecs ; Flag can be Restart,Shutdown,ReloadFinder,ReloadDock Secs is max number of secs to wait for lock
   {
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "${1}"
-    touch "${GLB_sv_ThisUserTempDirPath}/RestartNow"
-  }
-  
-  GLB_nf_ShutdownNow()
+    local sv_Flag
+    local sv_MaxSecs
+    local sv_LockDirPath
+    local iv_Count
+    local sv_ActiveLockPID
+    local bv_Result
+
+    sv_Flag="${1}"
+    sv_MaxSecs="${2}"
+    
+    if test -z "${sv_MaxSecs}"
+    then
+      sv_MaxSecs=10
+    fi
+      
+    sv_LockDirPath="${GLB_sv_TempRoot}/Locks"
+ 
+    bv_Result="false"
+    while [ "${bv_Result}" = "false" ]
+    do
+      if ! test -s "${sv_LockDirPath}/${sv_Flag}"
+      then
+        echo "${GLB_iv_ThisScriptPID}" > "${sv_LockDirPath}/${sv_Flag}"
+      fi
+      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
+      if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Grabbed lock '${sv_Flag}'"
+        bv_Result="true"
+        break
+      fi
+      
+      iv_LockEpoch=$(stat -f "%m" "${sv_LockDirPath}/${sv_Flag}")
+      if [ $(($(date -u "+%s")-${iv_LockEpoch})) -gt ${sv_MaxSecs} ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Grab lock failed, another task is being greedy '${sv_Flag}'"
+        break
+      fi 
+           
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Waiting for lock '${sv_Flag}'"
+      sleep 1
+    done
+    
+    echo "${bv_Result}"
+  }  
+
+  GLB_nf_ReleaseNamedLock() # ; Flag ; Flag can be Restart,Shutdown,ReloadFinder,ReloadDock Secs is max number of secs to wait for lock
   {
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "${1}"
-    touch "${GLB_sv_ThisUserTempDirPath}/ShutdownNow"
+    local sv_Flag
+    local sv_LockDirPath
+    local sv_ActiveLockPID
+
+    sv_Flag="${1}"
+    
+    sv_LockDirPath="${GLB_sv_TempRoot}/Locks"
+
+    if test -s "${sv_LockDirPath}/${sv_Flag}"
+    then
+      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
+      if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Releasing lock '${sv_Flag}'"
+        rm -f "${sv_LockDirPath}/${sv_Flag}"
+      fi
+    fi
+  }  
+
+  GLB_nf_CreateNamedFlag()
+  {
+    local sv_Flag
+    local sv_FlagDirPath
+
+    sv_Flag="${1}"
+    
+    sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+    touch "${sv_FlagDirPath}/${sv_Flag}"
   }
-  
+
+  GLB_nf_DeleteNamedFlag()
+  {
+    local sv_Flag
+    local sv_LockDirPath
+
+    sv_Flag="${1}"
+    
+    sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+    rm -f "${sv_FlagDirPath}/${sv_Flag}"
+  }
+
   GLB_nf_QuickExit()   # Quickly exit the script 
   {
     if test -n "${1}"
@@ -561,7 +640,7 @@ then
   # Remote files (http, ftp, smb), will be downloaded to a local file.
   # The returned filename may or may not exist
   # Has got quite complex - Wish it was simpler
-  GLB_sf_ResolveFilename()   # fileuri - if fileuri ends in a / it is assumed to be a dir, otherwise it is assumed to be a file
+  GLB_sf_ResolveFileURItoPath()   # fileuri - if fileuri ends in a / it is assumed to be a dir, otherwise it is assumed to be a file
   {
   
     local bv_IsDir
@@ -843,6 +922,8 @@ then
     local sv_PolicyFilePath
     local sv_PolicyName
     local sv_ConfigEntryName
+    local sv_Flag
+    local sv_FlagDirPath
     
     # Get (full) event History
     sv_EventHistory="${1}"
@@ -855,17 +936,12 @@ then
    
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event occurred, '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}' as user '${GLB_sv_ThisUserName}'"
   
-    mkdir -p "${GLB_sv_ThisUserTempDirPath}/ActiveEvents"
-    
     # Make sure a badly defined config doesnt put us in an endless trigger loop
     if test -n "$(echo ${sv_EventHistory} | tr ":" "\n" | grep -E "^"${sv_EventName}"$")"
     then
       GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Event loop in config."
       
     else
-      # Flag that there is an event in process
-      touch "${GLB_sv_ThisUserTempDirPath}/ActiveEvents/${sv_EventName}"
-      
       bv_EventHasPolicies="false"
       
       if test -n "${GLB_sv_LoggedInUserName}"
@@ -881,6 +957,7 @@ then
             if test -n "${sv_PolicyFilePath}"
             then
               # Run script in background
+              GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
               "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
               bv_EventHasPolicies="true"
             fi
@@ -899,6 +976,7 @@ then
           if test -n "${sv_PolicyFilePath}"
           then
             # Run script in background
+            GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
             "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
             bv_EventHasPolicies="true"
           fi
@@ -916,9 +994,35 @@ then
         # we don't want to hog the CPU - so lets sleep a while
         sleep 1
       done
+
+      sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+      while read sv_Flag
+      do
+        sv_FlagOwner=$(stat -f '%Su' "${sv_FlagDirPath}/${sv_Flag}")
+
+        case ${sv_Flag} in
+        
+          Restart)
+          if [ "${sv_FlagOwner}" = "root" ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
+            shutdown -r now
+          fi
+          ;;
+        
+          Shutdown)
+          if [ "${sv_FlagOwner}" = "root" ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
+            shutdown -h now
+          fi
+          ;;
+          
+        esac
+        rm -f "${sv_FlagDirPath}/${sv_Flag}" 
+              
+      done < <(ls -1 "${sv_FlagDirPath}")
   
-      # Flag that there the event has finished
-      rm -f "${GLB_sv_ThisUserTempDirPath}/ActiveEvents/${sv_EventName}"
     fi
   }
   
@@ -1252,8 +1356,32 @@ then
   
   # ---
   
+  # The root of all temporary files
+  GLB_sv_TempRoot="/tmp/${GLB_sv_ProjectName}"
+  GLB_sv_TempUsersRoot="/tmp/${GLB_sv_ProjectName}/Users"
+  
+  # Create some temp folders
+  if [ "${GLB_sv_ThisUserName}" = "root" ]
+  then
+    mkdir -p "${GLB_sv_TempRoot}"
+    chown root:wheel "${GLB_sv_TempRoot}"
+    chmod 1755 "${GLB_sv_TempRoot}"
+
+    mkdir -p "${GLB_sv_TempUsersRoot}"
+    chown root:wheel "${GLB_sv_TempUsersRoot}"
+    chmod 1777 "${GLB_sv_TempUsersRoot}"
+
+    mkdir -p "${GLB_sv_TempRoot}/Locks"
+    chown root:wheel "${GLB_sv_TempRoot}/Locks"
+    chmod 1777 "${GLB_sv_TempRoot}/Locks"
+
+    mkdir -p "${GLB_sv_TempRoot}/Flags"
+    chown root:wheel "${GLB_sv_TempRoot}/Flags"
+    chmod 1755 "${GLB_sv_TempRoot}/Flags"
+  fi
+    
   # Create a temporary directory private to this user (and admins)
-  GLB_sv_ThisUserTempDirPath=/tmp/${GLB_sv_ThisUserName}
+  GLB_sv_ThisUserTempDirPath=/${GLB_sv_TempUsersRoot}/${GLB_sv_ThisUserName}
   if ! test -d "${GLB_sv_ThisUserTempDirPath}"
   then
     mkdir -p "${GLB_sv_ThisUserTempDirPath}"
@@ -1320,7 +1448,7 @@ then
     GLB_sv_NetworkServiceDHCPOption15=$(echo "show State:/Network/Service/${GLB_sv_IPv4PrimaryService}/DHCP" | scutil | grep "Option_15" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||" | sed -E "s/^<data> 0x//;s/00$//" | xxd -r -p)
   
     # Get user defined name - e.g. Wi-Fi
-    GLB_sv_NetworkServiceInterfaceName=$(echo "show Setup:/Network/Service/${GLB_sv_IPv4PrimaryService}/Interface" | scutil | grep "UserDefinedName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+    GLB_sv_NetworkServiceInterfaceName=$(echo "show Setup:/Network/Service/${GLB_sv_IPv4PrimaryService}" | scutil | grep "UserDefinedName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
   
     # Get device name - e.g. en1
     GLB_sv_NetworkServiceInterfaceDevice=$(echo "show Setup:/Network/Service/${GLB_sv_IPv4PrimaryService}/Interface" | scutil | grep "DeviceName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")

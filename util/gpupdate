@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.9"
+sv_CodeVersion="2.0.10"
 
 # ---
 
@@ -751,6 +751,10 @@ then
     /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_EventsFilePath}"
   fi
 
+  # Fix access issues
+  chown root:wheel "${sv_EventsFilePath}"
+  chmod 755 "${sv_EventsFilePath}"
+
   if [ "${sv_ObjectContext}" = "Computers" ]
   then
 
@@ -800,35 +804,37 @@ then
           then
             cat "${sv_EventsFilePath}" | grep -v "${sv_PayloadUUID}" > "${sv_ConfigTmpDirPath}/${sv_EventsFileName}"
             cp -f "${sv_ConfigTmpDirPath}/${sv_EventsFileName}" "${sv_EventsFilePath}"
+            chown root:wheel "${sv_EventsFilePath}"
+    		chmod 755 "${sv_EventsFilePath}"
           fi
           sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_PayloadUUID}.plist"
         
-
-          if [ "${sv_ObjectContext}" = "Computers" ]
+          sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
+          if test -n "${sv_PolicyFilePath}"
           then
 
-            # Call Policy script passing an "Sys-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
-            sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
-            if test -n "${sv_PolicyFilePath}"
+            if [ "${sv_ObjectContext}" = "Computers" ]
             then
+
+              # Call Policy script passing an "Sys-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
               GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Sys-PolicyUninstall' '${GLB_sv_LoggedInUserName}' ''"
               "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Sys-PolicyUninstall" "${GLB_sv_LoggedInUserName}" ""
-            fi
 
-            who -q | grep -Ev "^#" | grep -Ev "^root$" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
-            do
-              GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyUninstall' '${sv_GPOuser}' ''"
-              # Call Policy script as user passing an "Usr-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
-              sudo -u "${sv_GPOuser}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyUninstall" "${sv_GPOuser}" ""
-            done
-            sv_GPOuser=""
+              who -q | grep -Ev "^#" | grep -Ev "^root$" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
+              do
+                GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyUninstall' '${sv_GPOuser}' ''"
+                # Call Policy script as user passing an "Usr-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
+                sudo -u "${sv_GPOuser}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyUninstall" "${sv_GPOuser}" ""
+              done
+              sv_GPOuser=""
             
-          else
+            else
 
-            GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyUninstall' '${sv_ObjectName}' ''"
-            # Call Policy script as user passing an "Usr-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
-            sudo -u "${sv_ObjectName}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyUninstall" "${sv_ObjectName}" ""
+              GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyUninstall' '${sv_ObjectName}' ''"
+              # Call Policy script as user passing an "Usr-PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
+              sudo -u "${sv_ObjectName}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyUninstall" "${sv_ObjectName}" ""
 
+            fi
           fi
 
           # Delete config
@@ -959,35 +965,36 @@ then
                   done
           
                 fi
-             fi
+              fi
         
               echo "${sv_PayloadUUID}" >> "${sv_ConfigDirPath}/${sv_ProfileIdentifier}.txt"
        
-              if [ "${sv_ObjectContext}" = "Computers" ]
+              sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
+              if test -n "${sv_PolicyFilePath}"
               then
-
-                # Call Policy script passing an "Sys-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
-                sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_PayloadUUID}")
-                if test -n "${sv_PolicyFilePath}"
+              
+                if [ "${sv_ObjectContext}" = "Computers" ]
                 then
+
+                  # Call Policy script passing an "Sys-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
                   GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Sys-PolicyInstall' '${GLB_sv_LoggedInUserName}' ''"
                   "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Sys-PolicyInstall" "${GLB_sv_LoggedInUserName}" ""
-                fi
 
-                who -q | grep -Ev "^#" | grep -Ev "^root$" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
-                do
-                  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyInstall' '${sv_GPOuser}' ''"
-                  # Call Policy script as user passing an "Usr-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
-                  sudo -u "${sv_GPOuser}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyInstall" "${sv_GPOuser}" ""
-                done
-                sv_GPOuser=""
+                  who -q | grep -Ev "^#" | grep -Ev "^root$" | tr " " "\n" | sort -u | grep -Ev "^$" | while read sv_GPOuser
+                  do
+                    GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyInstall' '${sv_GPOuser}' ''"
+                    # Call Policy script as user passing an "Usr-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
+                    sudo -u "${sv_GPOuser}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyInstall" "${sv_GPOuser}" ""
+                  done
+                  sv_GPOuser=""
             
-              else
+                else
 
-                GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyInstall' '${sv_ObjectName}' ''"
-                # Call Policy script as user passing an "Usr-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
-                sudo -u "${sv_ObjectName}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyInstall" "${sv_ObjectName}" ""
+                  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_PayloadUUID}' 'gpupdate:Usr-PolicyInstall' '${sv_ObjectName}' ''"
+                  # Call Policy script as user passing an "Usr-PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
+                  sudo -u "${sv_ObjectName}" "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_PayloadUUID}" "gpupdate:Usr-PolicyInstall" "${sv_ObjectName}" ""
 
+                fi
               fi
 
             fi

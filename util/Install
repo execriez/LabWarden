@@ -2,8 +2,8 @@
 #
 # Short:    Install Project (command-line)
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 #
 # Called as follows:    
@@ -66,28 +66,28 @@ then
 fi
 
 # Create a temporary directory private to this script
-sv_ThisScriptTempDirPath="$(mktemp -dq /tmp/Install-XXXXXXXX)"
+#GLB_sv_ThisScriptTempDirPath="$(mktemp -dq /tmp/Install-XXXXXXXX)"
 
 # -- Copy the main payload
-mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}"
-cp -pR "${GLB_sv_ProjectDirPath}/" "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/"
+mkdir -p "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}"
+cp -pR "${GLB_sv_ProjectDirPath}/" "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/"
 
 # -- Remove any unwanted files
-find "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iname .DS_Store -exec rm -f {} \;
-rm -fR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/.git"
-rm -fR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/SupportFiles"
-find -d "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iregex ".*/Custom[^/]*/.*" -exec rm -fd {} \;
-mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
-mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
+find "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iname .DS_Store -exec rm -f {} \;
+rm -fR "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/.git"
+rm -fR "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/SupportFiles"
+find -d "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}" -iregex ".*/Custom[^/]*/.*" -exec rm -fd {} \;
+mkdir -p "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
+mkdir -p "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
 
 # -- Copy the example Custom policies
-mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
-mkdir -p "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
-find -d "${GLB_sv_ProjectDirPath}/Custom-Policies" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/ \;
-find -d "${GLB_sv_ProjectDirPath}/Custom-PayloadHandlers" -iname "*Example*" -exec cp "{}" ${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/ \;
+mkdir -p "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/"
+mkdir -p "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/"
+find -d "${GLB_sv_ProjectDirPath}/Custom-Policies" -iname "*Example*" -exec cp "{}" ${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-Policies/ \;
+find -d "${GLB_sv_ProjectDirPath}/Custom-PayloadHandlers" -iname "*Example*" -exec cp "{}" ${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/Custom-PayloadHandlers/ \;
 
 # -- Copy into place
-cp -pR "${sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/" "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}/
+cp -pR "${GLB_sv_ThisScriptTempDirPath}/${GLB_sv_ProjectName}/" "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}/
 chown -R root:wheel "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
 chmod -R 755 "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}
 
@@ -144,5 +144,8 @@ then
     exit ${iv_Error}
   fi
 fi
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
 
 exit 0

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>43706D60-1E28-4908-B6D3-8AE4DD885BDD</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>PackageID</key>
+					<string>com.github.execriez.labwarden</string>
+					<key>URI</key>
+					<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
+					<key>VersionString</key>
+					<string>2.0.10</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-UpdatePackage</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-NetworkUp</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>43706D60-1E28-4908-B6D3-8AE4DD885BDD</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>43706D60-1E28-4908-B6D3-8AE4DD885BDD</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-UpdatePackage</string>
+	<key>PayloadIdentifier</key>
+	<string>5F5CDF21-8DAB-4E7E-923B-04821203AB4D</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>5F5CDF21-8DAB-4E7E-923B-04821203AB4D</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Adds a printer
 # Author:   Mark J Swift
-# Version:  2.0.7
-# Modified: 27-May-2017
+# Version:  2.0.10
+# Modified: 12-Jun-2017
 #
 # Triggered by the following events:
 #   Sys-Poll (as root)
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.7"
+sv_CodeVersion="2.0.10"
 
 if [ $# -eq 0 ]
 then
@@ -168,7 +168,7 @@ Sys-Poll|Sys-PolicyInstall)
             sv_PPDURI="file://localhost/Library/Printers/PPDs/Contents/Resources/${sv_PPDURI}"
           fi
           GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "PPDURI '${sv_PPDURI}'"
-          sv_PrinterPPDFilePath=$(GLB_sf_ResolveFilename "${sv_PPDURI}")
+          sv_PrinterPPDFilePath=$(GLB_sf_ResolveFileURItoPath "${sv_PPDURI}")
           GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "PrinterPPDFilePath '${sv_PrinterPPDFilePath}'"
         
           if test -n "${sv_PrinterPPDFilePath}"
@@ -270,7 +270,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
