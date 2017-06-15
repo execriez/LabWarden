@@ -2603,6 +2603,10 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.11 - 15-June-2017
+
+* Fixed a bug in the installer that might not have completely removed LabWarden version 1 installations prior to installation version 2.
+
 2.0.10 - 12-June-2017
 
 * Created the policy 'Sys-UpdatePackage' as a way to update already installed packages to a later version. Added an example 'LW-Sys-UpdatePackage.mobileconfig' that shows how to use the policy to update LabWarden to the latest version. Added a policy description to the Readme.

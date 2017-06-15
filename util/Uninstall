@@ -2,8 +2,8 @@
 #
 # Short:    Uninstall Project (command-line)
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.11
+# Modified: 14-Jun-2017
 #
 #
 # Called as follows:    
@@ -56,7 +56,7 @@ then
     do
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LaunchAgent service ${sv_LaunchServiceName} for user ${sv_UserName}"
       sudo -u ${sv_UserName} launchctl remove "${sv_LaunchServiceName}"
-    done < <(sudo -u ${sv_UserName} launchctl list | grep "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
+    done < <(sudo -u ${sv_UserName} launchctl list | grep -i "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
   fi
 
   # Remove all running LaunchDaemon services
@@ -64,11 +64,11 @@ then
   do
     GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LaunchDaemon service ${sv_LaunchServiceName}"
     launchctl remove "${sv_LaunchServiceName}"
-  done < <(launchctl list | grep "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
+  done < <(launchctl list | grep -i "${GLB_sv_ProjectSignature}" | tr "\t" " " | cut -d" " -f3)
 
   # Remove LoginHook
   sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
-  if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+  if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep -i "^/usr/local/${GLB_sv_ProjectName}")"
   then
     GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
     defaults write com.apple.loginwindow LoginHook ""
@@ -76,7 +76,7 @@ then
   
   # Remove LogoutHook
   sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
-  if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_sv_ProjectName}")"
+  if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep -i "^/usr/local/${GLB_sv_ProjectName}")"
   then
     GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"
     defaults write com.apple.loginwindow LogoutHook ""
@@ -95,14 +95,14 @@ while read sv_LaunchServiceFileName
 do
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting LaunchAgent file ${sv_LaunchServiceFileName}"
   rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LaunchServiceFileName}
-done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchAgents | grep "${GLB_sv_ProjectSignature}")
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchAgents | grep -i "${GLB_sv_ProjectSignature}")
 
 # Delete old LaunchDaemon plists
 while read sv_LaunchServiceFileName
 do
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting LaunchDaemon file ${sv_LaunchServiceFileName}"
   rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LaunchServiceFileName}
-done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchDaemons | grep "${GLB_sv_ProjectSignature}")
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchDaemons | grep -i "${GLB_sv_ProjectSignature}")
 
 # remove old install
 if test -d "${sv_RootDirPath}"/usr/local/${GLB_sv_ProjectName}

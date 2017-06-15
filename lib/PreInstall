@@ -2,8 +2,8 @@
 #
 # Short:    Perform pre-install checks
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.11
+# Modified: 14-Jun-2017
 #
 #
 # Called as follows (by Install as root):    
@@ -49,16 +49,17 @@ GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Performing pre-install checks"
 if test -z "${sv_RootDirPath}"
 then
 
-  if test -n "$(launchctl list | grep "${GLB_sv_ProjectSignature}")"
+  if test -n "$(launchctl list | grep -i "${GLB_sv_ProjectSignature}")"
   then
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ProjectName} is already installed and running."
 #    exit 92
-    "${GLB_sv_ProjectDirPath}/util/UnInstall"
-    iv_Error="$?"
-    if [ "${iv_Error}" != "0" ]
-    then
-      exit ${iv_Error}
-    fi
+  fi
+  
+  "${GLB_sv_ProjectDirPath}/util/UnInstall"
+  iv_Error="$?"
+  if [ "${iv_Error}" != "0" ]
+  then
+    exit ${iv_Error}
   fi
 
 fi

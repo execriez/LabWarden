@@ -118,7 +118,7 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:URI" "
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 
 # ---
-exit 0
+#exit 0
 # ---
 sv_PolicyName="Usr-KeychainFix"
 sv_Tag=""
