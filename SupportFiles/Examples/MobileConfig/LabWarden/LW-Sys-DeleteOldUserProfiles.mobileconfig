@@ -5,12 +5,16 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>2E6185C9-3BE4-4128-ADF0-469194655FB8</key>
+			<key>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</key>
 			<dict>
 				<key>Config</key>
 				<dict>
 					<key>LoginMaxAgeDays</key>
 					<integer>62</integer>
+					<key>LoginMinAgeDays</key>
+					<integer>8</integer>
+					<key>MinDiskSpaceMegs</key>
+					<integer>2048</integer>
 					<key>UserCacheEarliestEpoch</key>
 					<integer>1462365175</integer>
 				</dict>
@@ -18,17 +22,17 @@
 				<string>Sys-DeleteOldUserProfiles</string>
 				<key>TriggeredBy</key>
 				<array>
-					<string>Sys-LoginWindowIdle</string>
+					<string>Sys-Boot</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>2E6185C9-3BE4-4128-ADF0-469194655FB8</string>
+			<string>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>2E6185C9-3BE4-4128-ADF0-469194655FB8</string>
+			<string>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -38,7 +42,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-DeleteOldUserProfiles</string>
 	<key>PayloadIdentifier</key>
-	<string>5D839490-A252-4093-87D7-ABADEFED9EAA</string>
+	<string>3CF289E4-A5A2-4EB3-9CB7-0C51C50C84D8</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -48,7 +52,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>5D839490-A252-4093-87D7-ABADEFED9EAA</string>
+	<string>3CF289E4-A5A2-4EB3-9CB7-0C51C50C84D8</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

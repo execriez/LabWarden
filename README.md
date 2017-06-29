@@ -1571,11 +1571,13 @@ The example policy config should be configured to your own needs.
 
 **USE WITH CAUTION**
 
-This policy deletes outdated user profiles. It is called as root and triggered by the  **Sys-LoginWindowIdle** event.
+This policy deletes outdated local user profile folders from /Users and from /private/var/folders for network accounts. It is called as root and triggered by the  **Sys-Boot** event.
 
-The **LoginMaxAgeDays** key defines how long to wait between logins before deleting the profile. The example below sets this at 62. This means that if a user does not log in for over 62 days, the users' profile will be deleted from /Users and from /private/var/folders.
+The **LoginMinAgeDays** key defines a minimum age below which user folders should never be deleted. The example below sets this at 8. This means that user folders for accounts that have been logged in to within the last 8 days will not be considered for deletion.
 
-This LoginMaxAgeDays key deletes profiles for network users, not local users.
+The **LoginMaxAgeDays** key defines the maximum age above which user folders will automatically be deleted. The example below sets this at 62. This means that if a user does not log in for over 62 days, his local user folders will be deleted.
+
+The **MinDiskSpaceMegs** defines the minimum disk space below which user folders will be automatically deleted. The policy deletes the oldest folders first, one by one, until the available disk space is greater than this value.
 
 The **UserCacheEarliestEpoch** key sets a value for the earliest profile creation epoch. Any user folders in /private/var/folders created before this epoch will be deleted. This is useful when updating from one OS to another - since old user profiles can cause issues.
 
@@ -1583,6 +1585,10 @@ The **UserCacheEarliestEpoch** key sets a value for the earliest profile creatio
 	<dict>
 		<key>LoginMaxAgeDays</key>
 		<integer>62</integer>
+		<key>LoginMinAgeDays</key>
+		<integer>8</integer>
+		<key>MinDiskSpaceMegs</key>
+		<integer>2048</integer>
 		<key>UserCacheEarliestEpoch</key>
 		<integer>1462365175</integer>
 	</dict>
@@ -1590,7 +1596,7 @@ The **UserCacheEarliestEpoch** key sets a value for the earliest profile creatio
 	<string>Sys-DeleteOldUserProfiles</string>
 	<key>TriggeredBy</key>
 	<array>
-		<string>Sys-LoginWindowIdle</string>
+		<string>Sys-Boot</string>
 	</array>
 
 The example policy config should be configured to your own needs.
@@ -2529,8 +2535,6 @@ On early MacOS versions, allowing multiple users to Build Spotlight indices on n
 
 The policy has a one configurable key **SpotlightEnabled**, that determines whether or not Spotlight is enabled for the user home.
 
-There are no configurable options.
-
 	<key>Config</key>
 	<dict>
 		<key>SpotlightEnabled</key>
@@ -2603,9 +2607,15 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.12 - 27-June-2017
+
+* Fixed issue with Sys-DeleteOldUserProfiles. The policy had the trigger Sys-Boot defined in the policy code, but had Sys-LoginWindowIdle in the policy config. This meant that the policy would never be triggered. Config fixed.
+
+* Added MinDiskSpaceMegs and LoginMinAgeDays options to the policy Sys-DeleteOldUserProfiles that will remove user folders when disk space gets low - but will never remove user folders less than the specified minimum age.
+
 2.0.11 - 15-June-2017
 
-* Fixed a bug in the installer that might not have completely removed LabWarden version 1 installations prior to installation version 2.
+* Fixed a bug in the installer that might not have completely removed LabWarden version 1 installations prior to the installation of LabWarden version 2.
 
 2.0.10 - 12-June-2017
 
