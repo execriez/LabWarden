@@ -1702,7 +1702,7 @@ The package URI could point to a package on the internet, or on your local netwo
 The example config shows how the running version of LabWarden can be updated to a a later version. Once an updated version of LabWarden is published, an updated policy config should be pushed to your workstations (i.e. via an MDM or AD). The policy will then install the update from the published location. 
 
 ### Sys-NetworkProxy
-This policy sets the web proxy. It is called as root and triggered by the **Sys-NetworkUp** event.
+This policy sets the web proxy. It is called as root and triggered by the **Sys-NetworkUp** and **Sys-Boot** events.
 
 The **ActiveForDomain** key limits the policy to a specified domain as determined by the DHCP server (option 15).
 
@@ -1769,6 +1769,7 @@ The config contains the usual proxy options.
 	<key>TriggeredBy</key>
 	<array>
 		<string>Sys-NetworkUp</string>
+		<string>Sys-Boot</string>
 	</array>
 
 
