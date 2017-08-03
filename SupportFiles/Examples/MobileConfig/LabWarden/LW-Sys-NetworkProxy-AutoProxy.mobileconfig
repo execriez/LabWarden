@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>E610E42B-4240-4B2E-9E28-E493EC1DCCBE</key>
+			<key>BAB0C18F-CEE4-41B1-B652-2BE3AF75DBF7</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -68,16 +68,17 @@
 				<key>TriggeredBy</key>
 				<array>
 					<string>Sys-NetworkUp</string>
+					<string>Sys-Boot</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>E610E42B-4240-4B2E-9E28-E493EC1DCCBE</string>
+			<string>BAB0C18F-CEE4-41B1-B652-2BE3AF75DBF7</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>E610E42B-4240-4B2E-9E28-E493EC1DCCBE</string>
+			<string>BAB0C18F-CEE4-41B1-B652-2BE3AF75DBF7</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -87,7 +88,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-NetworkProxy (AutoProxy)</string>
 	<key>PayloadIdentifier</key>
-	<string>F426D9FD-CA6D-4D10-B985-8A2CCA438C83</string>
+	<string>C98B07E7-92C2-4527-9941-15EBF08567DB</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -97,7 +98,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>F426D9FD-CA6D-4D10-B985-8A2CCA438C83</string>
+	<string>C98B07E7-92C2-4527-9941-15EBF08567DB</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

@@ -98,6 +98,63 @@ sf_MakeConfigFile()   # PolicyName Tag ConfigType - returns string "<ConfigFileP
 # ---
 
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
+
+# ---
+
+# ALTERNATIVE - PROXY, AUTO
+
+sv_PolicyName="Sys-NetworkProxy"
+sv_Tag="AutoProxy"
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-NetworkUp"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-Boot"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDomain:0" "ALL"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoDiscoveryEnable" "true"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoConfigEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoConfigURLString" ""
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPPort" "8080"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSPort" "8080"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPPort" "8080"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPPort" "8080"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSPort" "8080"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherEnable" "false"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherProxy" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherPort" "8080"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:0" "*.local"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:1" "169.254/16"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:2" "127.0.0.1"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:3" "localhost"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+
+# ---
 sv_PolicyName="Sys-Defaults"
 sv_Tag=""
 
@@ -900,56 +957,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:2
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:3" "/Library/Internet Plug-Ins/PepperFlashPlayer/"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:4" "/Library/LaunchDaemons/com.adobe.fpsaud.plist"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:5" "/Library/PreferencePanes/Flash Player.prefPane/"
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-
-# ALTERNATIVE - PROXY, AUTO
-
-sv_PolicyName="Sys-NetworkProxy"
-sv_Tag="AutoProxy"
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-NetworkUp"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDomain:0" "ALL"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoDiscoveryEnable" "true"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoConfigEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyAutoConfigURLString" ""
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPPort" "8080"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HTTPSPort" "8080"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RTSPPort" "8080"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:FTPPort" "8080"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SOCKSPort" "8080"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherEnable" "false"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherProxy" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:GopherPort" "8080"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:0" "*.local"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:1" "169.254/16"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:2" "127.0.0.1"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ExceptionsList:3" "localhost"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 

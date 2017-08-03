@@ -2,18 +2,19 @@
 #
 # Short:    Sys Policy script - Sets system Network Proxy options
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.13
+# Modified: 03-Aug-2017
 #
 # Triggered by the following events:
 #   Sys-NetworkUp     (as root)
+#   Sys-Boot          (as root)
 #
 # Called as follows:    
 #   Sys-NetworkProxy <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.13"
 
 if [ $# -eq 0 ]
 then
