@@ -356,14 +356,15 @@ Here is a list of standard MacOS mobileconfig files included with LabWarden.
 	Mac-NoOffice2011Updates.mobileconfig    - Stops the initial Setup in MS Office 2011
 	Mac-NoReopenWindows.mobileconfig        - Stops open windows being re-opened at next login
 	Mac-NoWebSpotlight.mobileconfig         - Stops Spotlight from searching the web
-	Mac-NoiCloudSetup-10v9.mobileconfig     - Stops the initial iCloud setup
+	Mac-NoiCloudOrSiriSetup.mobileconfig    - Stops the initial iCloud and Siri setup
+	Mac-NoiCloudSetup-10v9.mobileconfig     - Stops the initial iCloud setup (Legacy - OS specific)
 	Mac-NoiCloudSetup-10v10.mobileconfig
 	Mac-NoiCloudSetup-10v11.mobileconfig
 	Mac-NoiCloudSetup-10v12.mobileconfig
 	Mac-NoiCloudSetup-10v13.mobileconfig
 	Mac-RightClick.mobileconfig            - Enables right click on the mouse
-	Mac-UKLocale.mobileconfig              - Enables the UK locale
 	Mac-SafariHomepage.mobileconfig        - Sets the homepage in Safari
+	Mac-UKLocale.mobileconfig              - Enables the UK locale
 
 You can find other examples of OS X specific mobileconfigs on the web, these are good references (as of writing):
 
