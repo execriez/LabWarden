@@ -7,12 +7,10 @@
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
-# eg: Radmind "172.18.1.24,sha1,0,-I,15000"
+# eg: RadmindUpdate "172.18.1.24,sha1,0,-I,15000"
 #
 # The optional NotifyURI is a server web URI that notifies the deployment server that an update is
-# about to happen. The server should do what it needs to in order to process the future update.
-# Ideally, the server should query AD and build a new set of manifests and catalogues based on 
-# workstation AD group memberships and the OS version (which is passed to the URI).
+# about to happen. The server should do what it needs to in order to prep the future update.
 #
 # The optional SuccessURI is a server web URI that notifies the server that the update was a success.
 #

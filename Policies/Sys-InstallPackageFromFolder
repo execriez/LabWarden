@@ -2,18 +2,18 @@
 #
 # Short:    Sys Policy script - Installs packages from a specified folder
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.13
+# Modified: 02-Aug-2017
 #
 # Triggered by the following events:
-#   Sys-Boot (as root)
+#   Sys-LoginWindowIdle (as root)
 #
 # Called as follows:    
 #   Sys-InstallPackageFromFolder <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.13"
 
 if [ $# -eq 0 ]
 then
@@ -101,6 +101,72 @@ fi
 
 # ---
 
+# check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
+bf_InstallPackageFromFolder() # PackageDirPath
+{
+  local sv_PackageDirPath
+  local sv_PackageFilePath
+  local sv_PackageFileName
+  local iv_PackageFileCreatedEpoch
+  local sv_PackageID
+  local iv_InstalledCount
+  local sv_ArchiveFileName
+  local sv_ArchiveTempDirPath
+  local bv_ArchiveInstalled
+  local bv_InstallStatus
+
+  sv_PackageDirPath="${1}"
+  cd "${sv_PackageDirPath}"
+
+  if test -n "${sv_PackageDirPath}"
+  then
+    # install packages
+    while read sv_PackageFilePath
+    do
+      sv_PackageFileName="$(basename "${sv_PackageFilePath}")"
+      iv_PackageFileCreatedEpoch=$(stat -f "%c" "${sv_PackageFilePath}")
+      sv_PackageID="${iv_PackageFileCreatedEpoch}:${sv_PackageFileName}"
+      if ! test -n "$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_PackageID}$")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing ${sv_PackageFileName}"
+        installer 2>&1 -pkg "${sv_PackageFilePath}" -target / >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+        if [ $? -eq 0 ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Successfully installed ${sv_PackageFileName}"
+          iv_InstalledCount="$(GLB_if_GetPlistArraySize "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed")"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed:${iv_InstalledCount}" "${sv_PackageID}"
+          echo "true"
+        else
+          GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Failed to install ${sv_PackageFileName}"
+          echo "false"
+        fi      
+      fi
+    done < <(find "${sv_PackageDirPath}" -iname "*.pkg" -prune)
+
+    # install packages from split tgz archives (.tgz.1 .tgz.2 .tgz.3 etc)
+    while read sv_ArchiveFileName
+    do
+      iv_PackageFileCreatedEpoch=$(stat -f "%c" "${sv_PackageDirPath}/${sv_ArchiveFileName}.tgz.1")
+      sv_PackageID="${iv_PackageFileCreatedEpoch}:${sv_ArchiveFileName}.tgz"
+      if ! test -n "$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_PackageID}$")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Unarchiving ${sv_ArchiveFileName}.tgz"
+        sv_ArchiveTempDirPath="$(mktemp -dq ${GLB_sv_ThisScriptTempDirPath}/${sv_ArchiveFileName}-XXXXXXXX)"
+        cat $(ls -1 "${sv_PackageDirPath}" | grep -E "${sv_ArchiveFileName}\.tgz\.[0-9]{1}$" | sort) | tar -xvzf - -C "${sv_ArchiveTempDirPath}"
+        bv_InstallStatus="$(bf_InstallPackageFromFolder "${sv_ArchiveTempDirPath}")"
+        if [ -z "$(echo "${bv_InstallStatus}" | grep "false")" ]
+        then
+          iv_InstalledCount="$(GLB_if_GetPlistArraySize "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed")"
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed:${iv_InstalledCount}" "${sv_PackageID}"
+        fi
+        echo "${bv_InstallStatus}"
+      fi
+    done < <(ls -1 "${sv_PackageDirPath}" | grep -E "\.tgz\.[0-9]{1}$" | sed -E "s|(.*)(\.tgz\.[0-9]{1}$)|\1|" | sort -u)
+  fi
+}
+
+# ---
+
 # Execute the Policy
 
 # Take a note of the Policy call
@@ -126,20 +192,13 @@ Sys-LoginWindowIdle)
     sv_PackageDirPath="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Path:${iv_LoopCount}")"
     if test -n "${sv_PackageDirPath}"
     then
-      while read sv_PackageFilePath
-      do
-        iv_PackageFileCreatedEpoch=$(stat -f "%c" "${sv_PackageFilePath}")
-        sv_PackageID="${iv_PackageFileCreatedEpoch}:${sv_PackageFilePath}"
-        if ! test -n "$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_PackageID}$")"
-        then
-          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing ${sv_PackageFilePath}"
-          # Note, no check for if it fails
-          bv_PackagesInstalled="true"
-          iv_InstalledCount="$(GLB_if_GetPlistArraySize "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed")"
-          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_ConfigEntryName}:GlobalPrefs:Installed:${iv_InstalledCount}" "${sv_PackageID}"
-          installer -pkg "${sv_PackageFilePath}" -target /
-        fi
-      done < <(find "${sv_PackageDirPath}" -iname "*.pkg" -prune)
+      bv_InstallStatus="$(bf_InstallPackageFromFolder "${sv_PackageDirPath}")"
+      #GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "DEBUG, Install Status: ${bv_InstallStatus}"
+      
+      if [ -n "$(echo "${bv_InstallStatus}" | grep "true")" ]
+      then
+        bv_PackagesInstalled="true"
+      fi
     fi
   done
   
@@ -150,7 +209,7 @@ Sys-LoginWindowIdle)
     GLB_nf_CreateNamedFlag "Restart"
   
   else
-    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "No config defined - there's nothing to do."
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "No packages were installed - there's nothing to do."
     
   fi
   ;;

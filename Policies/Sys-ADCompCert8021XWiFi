@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.13
+# Modified: 21-Jul-2017
 #
 # Required for 802.1X authentication
 #
@@ -317,6 +317,14 @@ Sys-NetworkUp|Sys-PolicyInstall)
 </dict>
 </plist>
 HEREDOC
+
+        # Insert the trusted server names
+        iv_TLSTrustedServerNamesCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:TLSTrustedServerNames")"
+        for (( iv_TLSTrustedServerNamesIndex=0; iv_TLSTrustedServerNamesIndex<${iv_TLSTrustedServerNamesCount}; iv_TLSTrustedServerNamesIndex++ ))
+        do
+          sv_TLSTrustedServerNamesEntry=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:TLSTrustedServerNames:${iv_TLSTrustedServerNamesIndex}")
+          GLB_nf_SetPlistProperty "${sv_MobileConfigFilePath}" ":PayloadContent:1:EAPClientConfiguration:TLSTrustedServerNames:${iv_TLSTrustedServerNamesIndex}" "${sv_TLSTrustedServerNamesEntry}"
+        done
 
         # Insert the pkcs12 file into the mobileconfig
         /usr/libexec/PlistBuddy -c "Import PayloadContent:0:PayloadContent ${sv_CertPk12FilePath}" "${sv_MobileConfigFilePath}"

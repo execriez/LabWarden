@@ -102,20 +102,13 @@ You will be asked if you wish to install the mobileconfig...
 
 * Click "Continue".
 
-The "Gen-ExamplePolicy" will be installed...
+The "Gen-ExamplePolicy" will be installed... policies are activated as soon as you install their associated mobileconfig files. 
 
 >![AD Group Members Tab, Members](images/Gen-ExamplePolicy-Policy.jpg "Mobileconfig is installed")
 
-Before the policy is activated, the LabWarden internal list of known configs must be updated. This is done automatically every 5 minutes.
+Now that the policy is activated - we can test it - try the following.
 
-If you do not wish to wait 5 minutes, type the following in a terminal:
-
-	sudo /usr/local/LabWarden/util/gpupdate -force
-
-The policy settings will be read from the mobileconfig, and the policy will be enabled.
-
-Now that the policy is enabled - we can test it - try the following.
-
+* Log out
 * Log in
 * Launch an application
 * Quit an application
@@ -123,9 +116,7 @@ Now that the policy is enabled - we can test it - try the following.
 * Log out
 * Reboot
 
-When you are done testing - uninstall the mobileconfig, then update the list of known configs via the command:
-
-	sudo /usr/local/LabWarden/util/gpupdate -force
+When you are done testing - uninstall the "Gen-ExamplePolicy" mobileconfig. This will deactivate the associated policy.
 	
 A quick description of the available policies can be found in the "LabWarden Policies (brief)" section later.
 
@@ -1276,7 +1267,7 @@ The example policy config should be configured to your own needs.
 
 This policy requests then installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X. It is called as root and triggered by the **Sys-NetworkUp** event.
 
-To successfully acquire a computer certificate from your certificate server, you need to configure the **CertAuthURL**, **CertTemplate** keys.
+To successfully acquire a computer certificate from your certificate server, you need to configure the **CertAuthURL**, **CertTemplate** and **TLSTrustedServerNames** keys.
 
 The **SSIDSTR** key is the SSID of the Wi-Fi network to be used. The **ProxyType** key value should be set to either 'None' or 'Auto'.
 
@@ -1298,6 +1289,10 @@ The **RevokeCertBeforeEpoch** key allows the certificate to be revoked and renew
 		<integer>0</integer>
 		<key>SSIDSTR</key>
 		<string>YourSSID</string>
+		<key>TLSTrustedServerNames</key>
+		<array>
+			<string>yourtrustedserver.yourdomain</string>
+		</array>
 	</dict>
 	<key>Name</key>
 	<string>Sys-ADCompCert8021XWiFi</string>
@@ -1390,23 +1385,43 @@ The example policy config should be configured to your own needs.
 
 This policy gives specific processes access to the internet through a proxy using the Active Directory workstation credentials. The policy is only active when on the AD network to which the workstation is bound.
 
-It is called as root and triggered by the **Sys-Boot** and **Sys-NetworkUp** events.
+It is called as root and triggered by the **Sys-Boot** event.
 
-The config consists of an array called **Proxy**. Each entry in the array contains **ProxyAddress**, **ProxyPort**, **ProxyProtocol** and **Process**. Process is an array of processes that will be given workstation credentials when accessing the internet via the proxy.
+The config consists of an two arrays.
+
+The array called **process** is an array of processes that will be given workstation credentials when accessing the internet via the proxy.
+
+The array called **Proxy** contains **ProxyAddress**, **ProxyPort**, and **ProxyProtocol** which details the proxy settings. 
 
 	<key>Config</key>
 	<dict>
+		<key>Process</key>
+		<array>
+			<string>/System/Library/CoreServices/AppleIDAuthAgent</string>
+			<string>/System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated</string>
+			<string>/System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight</string>
+			<string>/System/Library/CoreServices/mapspushd</string>
+			<string>/System/Library/PrivateFrameworks/ApplePushService.framework/apsd</string>
+			<string>/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd</string>
+			<string>/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeaccountd</string>
+			<string>/System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc</string>
+			<string>/System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd</string>
+			<string>/System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app</string>
+			<string>/System/Library/PrivateFrameworks/PassKitCore.framework/passd</string>
+			<string>/usr/libexec/captiveagent</string>
+			<string>/usr/libexec/keyboardservicesd</string>
+			<string>/usr/libexec/locationd</string>
+			<string>/usr/libexec/nsurlsessiond</string>
+			<string>/usr/libexec/rtcreportingd</string>
+			<string>/usr/sbin/ocspd</string>
+		</array>
 		<key>Proxy</key>
 		<array>
-		<dict>
+			<dict>
 				<key>Address</key>
 				<string>PROXYADDRESS</string>
 				<key>Port</key>
 				<string>PROXYPORT</string>
-				<key>Process</key>
-				<array>
-					<string>/usr/sbin/ocspd</string>
-				</array>
 				<key>Protocol</key>
 				<string>http</string>
 			</dict>
@@ -1415,10 +1430,6 @@ The config consists of an array called **Proxy**. Each entry in the array contai
 				<string>PROXYADDRESS</string>
 				<key>Port</key>
 				<string>PROXYPORT</string>
-				<key>Process</key>
-				<array>
-					<string>/usr/sbin/ocspd</string>
-				</array>
 				<key>Protocol</key>
 				<string>htps</string>
 			</dict>
@@ -1429,7 +1440,6 @@ The config consists of an array called **Proxy**. Each entry in the array contai
 	<key>TriggeredBy</key>
 	<array>
 		<string>Sys-Boot</string>
-		<string>Sys-NetworkUp</string>
 	</array>
 
 The example policy config should be configured to your own needs.
@@ -1657,6 +1667,8 @@ The config consists of a **Path** array, containing a list of folders that conta
 	<array>
 		<string>Sys-LoginWindowIdle</string>
 	</array>
+
+The policy allows you install packages that have been tar gzipped and split into multiple parts (e.g. Install.pkg.tgz.1 Install.pkg.tgz.2 etc). This is useful if there is a 4GB file size limit on the path containing the packages.
 
 The example policy config should be configured to your own needs.
 
@@ -2606,6 +2618,22 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.13 - 03-Aug-2017
+
+* Added "TLSTrustedServerNames" key to the policy "Sys-ADCompCert8021XWiFi" for compatibility with MacOS Sierra.
+
+* Changed the format of the mobileconfig for the policy "Sys-ADTrustAccountProxyAccess". Updated the documentation and example mobileconfig file.
+
+* The policy "Sys-InstallPackageFromFolder" now checks if the package(s) installed correctly. 
+
+* The policy "Sys-InstallPackageFromFolder" now lets you install split tgz packages - i.e. packages that have been tar gzipped and split into multiple files (Install.pkg.tgz.1 Install.pkg.tgz.2 etc). Useful for me.
+
+* Added the example mobileconfig "Mac-NoiCloudOrSiriSetup.mobileconfig".
+
+* Installing a LabWarden policy mobileconfig now applies the policy immediately.
+
+* The default MaxLogSizeBytesDefault is now 655360 bytes.
 
 2.0.12 - 27-June-2017
 

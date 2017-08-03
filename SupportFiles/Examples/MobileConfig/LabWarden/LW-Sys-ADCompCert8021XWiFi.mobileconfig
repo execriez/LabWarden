@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>6585C2CE-D676-4471-AB53-633861702F0A</key>
+			<key>795404AC-E07F-45B5-906D-0A9FA6D21B96</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -21,6 +21,10 @@
 					<integer>0</integer>
 					<key>SSIDSTR</key>
 					<string>YourSSID</string>
+					<key>TLSTrustedServerNames</key>
+					<array>
+						<string>yourtrustedserver.yourdomain</string>
+					</array>
 				</dict>
 				<key>Name</key>
 				<string>Sys-ADCompCert8021XWiFi</string>
@@ -32,11 +36,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>6585C2CE-D676-4471-AB53-633861702F0A</string>
+			<string>795404AC-E07F-45B5-906D-0A9FA6D21B96</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>6585C2CE-D676-4471-AB53-633861702F0A</string>
+			<string>795404AC-E07F-45B5-906D-0A9FA6D21B96</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -46,7 +50,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-ADCompCert8021XWiFi</string>
 	<key>PayloadIdentifier</key>
-	<string>FEB48A04-D947-47EE-96B2-5155647BD49C</string>
+	<string>569BC920-5FE2-4496-B8D8-9EA15795F053</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -56,7 +60,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>FEB48A04-D947-47EE-96B2-5155647BD49C</string>
+	<string>569BC920-5FE2-4496-B8D8-9EA15795F053</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

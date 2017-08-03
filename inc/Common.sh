@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.13
+# Modified: 26-Jul-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Common.sh
@@ -22,9 +22,6 @@ if test -z "${GLB_sv_ProjectSignature}"
 then
   
   # Sets the following globals:
-  #
-  #  GLB_sv_ProjectSignature                - Project signature (e.g. com.github.execriez.labwarden)
-  #  GLB_sv_ProjectMajorVersion             - Project major version (i.e. 2)
   #
   #  GLB_bv_UseLoginhook                    - Whether we should use the com.apple.loginwindow LoginHook & LogoutHook (true/false)
   #
@@ -225,29 +222,34 @@ then
     iv_LogLevel=${1}
     sv_Message="${2}"
     
-    if test -z "${GLB_iv_LogLevelTrap}"
+    if test -n "${GLB_sv_ThisUserLogDirPath}"
     then
-      # Use the hard-coded value if the value is not set
-      GLB_iv_LogLevelTrap=${GLB_iv_LogLevelTrapDefault}
-    fi
-    
-    if [ ${iv_LogLevel} -le ${GLB_iv_LogLevelTrap} ]
-    then
-      sv_LogLevel="$(GLB_sf_LogLevel ${iv_LogLevel})"
-  
-      if [ "${GLB_bv_LogIsActive}" = "true" ]
+      # Only log stuff if the log directory is set (should always be set)
+      
+      if test -z "${GLB_iv_LogLevelTrap}"
       then
-        # Check if we need to start a new log
-        if test -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
-        then
-          if [ $(stat -f "%z" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log") -gt ${GLB_iv_MaxLogSizeBytes} ]
-          then
-            mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.previous.log"
-          fi
-        fi
+        # Use the hard-coded value if the value is not set
+        GLB_iv_LogLevelTrap=${GLB_iv_LogLevelTrapDefault}
+      fi
+    
+      if [ ${iv_LogLevel} -le ${GLB_iv_LogLevelTrap} ]
+      then
+        sv_LogLevel="$(GLB_sf_LogLevel ${iv_LogLevel})"
   
-        echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
-        echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"
+        if [ "${GLB_bv_LogIsActive}" = "true" ]
+        then
+          # Check if we need to start a new log
+          if test -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+          then
+            if [ $(stat -f "%z" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log") -gt ${GLB_iv_MaxLogSizeBytes} ]
+            then
+              mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.previous.log"
+            fi
+          fi
+  
+          echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+          echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"
+        fi
       fi
     fi
   }
@@ -609,6 +611,30 @@ then
     printf %s "${sv_EntryValue}"
   }
   
+  # Get a property value from a plist file
+  GLB_sf_DeletePlistProperty()   # plistfile property
+  {
+    local sv_PlistFilePath
+    local sv_PropertyName
+    local sv_EntryValue
+  
+    sv_PlistFilePath="${1}"
+    sv_PropertyName="${2}"
+      
+    sv_EntryValue=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print '${sv_PropertyName}'" "${sv_PlistFilePath}")
+    if [ $? -ne 0 ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Failed to delete property ${sv_PropertyName} from ${sv_PlistFilePath} - no such property exists"
+      
+    else
+      /usr/libexec/PlistBuddy 2>/dev/null -c "Delete '${sv_PropertyName}'" "${sv_PlistFilePath}"
+      if [ $? -ne 0 ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Failed to delete property ${sv_PropertyName} from ${sv_PlistFilePath}"
+      fi
+    fi
+  }
+
   # Schedule event for specified EPOCH time. Identify the event with a unique TAG.
   # WAKETYPE can be one of sleep, wake, poweron, shutdown, wakeorpoweron
   GLB_nf_schedule4epoch()   # TAG WAKETYPE EPOCH
@@ -1032,9 +1058,6 @@ then
   GLB_iv_ThisScriptStartEpoch=$(date -u "+%s")
   
   # -- Get some info about this project
-  
-  GLB_sv_ProjectSignature="$(echo ${GLB_sv_ProjectDeveloper}.${GLB_sv_ProjectName} | tr [A-Z] [a-z])"
-  GLB_sv_ProjectMajorVersion="$(echo "${GLB_sv_ProjectVersion}" | cut -d"." -f1)"
   
   # Decide where the config/pref files go
   GLB_sv_ProjectConfigDirPath="/Library/Preferences/SystemConfiguration/${GLB_sv_ProjectSignature}/V${GLB_sv_ProjectMajorVersion}"

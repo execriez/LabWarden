@@ -5,10 +5,30 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>9899F369-38E8-4EAA-ABD9-7C0437421EF4</key>
+			<key>AA5B840C-345E-41F0-A215-B7242C3EFBC6</key>
 			<dict>
 				<key>Config</key>
 				<dict>
+					<key>Process</key>
+					<array>
+						<string>/System/Library/CoreServices/AppleIDAuthAgent</string>
+						<string>/System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated</string>
+						<string>/System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight</string>
+						<string>/System/Library/CoreServices/mapspushd</string>
+						<string>/System/Library/PrivateFrameworks/ApplePushService.framework/apsd</string>
+						<string>/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd</string>
+						<string>/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeaccountd</string>
+						<string>/System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc</string>
+						<string>/System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd</string>
+						<string>/System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app</string>
+						<string>/System/Library/PrivateFrameworks/PassKitCore.framework/passd</string>
+						<string>/usr/libexec/captiveagent</string>
+						<string>/usr/libexec/keyboardservicesd</string>
+						<string>/usr/libexec/locationd</string>
+						<string>/usr/libexec/nsurlsessiond</string>
+						<string>/usr/libexec/rtcreportingd</string>
+						<string>/usr/sbin/ocspd</string>
+					</array>
 					<key>Proxy</key>
 					<array>
 						<dict>
@@ -16,10 +36,6 @@
 							<string>PROXYADDRESS</string>
 							<key>Port</key>
 							<string>PROXYPORT</string>
-							<key>Process</key>
-							<array>
-								<string>/usr/sbin/ocspd</string>
-							</array>
 							<key>Protocol</key>
 							<string>http</string>
 						</dict>
@@ -28,10 +44,6 @@
 							<string>PROXYADDRESS</string>
 							<key>Port</key>
 							<string>PROXYPORT</string>
-							<key>Process</key>
-							<array>
-								<string>/usr/sbin/ocspd</string>
-							</array>
 							<key>Protocol</key>
 							<string>htps</string>
 						</dict>
@@ -42,17 +54,16 @@
 				<key>TriggeredBy</key>
 				<array>
 					<string>Sys-Boot</string>
-					<string>Sys-NetworkUp</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>9899F369-38E8-4EAA-ABD9-7C0437421EF4</string>
+			<string>AA5B840C-345E-41F0-A215-B7242C3EFBC6</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>9899F369-38E8-4EAA-ABD9-7C0437421EF4</string>
+			<string>AA5B840C-345E-41F0-A215-B7242C3EFBC6</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -62,7 +73,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-ADTrustAccountProxyAccess</string>
 	<key>PayloadIdentifier</key>
-	<string>3AFA599A-DCF2-497A-A71B-68CAE77BED03</string>
+	<string>ADA6B2A9-3529-4C9F-AC58-B4E4B633A694</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -72,7 +83,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>3AFA599A-DCF2-497A-A71B-68CAE77BED03</string>
+	<string>ADA6B2A9-3529-4C9F-AC58-B4E4B633A694</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

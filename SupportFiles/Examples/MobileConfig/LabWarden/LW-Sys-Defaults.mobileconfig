@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>93FAC53D-9B0F-4198-AF8A-689B81CBD53F</key>
+			<key>310761CA-1594-48D0-B5EE-62653A9902BC</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -22,7 +22,7 @@
 					<key>LogLevelTrap</key>
 					<integer>6</integer>
 					<key>MaxLogSizeBytes</key>
-					<integer>81920</integer>
+					<integer>655360</integer>
 					<key>NotifyLevelTrap</key>
 					<integer>6</integer>
 					<key>UseLoginhook</key>
@@ -38,11 +38,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>93FAC53D-9B0F-4198-AF8A-689B81CBD53F</string>
+			<string>310761CA-1594-48D0-B5EE-62653A9902BC</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>93FAC53D-9B0F-4198-AF8A-689B81CBD53F</string>
+			<string>310761CA-1594-48D0-B5EE-62653A9902BC</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -52,7 +52,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-Defaults</string>
 	<key>PayloadIdentifier</key>
-	<string>C0DC71FB-6D0D-4DF6-B1EF-1883B3DD36F7</string>
+	<string>C5C778D1-DA3B-48E2-80ED-EB7DC4FE53CA</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -62,7 +62,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>C0DC71FB-6D0D-4DF6-B1EF-1883B3DD36F7</string>
+	<string>C5C778D1-DA3B-48E2-80ED-EB7DC4FE53CA</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

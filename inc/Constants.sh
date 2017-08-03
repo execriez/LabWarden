@@ -2,8 +2,8 @@
 #
 # Short:    Constants (shell)
 # Author:   Mark J Swift
-# Version:  2.0.12
-# Modified: 27-Jun-2017
+# Version:  2.0.13
+# Modified: 03-Aug-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Constants.sh
@@ -19,6 +19,9 @@ then
   #  GLB_sv_ProjectInitials                 - Project initials (LW)
   #  GLB_sv_ProjectDeveloper                - Project developer (com.github.execriez)
   #  GLB_sv_ProjectVersion                  - Project version (i.e. 2.0.6)
+  #
+  #  GLB_sv_ProjectSignature                - Project signature (e.g. com.github.execriez.labwarden)
+  #  GLB_sv_ProjectMajorVersion             - Project major version (i.e. 2)
   #
   #  GLB_bv_UseLoginhookDefault             - Whether we should use the com.apple.loginwindow LoginHook & LogoutHook (true/false)
   #
@@ -65,7 +68,7 @@ then
   GLB_sv_ProjectName="LabWarden"
   GLB_sv_ProjectInitials="LW"
   GLB_sv_ProjectDeveloper="com.github.execriez"
-  GLB_sv_ProjectVersion="2.0.12"
+  GLB_sv_ProjectVersion="2.0.13"
 
   # ---
 
@@ -105,13 +108,7 @@ then
   GLB_bv_LogIsActiveDefault="true"
 
   # Set the maximum log size
-  GLB_iv_MaxLogSizeBytesDefault=81920
-  
-  # Set the logging level
-  GLB_iv_LogLevelTrapDefault=${GLB_iv_MsgLevelInfo}
-  
-  # Set the user notify dialog level
-  GLB_iv_NotifyLevelTrapDefault=${GLB_iv_MsgLevelInfo}
+  GLB_iv_MaxLogSizeBytesDefault=655360
   
   # gpupdate -force updates when policies are older than 1 minute
   GLB_iv_GPforceAgeMinutesDefault=1
@@ -122,4 +119,16 @@ then
   # gpupdate defaults to update policies when they are older than 6 hours old
   GLB_iv_GPdefaultAgeMinutesDefault=360
   
+  # -- Set some values based on the above constamts
+  
+  GLB_sv_ProjectSignature="$(echo ${GLB_sv_ProjectDeveloper}.${GLB_sv_ProjectName} | tr [A-Z] [a-z])"
+  GLB_sv_ProjectMajorVersion="$(echo "${GLB_sv_ProjectVersion}" | cut -d"." -f1)"
+  
+  # Set the logging level
+  GLB_iv_LogLevelTrapDefault=${GLB_iv_MsgLevelInfo}
+  
+  # Set the user notify dialog level
+  GLB_iv_NotifyLevelTrapDefault=${GLB_iv_MsgLevelInfo}
+  
+  # --- 
 fi
