@@ -2545,6 +2545,10 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.13 - 06-Aug-2017
+
+* Updated the readme.
+
 2.0.13 - 03-Aug-2017
 
 * Added "TLSTrustedServerNames" key to the policy "Sys-ADCompCert8021XWiFi" for compatibility with MacOS Sierra.
