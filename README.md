@@ -374,6 +374,66 @@ You can find other examples of OS X specific mobileconfigs on the web, these are
 
 <https://github.com/amsysuk/public_config_profiles>
 
+## LabWarden mobileconfig files
+
+The goal of a LabWarden policy is to do things that cannot yet be achieved via a standard MacOS mobileconfig.
+
+A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options.
+
+LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
+
+Here is a list of example LabWarden specific mobileconfig files included with LabWarden:
+
+	LW-App-DeleteDataOnQuit.mobileconfig                    - Deletes various Adobe Premiere Pro, Chrome and Chromium application data files when the application quits.
+	LW-App-ExamplePolicy.mobileconfig                       - Activates the example Application Policy script (A blank canvas)
+	LW-App-FirefoxFirstSetup.mobileconfig                   - Creates a blank Firefox profile at first launch.
+	LW-App-FirefoxFixForNetworkHomes.mobileconfig           - Sets up Firefox so that it can run on network homes.
+	LW-App-Restrict.mobileconfig                            - Restricts the use of the Terminal.app and prevents application launches from user home areas and external drives.
+	LW-App-ShowHints.mobileconfig                           - Shows application specific hints when Logic Pro X or Adobe Premiere Pro are launched.
+	LW-Gen-Debug.mobileconfig                               - Writes internal variable debug info to a config file at "Sys-Boot" and "Usr-AtDesktop" events
+	LW-Gen-ExamplePolicy.mobileconfig                       - Activates the example General Policy script (A blank canvas)
+	LW-Gen-OfficeHours.mobileconfig                         - Enforces User Access to specific Opening Hours and collects usage stats
+	LW-Gen-UnloadAgentsAndDaemons-proxypopups.mobileconfig  - Unloads the "com.apple.UserNotificationCenter" Daemon to prevent proxy-popups. Does not work on 10.12+ when SIP is enabled.
+	LW-Sys-ADCompCert8021XWiFi.mobileconfig                 - When modified, can request and install a computer certificate from a certificate authority server and then set up Wi-Fi for 802.1X.
+	LW-Sys-ADTrustAccountProxyAccess.mobileconfig           - Gives certain processes access through a proxy using AD workstation credentials.
+	LW-Sys-ADUserExperience-HomeForceLocal.mobileconfig     - Enables "Force local home directory on startup disk" as determined by the "User Experience" tab of the Directory Utility app.
+	LW-Sys-ADUserExperience-HomeOnNetwork.mobileconfig      - Enforces network homes by disabling "Force local home directory on startup disk".
+	LW-Sys-ADUserExperience-Mobile.mobileconfig             - Enforces mobile accounts by enabling "Create mobile account at login".
+	LW-Sys-AddEntriesToHostsFile.mobileconfig               - Adds entries to the /etc/hosts file.
+	LW-Sys-AddPrinter-MarketingLaser2020.mobileconfig       - Example of how to Add a SMB printer
+	LW-Sys-AddPrinter-MarketingLaser2020direct.mobileconfig - Example of how to Add a network printer
+	LW-Sys-Defaults-Debug.mobileconfig                      - Over-rides inbuilt hard-coded defaults to enable debug messages in the log.
+	LW-Sys-Defaults.mobileconfig                            - Over-rides inbuilt hard-coded defaults.
+	LW-Sys-DeleteFiles-FlashPlayer.mobileconfig             - Deletes files from the system volume - in this example, Adobe Flash Player. It will reboot after the files have been deleted.
+	LW-Sys-DeleteOldUserProfiles.mobileconfig               - Deletes network user local homes when they havent been accessed for 62 days, or when the disk space is less than 2 Gigabytes.
+	LW-Sys-ExamplePolicy.mobileconfig                       - Activates the example System Policy script (A blank canvas)
+	LW-Sys-InstallPackageFromFolder.mobileconfig            - Installs packages from /usr/local/Updates when the system is idle at the LoginWindow
+	LW-Sys-NetworkProxy-AutoProxy.mobileconfig              - Sets system Network Proxy options to auto.
+	LW-Sys-PolicyBanner.mobileconfig                        - Sets a policy banner which is displayed at the Login Window.
+	LW-Sys-RemoteManagement.mobileconfig                    - Sets up remote access for local users, network users and network groups.
+	LW-Sys-RestartIfNetMount.mobileconfig                   - Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted.
+	LW-Sys-SleepSettings-10mins.mobileconfig                - Sets the screen to sleep after 10 mins.
+	LW-Sys-SleepSettings-never.mobileconfig                 - Sets the screen to never sleep.
+	LW-Sys-TimeServer-Apple.mobileconfig                    - Sets the system time (ntp) server
+	LW-Sys-Update-Radmind.mobileconfig                      - Sets the custom update script.
+	LW-Sys-UpdatePackage.mobileconfig                       - Updates an installed package to a later version, in this example LabWarden itself.
+	LW-Sys-WirelessForgetSSID.mobileconfig                  - Forgets a list of wireless SSIDs and associated passwords.
+	LW-Sys-WirelessSetState-off.mobileconfig                - Turns wireless off.
+	LW-Sys-WirelessSetState-on.mobileconfig                 - Turns wireless on and allows non admins to switch networks.
+	LW-Sys-WorkstationInfo.mobileconfig                     - Updates the loginwindow text and RemoteDesktop Info Fields with workstation info.
+	LW-Usr-CheckQuotaOnNetHome.mobileconfig                 - Checks if a users network drive is getting full.
+	LW-Usr-CreateFolder.mobileconfig                        - Creates folders in the users home folder at login.
+	LW-Usr-DefaultHandlers.mobileconfig                     - Sets the default handlers for specific file types.
+	LW-Usr-DesktopWallpaperURI.mobileconfig                 - Sets the user Desktop Wallpaper to be a file on a server.
+	LW-Usr-DockContent.mobileconfig                         - Sets the user Dock content (makes use of dockutil).
+	LW-Usr-ExamplePolicy.mobileconfig                       - Activates the example User Policy script (A blank canvas)
+	LW-Usr-HomeMakePathRedirections.mobileconfig            - Creates symbolic links between a network users network home and local home at login.
+	LW-Usr-KeychainFix.mobileconfig                         - Attempts to fix Keychain issues caused by password reset issues.
+	LW-Usr-SidebarContent.mobileconfig                      - Sets the user sidebar contents (makes use of mysides).
+	LW-Usr-SpotlightSettingOnNetHome-off.mobileconfig       - Disables Spotlight on a users network home
+	LW-Usr-SpotlightSettingOnNetHome-on.mobileconfig        - Enables Spotlight on a users network home
+	LW-Usr-SyncLocalHomeToNetwork.mobileconfig              - Syncs specified folders between the users local home and his network home.
+
 ## System Events (system policy triggers)
 
 System events trigger policies that run as the root user:
@@ -454,167 +514,8 @@ Passed to a policy as an event when the policy is first installed
 ### Usr-PolicyUninstall
 Passed to a policy as an event when the policy is uninstalled
 
-## LabWarden Policies (brief)
 
-The goal of a LabWarden policy is to do things that cannot yet be achieved via a standard MacOS mobileconfig.
-
-A LabWarden Policy is a script and an associated custom mobileconfig file that holds the script options. One option in the mobileconfig is the 'TriggeredBy' key. This is an array that declares which events will trigger the policy.
-
-LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
-
-Following is a brief list of Labwarden policies:
-
-### App-DeleteDataOnQuit
-Deletes application data when an application quits.
-
-### App-ExamplePolicy
-Example Application Policy script (A blank canvas).
-
-### App-FirefoxFirstSetup
-Creates a blank Firefox profile at first launch.
-
-### App-FirefoxFixForNetworkHomes
-Sets up Firefox so that it can run on network homes.
-
-### App-Restrict
-Restricts application usage depending on a blacklist or whitelist.
-
-### App-ShowHints
-Shows a hint when a specified application opened.
-
-### Gen-Debug
-Writes debug info to the policy prefs
-
-### Gen-ExamplePolicy
-Example General Policy script (A blank canvas)
-
-### Gen-OfficeHours
-Enforces User Access to Opening Hours and collects usage stats
-
-### Gen-UnloadAgentsAndDaemons
-Unloads (disables) specific Agents and Daemons.
-
-### Sys-ADCompCert8021XWiFi
-Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X.
-
-### Sys-AddEntriesToHostsFile
-Adds entries to the /etc/hosts file.
-
-### Sys-AddPrinter
-Adds a printer
-
-### Sys-ADTrustAccountProxyAccess
-Give certain processes access through proxy using AD workstation credentials.
-
-### Sys-ADUserExperience
-Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app.
-
-### Sys-Defaults
-Over-rides inbuilt hard-coded defaults.
-
-### Sys-DeleteFiles
-Deletes files from the system volume. It will reboot after the files have been successfully deleted.
-
-### Sys-DeleteOldUserProfiles
-Deletes outdated user profiles.
-
-### Sys-ExamplePolicy
-Example System Policy script (A blank canvas)
-
-### Sys-InstallPackageFromFolder
-Installs packages from a specified folder.
-
-### Sys-UpdatePackage
-Updates an installed package to a later version
-
-### Sys-NetworkProxy
-Sets system Network Proxy options. 
-
-### Sys-PolicyBanner
-Sets a policy banner which is displayed at the Login Window. 
-
-### Sys-RemoteManagement
-Sets up remote access to a workstation.
-
-### Sys-RestartIfNetMounts
-Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted.
-
-### Sys-SleepSettings
-Sets system sleep options.
-
-### Sys-TimeServer
-Sets the system time (ntp) server.
-
-### Sys-Update
-Runs a custom update script.
-
-### Sys-WirelessForgetSSID
-Forgets wireless SSIDs and passwords.
-
-### Sys-WirelessSetState
-Turns wireless on or off, and defines whether non-admins can change the wireless state.
-
-### Sys-WorkstationInfo
-Updates the loginwindow text and RemoteDesktop Info Fields with workstation info.
-
-### Usr-CheckQuotaOnNetHome
-Checks if a users network drive is getting full.
-
-### Usr-CreateFolder
-Creates folders in the users home folder.
-
-### Usr-DefaultHandlers
-Sets the default handlers for specific file types.
-
-### UserDesktopWallpaperURI
-Sets the user Desktop Wallpaper. 
-
-### Usr-DockContent
-Sets the user Dock content (makes use of **dockutil**).
-
-### Usr-ExamplePolicy
-Example User Policy script (A blank canvas)
-
-### Usr-HomeMakePathRedirections
-Creates symbolic links between a network users network home and local home.
-
-### Usr-KeychainFix
-Attempts to fix Keychain issues caused by password reset issues.
-
-### Usr-SidebarContent
-Sets the user sidebar contents (makes use of **mysides**).
-
-### Usr-SpotlightSettingOnNetHome
-Enable or disable Spotlight on a users network home
-
-### Usr-SyncLocalHomeToNetwork
-Syncs specified folders from the users local home to network home.
-
-
-## Your Custom Policies
-
-If you have a custom script that you need to run - you should turn it into a custom policy.
-
-A policy is just a script and an associated mobileconfig.
-
-The script config contains the script options and a list of event(s) that trigger the script. 
-
-LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
-
-You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
-
-Custom policies should be stored in the directory "/usr/local/LabWarden/Custom-Policies/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
-
-For a custom policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Custom-Policies/MyPolicy'.
-
-The accompanying mobileconfig file should be called 'MyPolicy.mobileconfig'. All policy options should be stored in the mobileconfig file.
-
-Take a look at the example custom policies and associated mobileconfigs for inspiration ( App-ExamplePolicy, Usr-ExamplePolicy, Sys-ExamplePolicy and Gen-ExamplePolicy ).
-
-If you need to deploy your custom policy via AD, then use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups 'Notes' field as described in the Quick Demo sections.
-
-
-## LabWarden Policies (detailed)
+## LabWarden Policies
 
 Following is a detailed list of policy scripts. Policy script options are contained in an associated mobileconfig file.
 
@@ -2602,6 +2503,29 @@ It is called as the user. Files are synced down from the network at a **Usr-AtDe
 	</array>
 
 The example policy config should be configured to your own needs.
+
+
+## Your Custom Policies
+
+If you have a custom script that you need to run - you can turn it into a custom LabWarden policy.
+
+A LabWarden policy is just a script and an associated mobileconfig.
+
+The script config contains the script options and a list of event(s) that trigger the script. 
+
+LabWarden Policy Scripts can be triggered by system events or user events. They will run as root if triggered by a system event, or as a normal user if triggered by a user event.
+
+You should note that when an event happens, every script that is triggered by that event is run together. Scripts don't wait around for other scripts to finish - they are all run at the same time (multitasking).
+
+Custom policies should be stored in the directory "/usr/local/LabWarden/Custom-Policies/". This prevents the policy from being deleted, should you update LabWarden by installing a new LabWarden package.
+
+For a custom policy called 'MyPolicy', the policy script should be '/usr/local/LabWarden/Custom-Policies/MyPolicy'.
+
+The accompanying mobileconfig file should be called 'MyPolicy.mobileconfig'. All policy options should be stored in the mobileconfig file.
+
+Take a look at the example custom policies and associated mobileconfigs for inspiration ( App-ExamplePolicy, Usr-ExamplePolicy, Sys-ExamplePolicy and Gen-ExamplePolicy ).
+
+If you need to deploy your custom policy via AD, then use '/usr/local/LabWarden/util/PackForDeployment' to pack the script config ready for pasting into an AD groups 'Notes' field as described in the Quick Demo sections.
 
 
 ## References
