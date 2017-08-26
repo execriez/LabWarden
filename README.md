@@ -861,7 +861,7 @@ This policy can restrict user logins to defined office-hours. It can also produc
 
 This policy is useful to force log-outs at the end of the day, and to determine which are your most and least used machines.
 
-To use this policy, you need to define normal office-hours, office-hours during breaks, and dates when the office is not open at all.
+To use this policy, you need to define core hours, normal office-hours, office-hours during breaks, and dates when the office is not open at all.
 
 The **ActiveForDates** key determines the dates for which the policy is active. 
 
@@ -939,6 +939,13 @@ The **AuditHideUntilAgeSecs** key specifies how long we should collect data befo
 
 		<key>AuditHideUntilAgeSecs</key>
 		<integer>604800</integer>
+
+The **CoreOpeningTime** and **CoreClosingTime** keys declare the core working hours. Your lab may be open 24/7 - but it's usage during core hours that are most significant; and it's these usage stats that are displayed at the login window.
+
+		<key>CoreOpeningTime</key>
+		<string>9:30</string>
+		<key>CoreClosingTime</key>
+		<string>16:30</string>
 
 The **NormalHours** dict specifies opening times for Monday (Day1) through Sunday (Day7). In this example, the lab is open 8:30 until 21:00 Mon-Thu, 8:30 until 17:00 on Fri, and closed on Saturday and Sunday.
 
@@ -1671,7 +1678,6 @@ The config contains the usual proxy options.
 	<key>TriggeredBy</key>
 	<array>
 		<string>Sys-NetworkUp</string>
-		<string>Sys-Boot</string>
 	</array>
 
 
@@ -2544,6 +2550,12 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.14 - 26-Aug-2017
+
+* Updated the policy "Sys-NetworkProxy". On previous versions, proxy settings were cleared during a Sys-Boot event, and setup during a Sys-NetworkUp event. However, policies triggered by Sys-Boot events are not guaranteed to run before policies triggered by other events (like Sys-NetworkUp). This occassionally caused the policy to leave the proxy settings cleared. Proxy settings are now setup or reset during the same Sys-NetworkUp event which fixes the issue. 
+
+* Updated the policy "Gen-OfficeHours". An issue similar to the one in "Sys-NetworkProxy" above was fixed. The policy now also introduces two new keys, "CoreOpeningTime" and "CoreClosingTime". The stats displayed at the loginwindow now take into account core opening hours - to better reflect usage. Your office may be open 24/7 - but it's usage during core hours that are most significant.
 
 2.0.13 - 06-Aug-2017
 

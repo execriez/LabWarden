@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>364A9EFF-CD00-4E09-9919-AFEF1411C6A8</key>
+			<key>7486F90B-7436-4F0B-A1CB-C75A5E8217AA</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -43,43 +43,47 @@
 							<key>End</key>
 							<dict>
 								<key>Day</key>
-								<integer>8</integer>
+								<integer>7</integer>
 								<key>Month</key>
 								<integer>1</integer>
 								<key>Year</key>
-								<integer>2017</integer>
+								<integer>2018</integer>
 							</dict>
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>23</integer>
+								<integer>22</integer>
 								<key>Month</key>
 								<integer>12</integer>
 								<key>Year</key>
-								<integer>2016</integer>
+								<integer>2017</integer>
 							</dict>
 						</dict>
 						<dict>
 							<key>End</key>
 							<dict>
 								<key>Day</key>
-								<integer>14</integer>
+								<integer>8</integer>
 								<key>Month</key>
 								<integer>4</integer>
 								<key>Year</key>
-								<integer>2017</integer>
+								<integer>2018</integer>
 							</dict>
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>14</integer>
+								<integer>24</integer>
 								<key>Month</key>
-								<integer>4</integer>
+								<integer>3</integer>
 								<key>Year</key>
-								<integer>2017</integer>
+								<integer>2018</integer>
 							</dict>
 						</dict>
 					</array>
+					<key>CoreClosingTime</key>
+					<string>16:30</string>
+					<key>CoreOpeningTime</key>
+					<string>9:30</string>
 					<key>ForceLogout</key>
 					<dict>
 						<key>ActiveForDomain</key>
@@ -110,40 +114,40 @@
 									<key>End</key>
 									<dict>
 										<key>Day</key>
-										<integer>6</integer>
+										<integer>5</integer>
 										<key>Month</key>
 										<integer>11</integer>
 										<key>Year</key>
-										<integer>2016</integer>
+										<integer>2017</integer>
 									</dict>
 									<key>Start</key>
 									<dict>
 										<key>Day</key>
-										<integer>29</integer>
+										<integer>28</integer>
 										<key>Month</key>
 										<integer>10</integer>
 										<key>Year</key>
-										<integer>2016</integer>
+										<integer>2017</integer>
 									</dict>
 								</dict>
 								<dict>
 									<key>End</key>
 									<dict>
 										<key>Day</key>
-										<integer>22</integer>
+										<integer>18</integer>
 										<key>Month</key>
-										<integer>1</integer>
+										<integer>2</integer>
 										<key>Year</key>
-										<integer>2017</integer>
+										<integer>2018</integer>
 									</dict>
 									<key>Start</key>
 									<dict>
 										<key>Day</key>
-										<integer>14</integer>
+										<integer>10</integer>
 										<key>Month</key>
-										<integer>1</integer>
+										<integer>2</integer>
 										<key>Year</key>
-										<integer>2017</integer>
+										<integer>2018</integer>
 									</dict>
 								</dict>
 							</array>
@@ -265,11 +269,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>364A9EFF-CD00-4E09-9919-AFEF1411C6A8</string>
+			<string>7486F90B-7436-4F0B-A1CB-C75A5E8217AA</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>364A9EFF-CD00-4E09-9919-AFEF1411C6A8</string>
+			<string>7486F90B-7436-4F0B-A1CB-C75A5E8217AA</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -279,7 +283,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Gen-OfficeHours</string>
 	<key>PayloadIdentifier</key>
-	<string>F88554F3-8353-4E4F-A7AB-28A25CAD9C94</string>
+	<string>5EDF9211-7368-4080-A550-ED40A7B8E752</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -289,7 +293,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>F88554F3-8353-4E4F-A7AB-28A25CAD9C94</string>
+	<string>5EDF9211-7368-4080-A550-ED40A7B8E752</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

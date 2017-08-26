@@ -1018,6 +1018,7 @@ then
       while [ -n "$(jobs -r)" ]
       do
         # we don't want to hog the CPU - so lets sleep a while
+        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Waiting for events triggered by '${sv_EventHistory}:${sv_EventName}' to finish"
         sleep 1
       done
 

@@ -114,7 +114,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_P
 # GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
 
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-NetworkUp"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-Boot"
 
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDomain:0" "ALL"
 
@@ -151,10 +150,107 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Except
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 
 # ---
+
+# OFFICE HOURS
+
+sv_PolicyName="Gen-OfficeHours"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-NetworkUp"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:2" "Sys-Poll"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:3" "Usr-AtDesktop"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:4" "Usr-Poll"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Day" "25"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Month" "11"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Year" "2016"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Day" "03"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Month" "09"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Year" "2017"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Audit:Active" "true"                          # Whether we should audit usage, true or false
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Audit:HideUntilAgeSecs" "604800"              # Dont show audit at LoginWindow until its at least 1 day old
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:ActiveForDomain:0" "ALL"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:InactiveForGroup:0" "All-Staff"   # list of groups that are exempt from force logout
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:InactiveOnClosedDays" "true"      # Should we allow unrestricted access on days that are defined as closed
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyLogoutSecs" "600"            # logout user 10 mins before closing
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyLoginSecs" "3600"            # allow user login 60 mins before opening
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyWarningSecs" "600"           # Warn user 10 mins before force logout
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:IdleUserSecs" "1800"              # How long before we force logout idle users (0 = never)  
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CoreOpeningTime" "9:30"    # Mon
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CoreClosingTime" "16:30"    # Mon
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day1:OpenTime" "8:30"    # Mon
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day1:CloseTime" "21:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day2:OpenTime" "8:30"    # Tue
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day2:CloseTime" "21:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day3:OpenTime" "8:30"    # Wed
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day3:CloseTime" "21:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day4:OpenTime" "8:30"    # Thu
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day4:CloseTime" "21:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day5:OpenTime" "8:30"    # Fri
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day5:CloseTime" "17:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day6:OpenTime" ""   # Sat
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day6:CloseTime" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day7:OpenTime" ""        # Sun
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day7:CloseTime" ""
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Day" "22"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Month" "12"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Year" "2017"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Day" "7"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Month" "1"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Year" "2018"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Day" "24"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Month" "3"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Year" "2018"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Day" "8"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Month" "4"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Year" "2018"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Day" "28"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Month" "10"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Year" "2017"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Day" "5"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Month" "11"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Year" "2017"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Day" "10"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Month" "2"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Year" "2018"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Day" "18"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Month" "2"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Year" "2018"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day1:OpenTime" "8:30"    # Mon
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day1:CloseTime" "16:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day2:OpenTime" "8:30"    # Tue
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day2:CloseTime" "16:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day3:OpenTime" "8:30"    # Wed
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day3:CloseTime" "16:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day4:OpenTime" "8:30"    # Thu
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day4:CloseTime" "16:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day5:OpenTime" "8:30"    # Fri
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day5:CloseTime" "16:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day6:OpenTime" ""   # Sat
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day6:CloseTime" ""
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day7:OpenTime" ""        # Sun
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day7:CloseTime" ""
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
 exit 0
 # ---
 
-# ---
 sv_PolicyName="Sys-Defaults"
 sv_Tag=""
 
@@ -1271,107 +1367,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Entry:
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Entry:0:Host:6" "nexus.officeapps.live.com"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-
-# ---
-
-# ---
-
-# OFFICE HOURS
-
-sv_PolicyName="Gen-OfficeHours"
-sv_Tag=""
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-NetworkUp"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:2" "Sys-Poll"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:3" "Usr-AtDesktop"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:4" "Usr-Poll"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Day" "25"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Month" "11"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:Start:Year" "2016"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Day" "03"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Month" "09"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ActiveForDates:End:Year" "2017"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Audit:Active" "true"                          # Whether we should audit usage, true or false
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Audit:HideUntilAgeSecs" "604800"              # Dont show audit at LoginWindow until its at least 1 day old
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:ActiveForDomain:0" "ALL"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:InactiveForGroup:0" "All-Staff"   # list of groups that are exempt from force logout
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:InactiveOnClosedDays" "true"      # Should we allow unrestricted access on days that are defined as closed
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyLogoutSecs" "600"            # logout user 10 mins before closing
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyLoginSecs" "3600"            # allow user login 60 mins before opening
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:EarlyWarningSecs" "600"           # Warn user 10 mins before force logout
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ForceLogout:IdleUserSecs" "1800"              # How long before we force logout idle users (0 = never)  
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day1:OpenTime" "8:30"    # Mon
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day1:CloseTime" "21:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day2:OpenTime" "8:30"    # Tue
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day2:CloseTime" "21:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day3:OpenTime" "8:30"    # Wed
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day3:CloseTime" "21:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day4:OpenTime" "8:30"    # Thu
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day4:CloseTime" "21:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day5:OpenTime" "8:30"    # Fri
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day5:CloseTime" "17:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day6:OpenTime" ""   # Sat
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day6:CloseTime" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day7:OpenTime" ""        # Sun
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:NormalHours:Day7:CloseTime" ""
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Day" "23"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Month" "12"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:Start:Year" "2016"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Day" "8"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Month" "1"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:0:End:Year" "2017"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Day" "14"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Month" "4"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:Start:Year" "2017"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Day" "14"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Month" "4"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ClosedDays:1:End:Year" "2017"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Day" "29"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Month" "10"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:Start:Year" "2016"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Day" "6"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Month" "11"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:0:End:Year" "2016"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Day" "14"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Month" "1"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:Start:Year" "2017"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Day" "22"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Month" "1"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:DateRange:1:End:Year" "2017"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day1:OpenTime" "8:30"    # Mon
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day1:CloseTime" "16:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day2:OpenTime" "8:30"    # Tue
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day2:CloseTime" "16:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day3:OpenTime" "8:30"    # Wed
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day3:CloseTime" "16:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day4:OpenTime" "8:30"    # Thu
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day4:CloseTime" "16:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day5:OpenTime" "8:30"    # Fri
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day5:CloseTime" "16:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day6:OpenTime" ""   # Sat
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day6:CloseTime" ""
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day7:OpenTime" ""        # Sun
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:HolidayHours:0:Day7:CloseTime" ""
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
 
 # ---
 sv_PolicyName="Sys-WirelessForgetSSID"

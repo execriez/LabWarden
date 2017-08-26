@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets system Network Proxy options
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 03-Aug-2017
+# Version:  2.0.14
+# Modified: 23-Aug-2017
 #
 # Triggered by the following events:
 #   Sys-NetworkUp     (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.13"
+sv_CodeVersion="2.0.14"
 
 if [ $# -eq 0 ]
 then
@@ -125,6 +125,8 @@ sf_OptionIsActiveForThisDomain() # [subkey]
     sv_IsActiveForDomain=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:${sv_SubKey}ActiveForDomain:${iv_IsActiveForDomainIndex}")
     if test -n "${sv_IsActiveForDomain}"
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Active when on domain '${sv_IsActiveForDomain}'"
+
       case ${sv_IsActiveForDomain} in
       ALL)
         bv_IsActive="true"
@@ -142,14 +144,36 @@ sf_OptionIsActiveForThisDomain() # [subkey]
       esac
     fi
     
-    if [ "${sv_IsActiveForDomain}" = "${GLB_sv_NetworkServiceDHCPOption15}" ]
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Checking domain '${sv_IsActiveForDomain}' against dhcp option 15 '${sv_NetworkServiceDHCPOption15}'"
+
+    if [ "${sv_IsActiveForDomain}" = "${sv_NetworkServiceDHCPOption15}" ]
     then
       bv_IsActive="true"
       break
     fi
   done
   
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Active='${bv_IsActive}'" 
+ 
   echo "${bv_IsActive}"
+}
+
+sf_GetNetworkServiceName() # <devicename i.e. en0> - get service name from device name
+{
+  local sv_NetworkServiceInterface
+  local sv_NetworkServiceInterfaceDeviceName
+
+  sv_NetworkServiceInterfaceDeviceName="${1}"
+
+  while read sv_NetworkServiceInterface
+  do
+
+    if test -n "$(echo "show ${sv_NetworkServiceInterface}" | scutil | grep "DeviceName : ${sv_NetworkServiceInterfaceDeviceName}$")"
+    then
+      echo ${sv_NetworkServiceInterface} | cut -d"/" -f4
+    fi
+
+  done < <(echo "list" | scutil | grep -E "Setup:/Network/Service/[^/]*/Interface" | tr -d " " | cut -d"=" -f2)
 }
 
 # ---
@@ -169,18 +193,9 @@ fi
 
 # ---
 
-# Exit if there is no network
-if test -z "${GLB_sv_NetworkServiceInterfaceName}"
-then
-  GLB_nf_QuickExit "Policy aborted - no network"
-  exit 0
-fi
-  
-# ---
-
 case ${sv_EventName} in
     
-Sys-Boot|Sys-PolicyUninstall)
+Sys-PolicyUninstall)
   # Remove all proxy settings from all interfaces
   networksetup -listallnetworkservices | grep -v "*" | while read sv_NetworkServiceInterfaceName
   do
@@ -193,48 +208,87 @@ Sys-Boot|Sys-PolicyUninstall)
     /usr/sbin/networksetup -setsocksfirewallproxystate "${sv_NetworkServiceInterfaceName}" off
     /usr/sbin/networksetup -setstreamingproxystate "${sv_NetworkServiceInterfaceName}" off
     /usr/sbin/networksetup -setgopherproxystate "${sv_NetworkServiceInterfaceName}" off
+    /usr/sbin/networksetup -setproxybypassdomains "${sv_NetworkServiceInterfaceName}" "*.local 169.254/16 127.0.0.1 localhost"
   done
   ;;
   
 Sys-NetworkUp|Sys-PolicyInstall)
   
+  # Get network device name - e.g. en0
+  sv_NetworkServiceDeviceName="$(echo ${sv_OptionalParam} | cut -d":" -f1)"
+  
+  if test -z "${sv_NetworkServiceDeviceName}"
+  then
+    sv_NetworkServiceDeviceName="${GLB_sv_NetworkServiceInterfaceDevice}"
+  fi
+
+  # ---
+
+  # Exit if there is no network
+  if test -z "${sv_NetworkServiceDeviceName}"
+  then
+    GLB_nf_QuickExit "Policy aborted - no network"
+    exit 0
+  fi
+  
+  # ---
+
+  # Get network service name - e.g. 1DDF4F0B-E41C-45CD-AD3F-5B44A5F512F9
+  sv_NetworkServiceName=$(sf_GetNetworkServiceName "${sv_NetworkServiceDeviceName}")
+
+  # Get network service user defined name - e.g. Ethernet 2
+  sv_NetworkServiceInterfaceName=$(echo "show Setup:/Network/Service/${sv_NetworkServiceName}" | scutil | grep "UserDefinedName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+
+  # Get DHCP option 15 (domain)
+  sv_NetworkServiceDHCPOption15=$(echo "show State:/Network/Service/${sv_NetworkServiceName}/DHCP" | scutil | grep "Option_15" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||" | sed -E "s/^<data> 0x//;s/00$//" | xxd -r -p)
+
   bv_ConfigActive=$(sf_OptionIsActiveForThisDomain)
-    
   if [ "${bv_ConfigActive}" = "true" ]
   then
-
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching all proxy settings off for ${GLB_sv_NetworkServiceInterfaceName}"
-    /usr/sbin/networksetup -setproxyautodiscovery "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setautoproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setwebproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setsecurewebproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setftpproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setstreamingproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-    /usr/sbin/networksetup -setgopherproxystate "${GLB_sv_NetworkServiceInterfaceName}" off
-
-    bv_ProxyAutoDiscoveryEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoDiscoveryEnable")"
-    if [ "${bv_ProxyAutoDiscoveryEnable}" = "true" ]
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Enabling proxy settings for ${sv_NetworkServiceDeviceName} (${sv_NetworkServiceInterfaceName})"
+  else
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Disabling proxy settings for ${sv_NetworkServiceDeviceName} (${sv_NetworkServiceInterfaceName})"
+  fi
+    
+  bv_ProxyAutoDiscoveryEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoDiscoveryEnable")"
+  if test -n "${bv_ProxyAutoDiscoveryEnable}"
+  then
+    if [ "${bv_ProxyAutoDiscoveryEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching off 'Auto Proxy Discovery'"
+      /usr/sbin/networksetup -setproxyautodiscovery "${sv_NetworkServiceInterfaceName}" off
+    else
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching on 'Auto Proxy Discovery'"
-      /usr/sbin/networksetup -setproxyautodiscovery "${GLB_sv_NetworkServiceInterfaceName}" on
+      /usr/sbin/networksetup -setproxyautodiscovery "${sv_NetworkServiceInterfaceName}" on
     fi
+  fi
 
-    bv_ProxyAutoConfigEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoConfigEnable")"
-    if [ "${bv_ProxyAutoConfigEnable}" = "true" ]
+  bv_ProxyAutoConfigEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoConfigEnable")"
+  if test -n "${bv_ProxyAutoConfigEnable}"
+  then
+    if [ "${bv_ProxyAutoConfigEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Switching off 'Automatic Proxy Configuration'"
+      /usr/sbin/networksetup -setautoproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_ProxyAutoConfigURLString="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ProxyAutoConfigURLString")"
       if test -n "${sv_ProxyAutoConfigURLString}"
       then
         GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Automatic Proxy Configuration' to ${sv_ProxyAutoConfigURLString}"
-        /usr/sbin/networksetup -setautoproxyurl "${GLB_sv_NetworkServiceInterfaceName}" "${sv_ProxyAutoConfigURLString}"
-        /usr/sbin/networksetup -setautoproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+        /usr/sbin/networksetup -setautoproxyurl "${sv_NetworkServiceInterfaceName}" "${sv_ProxyAutoConfigURLString}"
+        /usr/sbin/networksetup -setautoproxystate "${sv_NetworkServiceInterfaceName}" on
       fi
     fi
+  fi
 
-    bv_HTTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPEnable")"
-    if [ "${bv_HTTPEnable}" = "true" ]
+  bv_HTTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPEnable")"
+  if test -n "${bv_HTTPEnable}"
+  then
+    if [ "${bv_HTTPEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'Web Proxy' settings"
+      /usr/sbin/networksetup -setwebproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_HTTPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPProxy")"
       if test -n "${sv_HTTPProxy}"
       then
@@ -242,15 +296,21 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_HTTPPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Web Proxy' to ${sv_HTTPProxy}:${iv_HTTPPort}"
-          /usr/sbin/networksetup -setwebproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_HTTPProxy}" "${iv_HTTPPort}" off
-          /usr/sbin/networksetup -setwebproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setwebproxy "${sv_NetworkServiceInterfaceName}" "${sv_HTTPProxy}" "${iv_HTTPPort}" off
+          /usr/sbin/networksetup -setwebproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    bv_HTTPSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSEnable")"
-    if [ "${bv_HTTPSEnable}" = "true" ]
+  bv_HTTPSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSEnable")"
+  if test -n "${bv_HTTPSEnable}"
+  then
+    if [ "${bv_HTTPSEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'Secure Web Proxy' settings"
+      /usr/sbin/networksetup -setsecurewebproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_HTTPSProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:HTTPSProxy")"
       if test -n "${sv_HTTPSProxy}"
       then
@@ -258,15 +318,21 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_HTTPSPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Secure Web Proxy' to ${sv_HTTPSProxy}:${iv_HTTPSPort}"
-          /usr/sbin/networksetup -setsecurewebproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_HTTPSProxy}" "${iv_HTTPSPort}" off
-          /usr/sbin/networksetup -setsecurewebproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setsecurewebproxy "${sv_NetworkServiceInterfaceName}" "${sv_HTTPSProxy}" "${iv_HTTPSPort}" off
+          /usr/sbin/networksetup -setsecurewebproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    bv_RTSPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPEnable")"
-    if [ "${bv_RTSPEnable}" = "true" ]
+  bv_RTSPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPEnable")"
+  if test -n "${bv_RTSPEnable}"
+  then
+    if [ "${bv_RTSPEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'Secure Streaming Proxy' settings"
+      /usr/sbin/networksetup -setstreamingproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_RTSPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:RTSPProxy")"
       if test -n "${sv_RTSPProxy}"
       then
@@ -274,15 +340,21 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_RTSPPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Secure Streaming Proxy' to ${sv_RTSPProxy}:${iv_RTSPPort}"
-          /usr/sbin/networksetup -setstreamingproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_RTSPProxy}" "${iv_RTSPPort}" off
-          /usr/sbin/networksetup -setstreamingproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setstreamingproxy "${sv_NetworkServiceInterfaceName}" "${sv_RTSPProxy}" "${iv_RTSPPort}" off
+          /usr/sbin/networksetup -setstreamingproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    bv_FTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPEnable")"
-    if [ "${bv_FTPEnable}" = "true" ]
+  bv_FTPEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPEnable")"
+  if test -n "${bv_FTPEnable}"
+  then
+    if [ "${bv_FTPEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'FTP Proxy' settings"
+      /usr/sbin/networksetup -setftpproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_FTPProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:FTPProxy")"
       if test -n "${sv_FTPProxy}"
       then
@@ -290,15 +362,21 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_FTPPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'FTP Proxy' to ${sv_FTPProxy}:${iv_FTPPort}"
-          /usr/sbin/networksetup -setftpproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_FTPProxy}" "${iv_FTPPort}" off
-          /usr/sbin/networksetup -setftpproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setftpproxy "${sv_NetworkServiceInterfaceName}" "${sv_FTPProxy}" "${iv_FTPPort}" off
+          /usr/sbin/networksetup -setftpproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    bv_SOCKSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSEnable")"
-    if [ "${bv_SOCKSEnable}" = "true" ]
+  bv_SOCKSEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSEnable")"
+  if test -n "${bv_SOCKSEnable}"
+  then
+    if [ "${bv_SOCKSEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'SOCKS Proxy' settings"
+      /usr/sbin/networksetup -setsocksfirewallproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_SOCKSProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SOCKSProxy")"
       if test -n "${sv_SOCKSProxy}"
       then
@@ -306,15 +384,21 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_SOCKSPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'SOCKS Proxy' to ${sv_SOCKSProxy}:${iv_SOCKSPort}"
-          /usr/sbin/networksetup -setsocksfirewallproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_SOCKSProxy}" "${iv_SOCKSPort}" off
-          /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setsocksfirewallproxy "${sv_NetworkServiceInterfaceName}" "${sv_SOCKSProxy}" "${iv_SOCKSPort}" off
+          /usr/sbin/networksetup -setsocksfirewallproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    bv_GopherEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherEnable")"
-    if [ "${bv_GopherEnable}" = "true" ]
+  bv_GopherEnable="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherEnable")"
+  if test -n "${bv_GopherEnable}"
+  then
+    if [ "${bv_GopherEnable}" = "false" ] || [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing 'Gopher Proxy' settings"
+      /usr/sbin/networksetup -setgopherproxystate "${sv_NetworkServiceInterfaceName}" off
+    else
       sv_GopherProxy="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:GopherProxy")"
       if test -n "${sv_GopherProxy}"
       then
@@ -322,19 +406,26 @@ Sys-NetworkUp|Sys-PolicyInstall)
         if test -n "${iv_GopherPort}"
         then
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting 'Gopher Proxy' to ${sv_GopherProxy}:${iv_GopherPort}"
-          /usr/sbin/networksetup -setgopherproxy "${GLB_sv_NetworkServiceInterfaceName}" "${sv_GopherProxy}" "${iv_GopherPort}" off
-          /usr/sbin/networksetup -setgopherproxystate "${GLB_sv_NetworkServiceInterfaceName}" on
+          /usr/sbin/networksetup -setgopherproxy "${sv_NetworkServiceInterfaceName}" "${sv_GopherProxy}" "${iv_GopherPort}" off
+          /usr/sbin/networksetup -setgopherproxystate "${sv_NetworkServiceInterfaceName}" on
         fi
       fi
     fi
+  fi
 
-    sv_ExceptionsList="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExceptionsList" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
-    if test -n "${sv_ExceptionsList}"
+  sv_ExceptionsList="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:ExceptionsList" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " ")"
+  if test -n "${sv_ExceptionsList}"
+  then
+    if [ "${bv_ConfigActive}" = "false" ]
     then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Clearing Proxy Bypass Domains"
+      /usr/sbin/networksetup -setproxybypassdomains "${sv_NetworkServiceInterfaceName}" "*.local 169.254/16 127.0.0.1 localhost"
+    else
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting Proxy Bypass Domains"
-      /usr/sbin/networksetup -setproxybypassdomains "${GLB_sv_NetworkServiceInterfaceName}" ${sv_ExceptionsList}
+      /usr/sbin/networksetup -setproxybypassdomains "${sv_NetworkServiceInterfaceName}" ${sv_ExceptionsList}
     fi
   fi
+
   ;;
   
 *)
