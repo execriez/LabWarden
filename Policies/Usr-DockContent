@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Dock content (makes use of dockutil)
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.15
+# Modified: 07-Sep-2017
 #
 # Reference: https://github.com/kcrawford - dockutil, set the dock content 
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -94,7 +94,7 @@ fi
 
 # ---
 
-if_RawTestCall() # ObjectName - Delete object with the given name without checks
+if_RawTestCall() # check that we can perform a basic command
 {
   "${GLB_sv_BinDirPath}"/dockutil >/dev/null 2>&1 --list
   echo $?
@@ -142,18 +142,12 @@ sf_RawGetURI() # ObjectName - Get URI for the object with the given name without
   GLB_sf_urldecode "$("${GLB_sv_BinDirPath}"/dockutil 2>/dev/null --list | tr "\t" "," | grep -E "^${sv_ObjectName}," | cut -d ',' -f2 | sed 's|^[ ]*||' | head -n1)"
 }
 
-sf_SanitiseURI() # FileURI DerefFlag - make HOMEDIR substitutions to the given FileURI, if DerefFlag='true' then get originating filepath if the URI points to a link
+sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given FileURI, and get the originating filepath if the URI points to a link
 {
   local sv_FileURI
-  local sv_DerefFlag
 
   # Get URI
   sv_FileURI="${1}"
-  sv_DerefFlag="${2}"
-  if test -z "${sv_DerefFlag}"
-  then
-    sv_DerefFlag="false"
-  fi
 
   # if it's a file URI - strip it back
   if [ -n "$(echo "${sv_FileURI}" | grep -E 'file://')" ]
@@ -192,27 +186,27 @@ sf_SanitiseURI() # FileURI DerefFlag - make HOMEDIR substitutions to the given F
         # If the filepath is null we must be referencing the root of the drive
         sv_FileURI="/"
       else
-        if test -L "${sv_FileURI}"
+        if test -e "${sv_FileURI}"
         then
-          if [ "${sv_DerefFlag}" = "true" ]
+          if test -L "${sv_FileURI}"
           then
             # If the filepath references a link, get the originating filepath
-            sv_FileURI="$(stat -f %Y "${sv_FileURI}")"
+            sv_OriginalFileURI="$(stat -f %Y "${sv_FileURI}")"
+            if test -e "${sv_OriginalFileURI}"
+            then
+              sv_FileURI="${sv_OriginalFileURI}"
+            fi
+          fi
+          if test -d "${sv_FileURI}"
+          then
+            # If the filepath references a directory, add a trailing /
+            sv_FileURI="${sv_FileURI}/"
           fi
         fi
-        if test -d "${sv_FileURI}"
-        then
-          # If the filepath references a directory, add a trailing /
-          sv_FileURI="${sv_FileURI}/"
-        fi
       fi
-      if test -e "${sv_FileURI}"
-      then
-        # Add the URI reference
-        sv_FileURI="file://${sv_FileURI}"
-      else
-        ${sv_FileURI}=""
-      fi
+      
+      # Add the URI reference
+      sv_FileURI="file://${sv_FileURI}"
     fi
   fi
   
@@ -233,7 +227,7 @@ nf_RemoveEntry() # ObjectFileURI ObjectName - Delete all objects with the given 
   
   bv_ListModified="false"
   
-  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}" "true")"
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
   
   if [ -n "${sv_ObjectFileURI}" ]
   then
@@ -297,7 +291,7 @@ nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with
 
   bv_AddEntry="false"
 
-  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}" "true")"
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
   
   if [ -n "${sv_ObjectFileURI}" ]
   then
@@ -319,21 +313,37 @@ nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with
       
       if [ -z "${sv_ExistingURI}" ]
       then
+        # Entry doesn't yet exist for this object
         bv_AddEntry="true"
       
       else
-        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}" "false")"
+        # Entry already exists for this object
+        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}")"
         
-        # Only add the entry if it doesn't already exist
-        if [ "${sv_ObjectFileURI}" = "${sv_ExistingURI}" ]
+        # Check if the entry is different than what we are adding
+        if [ "${sv_ObjectFileURI}" != "${sv_ExistingURI}" ]
         then
-          # If its a file object, check that it exists
+          if [ "${bv_ReplaceEntry}" = "false" ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Update '${sv_ObjectName}' ignored; replace option is '${bv_ReplaceEntry}'."
+            
+          else
+            # We are replacing an existing entry
+            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Replacing '${sv_ObjectName}' '${sv_ExistingURI}' with '${sv_ObjectFileURI}'."
+            bv_ListModified="$(nf_RemoveEntry "" "${sv_ObjectName}")"
+            bv_ListModified="true"
+            bv_AddEntry="true"
+          fi
+          
+        else
+      
+          # Entry isn't any different to what we want, so if its a file object, check that it still exists
           if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
           then
             if [ ! -e "$(echo "${sv_ObjectFileURI}" | sed 's|^file://||')" ]
             then
               GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Entry '${sv_ObjectName}' exists; file object '${sv_ObjectFileURI}' doesn't exist."
-              bv_ListModified="$(nf_RemoveEntry "${sv_ExistingURI}" "${sv_ObjectName}")"
+              bv_ListModified="$(nf_RemoveEntry "" "${sv_ObjectName}")"
               bv_ListModified="true"
             
             else
@@ -345,20 +355,7 @@ nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with
             GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Add '${sv_ObjectName}' ignored; '${sv_ObjectFileURI}' is already present."
           
           fi
-          
-        else
-          if [ "${bv_ReplaceEntry}" = "false" ]
-          then
-            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Update '${sv_ObjectName}' ignored; replace option is '${bv_ReplaceEntry}'."
-            
-          else
-            # We are replacing an existing entry
-            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Replacing '${sv_ObjectName}' '${sv_ExistingURI}' with '${sv_ObjectFileURI}'."
-            bv_ListModified="$(nf_RemoveEntry "${sv_ExistingURI}" "${sv_ObjectName}")"
-            bv_ListModified="true"
-            bv_AddEntry="true"
-          fi
-      
+
         fi
       fi
       
@@ -397,11 +394,14 @@ GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_Optiona
 
 # ---
 
-# Exit if we are root
-if [ "${GLB_sv_ThisUserName}" = "root" ]
-then
+# Exit if we are an unsupported user
+case ${GLB_sv_ThisUserName} in
+    
+root|_mbsetupuser)
   GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
-fi
+  ;;
+  
+esac
 
 # Exit if no-one is logged in
 if test -z "${GLB_sv_LoggedInUserName}"

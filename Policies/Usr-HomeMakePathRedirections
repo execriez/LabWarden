@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.15
+# Modified: 07-Sep-2017
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -205,7 +205,7 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
     fi
 
     # Backup location for existing files/folders that might be replaced by a link
-    sv_BackupDirPath="${sv_TargetHomeDirPath}/Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
+    sv_BackupDirPath="${sv_TargetHomeDirPath}Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
 
     # Read entries from file
     while read sv_ReqdLinkEntry
@@ -254,15 +254,25 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
         
         else
         
-          # Check if a file or folder already exists at the target (where the link is going to be stored)
+          if test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          then
+            # If the filepath references a link, get the originating filepath
+            sv_ExistingLinkTargetPath="$(stat -f %Y "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}")"
+            if [ "${sv_ExistingLinkTargetPath}" = "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" ]
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "A valid link already exists for folder '${sv_ReqdLinkFilePath}'."
+            else
+              rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+            fi
+          fi
+
+          # Back up anything that exists at the target (where the link is going to be stored)
           if test -e "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
           then
-            # Delete symbolic links
-            if test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+            # something exists at the target
+            if ! test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
             then
-              rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
-            else
-              # Back up everything else
+              # Its not an existing link
               if test -d "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
               then
                 # If the existing folder at the target is local, remove any ACLs that might stop us doing our stuff
@@ -273,8 +283,10 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
                 # Check if existing folder is empty - and backup if necessary
                 if test -z "$(ls -A1 "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}" | grep -Ev "^.DS_Store$|^.localized$")"
                 then
-                  /bin/rm -fR "${sv_TargetHomeDirPath}/${sv_ReqdLinkFilePath}"
+                  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting empty folder '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
+                  /bin/rm -fR "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
                 else
+                  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Backing up existing folder '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
                   # Make sure there is a target enclosing folder to backup the folder
                   sv_EnclosingDirPath="$(dirname "${sv_BackupDirPath}${sv_ReqdLinkFilePath}")"
                   /bin/mkdir -p "${sv_EnclosingDirPath}"
@@ -282,6 +294,7 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
                   /bin/mv -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_EnclosingDirPath}/"
                 fi
               else
+                GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Backing up existing file '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
                 # If the existing file at the target is local, remove any ACLs that might stop us doing our stuff
                 if [ "${bv_TargetIsLocal}" = "true" ]
                 then
@@ -296,9 +309,13 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
             fi
           fi
           
-          # Create link - source file/folder -to- target link
-          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating link for folder '${sv_ReqdLinkFilePath}'."
-          /bin/ln -sf "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          # Only create the link if nothing exists at the target
+          if ! test -e "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          then
+            # Create link - source file/folder -to- target link
+            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating link for folder '${sv_ReqdLinkFilePath}'."
+            /bin/ln -sf "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          fi
 
         fi
       fi
@@ -370,6 +387,9 @@ nf_MakePathRedirections()
       nf_UnmakePathRedirections
       
     else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "sv_LoggedInUserHomeAltDirPath ${sv_LoggedInUserHomeAltDirPath}"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "GLB_sv_LoggedInUserHomeDirPath ${GLB_sv_LoggedInUserHomeDirPath}"
+    
       # There shouldn't be any folder redirections on the alternate home
       # If there are, these may have been left when swapping between "Network Homes" and "Force local homes".
       if test -s "${sv_LoggedInUserHomeAltDirPath}/.FolderRedir.txt"
@@ -473,11 +493,14 @@ GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_Optiona
 
 # ---
 
-# Exit if we are root
-if [ "${GLB_sv_ThisUserName}" = "root" ]
-then
+# Exit if we are an unsupported user
+case ${GLB_sv_ThisUserName} in
+    
+root|_mbsetupuser)
   GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
-fi
+  ;;
+  
+esac
 
 # Exit if no-one is logged in
 if test -z "${GLB_sv_LoggedInUserName}"

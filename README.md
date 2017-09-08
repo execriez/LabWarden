@@ -417,6 +417,7 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-TimeServer-Apple.mobileconfig                    - Sets the system time (ntp) server
 	LW-Sys-Update-Radmind.mobileconfig                      - Sets the custom update script.
 	LW-Sys-UpdatePackage.mobileconfig                       - Updates an installed package to a later version, in this example LabWarden itself.
+	LW-Sys-WiFiRemoveUnknownSSIDs.mobileconfig              - Remove all SSIDs that are not in a list of known SSIDs
 	LW-Sys-WirelessForgetSSID.mobileconfig                  - Forgets a list of wireless SSIDs and associated passwords.
 	LW-Sys-WirelessSetState-off.mobileconfig                - Turns wireless off.
 	LW-Sys-WirelessSetState-on.mobileconfig                 - Turns wireless on and allows non admins to switch networks.
@@ -1997,8 +1998,29 @@ A value of 0, indicates that we should not power off when idle.
 The example policy config should be configured to your own needs.
 
 
+### Sys-WiFiRemoveUnknownSSIDs
+This policy removes all SSIDs that are not in a list of known SSIDs. It is called as root and triggered by an **Sys-Boot** event.
+
+The config contains a single array called **KnownSSIDs** containing a list of known SSIDs. Any SSID that is not in this list will be removed, along with any accompanying SSID password.
+
+	<key>Config</key>
+	<dict>
+		<key>KnownSSIDs</key>
+		<array>
+			<string>YourSSID</string>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-WiFiRemoveUnknownSSIDs</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-Boot</string>
+	</array>
+
+If you have laptops that go out on loan, its quite useful to remove the SSID and SSID password of any personal Wi-Fi network that might have been joined. These passwords are visible to the system admin - and he really doesn't need to know the users home network details.
+
 ### Sys-WirelessForgetSSID
-This policy script forgets wireless SSIDs and passwords. It is called as root and triggered by an **Sys-Boot** event.
+This is another policy that forgets wireless SSIDs and passwords. It is called as root and triggered by an **Sys-Boot** event.
 
 The config contains a single array called **SSID** containing the networks that should be forgotten.
 
@@ -2550,6 +2572,24 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.15 - 08-Sep-2017
+
+* Fixed a bug in Gen-OfficeHours that calculated the Core hours totals incorrectly. The core hours calculation was introduced in 2.0.14.
+
+* Fixed a bug in Sys-WirelessForgetSSID that assumed the wireless device was always en1
+
+* The example mobileconfig for Sys-ADTrustAccountProxyAccess is modified to include access for 'suhelperd' and 'storeassetd'
+
+* The user '_mbsetupuser' is now excluded from user policies by default.
+
+* Sys-ADTrustAccountProxyAccess once again deletes its proxy password entry from the system keychain before updating it, so that users aren't occassionally asked to provide an admin password.
+
+* Usr-DockContent and Usr-SidebarContent have better checking for when file object for a dock or sidebar entry doesn't exist or no-longer exists.
+
+* Usr-HomeMakePathRedirections handles existing links better (it doesn't try to recreate them unecessarily)
+
+* Added the policy 'Sys-WiFiRemoveUnknownSSIDs' which removes SSIDs and passwords of all unknown SSIDs. A list of known SSIDs can be provided in the associated mobileconfig config file.
 
 2.0.14 - 26-Aug-2017
 

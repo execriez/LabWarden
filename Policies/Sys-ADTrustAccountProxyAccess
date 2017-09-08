@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Give certain processes access through proxy using AD workstation credentials
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 25-Jul-2017
+# Version:  2.0.15
+# Modified: 02-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-Boot            (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.13"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -117,16 +117,11 @@ nf_RemoveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server 
   sv_AllowAccessDirPathList="${4}"
   
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing access through proxy ${sv_ProxyProtocol}://${sv_ProxyAddress}:${iv_ProxyPort}."
-
-  ## Remove v1 entry
-  #sv_Label="${sv_ProxyProtocol}_${sv_ProxyAddress}_${iv_ProxyPort}"
-  #security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
   
   # Remove entry
   sv_Label="${sv_ProxyProtocol}_${sv_ProxyAddress}_${iv_ProxyPort}_${sv_ConfigEntryName}"
   
   # We delay removing the password until the next SYS-BOOT
-  #security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
 
   # Add the password label to the Policies Global Prefs legacy array - if there is no active policy the password will never be removed
   iv_LegacyCount="$(GLB_if_GetPlistArraySize "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Legacy")"
@@ -153,10 +148,14 @@ nf_GiveADTrustAccountProxyAccess() # protocol (eg 'http' 'htps' 'ftp') server (e
   
   sv_Label="${sv_ProxyProtocol}_${sv_ProxyAddress}_${iv_ProxyPort}_${sv_ConfigEntryName}"
 
+  # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
+  security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
+
   # Just a little trick to expand the sv_Toption variable, but keep the password quoted (eval wouldnt do)
   /usr/bin/su root <<HEREDOC
   security add-internet-password -U -a "${GLB_sv_ADTrustAccount}" -w "${GLB_sv_ADTrustPassword}" -l "${sv_Label}" -P "${iv_ProxyPort}" -r "${sv_ProxyProtocol}" -s "${sv_ProxyAddress}" ${sv_Toption} /Library/Keychains/System.keychain
 HEREDOC
+
 }
 
 # ---
@@ -196,14 +195,14 @@ Sys-Boot|Sys-PolicyUninstall)
       iv_LegacyIndex=$((${iv_LegacyCount}-1))
       sv_Label=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Legacy:${iv_LegacyIndex}")
       
-      # Delete the legacy password from the system keychain
+      # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
       security delete-internet-password -l "${sv_Label}" /Library/Keychains/System.keychain
       if [ $? -ne 0 ]
       then
         # Exit if something went wrong when deleting the password
         break
       fi
-      
+
       GLB_sf_DeletePlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Legacy:${iv_LegacyIndex}"
       iv_LegacyCount="$(GLB_if_GetPlistArraySize "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Legacy")"
       if [ ${iv_LegacyCount} -ne ${iv_LegacyIndex} ]

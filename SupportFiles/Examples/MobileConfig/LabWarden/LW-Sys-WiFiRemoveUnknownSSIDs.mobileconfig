@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>0C8F29D5-49DE-41DF-A333-57BD2CD82EB4</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>KnownSSIDs</key>
+					<array>
+						<string>YourSSID</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-WiFiRemoveUnknownSSIDs</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Boot</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>0C8F29D5-49DE-41DF-A333-57BD2CD82EB4</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>0C8F29D5-49DE-41DF-A333-57BD2CD82EB4</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-WiFiRemoveUnknownSSIDs</string>
+	<key>PayloadIdentifier</key>
+	<string>7C3F209B-72DC-42CA-9E0C-C305C8F5B407</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>7C3F209B-72DC-42CA-9E0C-C305C8F5B407</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

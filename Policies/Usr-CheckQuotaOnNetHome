@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Checks if a users network drive is getting full
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.15
+# Modified: 07-Sep-2017
 #
 # Triggered by the following events:
 #   Usr-Poll (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -99,11 +99,14 @@ GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_Optiona
 
 # ---
 
-# Exit if we are root
-if [ "${GLB_sv_ThisUserName}" = "root" ]
-then
+# Exit if we are an unsupported user
+case ${GLB_sv_ThisUserName} in
+    
+root|_mbsetupuser)
   GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
-fi
+  ;;
+  
+esac
 
 # Exit if no-one is logged in
 if test -z "${GLB_sv_LoggedInUserName}"

@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 25-Jul-2017
+# Version:  2.0.15
+# Modified: 08-Sep-2017
 #
 
 # ---
@@ -99,6 +99,71 @@ sf_MakeConfigFile()   # PolicyName Tag ConfigType - returns string "<ConfigFileP
 
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
+# ---
+sv_PolicyName="Sys-WiFiRemoveUnknownSSIDs"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:KnownSSIDs:0" "YourSSID"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+#exit 0
+# ---
+# ---
+sv_PolicyName="Sys-ADTrustAccountProxyAccess"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Protocol" "http"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Address" "PROXYADDRESS"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Port" "PROXYPORT"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Protocol" "htps"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Address" "PROXYADDRESS"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Port" "PROXYPORT"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:0" "/System/Library/CoreServices/AppleIDAuthAgent"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:1" "/System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:2" "/System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:3" "/System/Library/CoreServices/mapspushd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:4" "/System/Library/PrivateFrameworks/ApplePushService.framework/apsd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:5" "/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:6" "/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeaccountd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:7" "/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeassetd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:8" "/System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:9" "/System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:10" "/System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:11" "/System/Library/PrivateFrameworks/PassKitCore.framework/passd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:12" "/System/Library/PrivateFrameworks/SoftwareUpdate.framework/Versions/A/Resources/suhelperd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:13" "/usr/libexec/captiveagent"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:14" "/usr/libexec/keyboardservicesd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:15" "/usr/libexec/locationd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:16" "/usr/libexec/nsurlsessiond"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:17" "/usr/libexec/rtcreportingd"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:18" "/usr/sbin/ocspd"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+#exit 0
 # ---
 
 # ALTERNATIVE - PROXY, AUTO
@@ -248,7 +313,7 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Holida
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 
 # ---
-exit 0
+#exit 0
 # ---
 
 sv_PolicyName="Sys-Defaults"
@@ -327,47 +392,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CertAu
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:SSIDSTR" "YourSSID"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:TLSTrustedServerNames:0" "yourtrustedserver.yourdomain"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ProxyType" "Auto"
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-sv_PolicyName="Sys-ADTrustAccountProxyAccess"
-sv_Tag=""
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Protocol" "http"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Address" "PROXYADDRESS"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:0:Port" "PROXYPORT"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Protocol" "htps"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Address" "PROXYADDRESS"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Proxy:1:Port" "PROXYPORT"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:0" "/System/Library/CoreServices/AppleIDAuthAgent"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:1" "/System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:2" "/System/Library/CoreServices/Spotlight.app/Contents/MacOS/Spotlight"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:3" "/System/Library/CoreServices/mapspushd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:4" "/System/Library/PrivateFrameworks/ApplePushService.framework/apsd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:5" "/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:6" "/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeaccountd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:7" "/System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:8" "/System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:9" "/System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:10" "/System/Library/PrivateFrameworks/PassKitCore.framework/passd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:11" "/usr/libexec/captiveagent"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:12" "/usr/libexec/keyboardservicesd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:13" "/usr/libexec/locationd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:14" "/usr/libexec/nsurlsessiond"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:15" "/usr/libexec/rtcreportingd"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Process:16" "/usr/sbin/ocspd"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 

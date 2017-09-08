@@ -2,8 +2,8 @@
 #
 # Short:    Gen Policy script - Enforces User Access to Opening Hours and collects usage stats
 # Author:   Mark J Swift
-# Version:  2.0.14
-# Modified: 24-Aug-2017
+# Version:  2.0.15
+# Modified: 05-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-Boot        (as root)
@@ -18,7 +18,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.14"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -852,10 +852,10 @@ nf_UpdateTotCounts() # update tot counts since last audit
     iv_BackAuditStartEpoch=$(date -u "+%s")
     while [ ${iv_AuditEpoch} -lt ${iv_CurrOpenEpoch} ]
     do
-
 #      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_AuditEpoch ${iv_AuditEpoch}"
       iv_OfficeHoursCountUntilClosedSecs=$((${iv_CloseEpoch}-${iv_AuditEpoch}))
-#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "CountUntilClosedSecs ${iv_OfficeHoursCountUntilClosedSecs}"
+#      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_OfficeHoursCountUntilClosedSecs ${iv_OfficeHoursCountUntilClosedSecs}"
+      
       if [ ${iv_OfficeHoursCountUntilClosedSecs} -gt 0 ]
       then
         iv_OfficeHoursTimeSecs=$((${iv_OfficeHoursTimeSecs}+${iv_OfficeHoursCountUntilClosedSecs}))
@@ -868,17 +868,23 @@ nf_UpdateTotCounts() # update tot counts since last audit
       if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_CloseEpoch} ]
       then
  
-        if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_OpenEpoch} ]
+        if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_AuditEpoch} ]
         then
-          iv_ThisCoreOpeningEpoch=${iv_OpenEpoch}
+          iv_ThisCoreOpeningEpoch=${iv_AuditEpoch}
         fi
   
-        if [ ${iv_ThisCoreClosingEpoch} -gt${iv_CloseEpoch} ]
+        if [ ${iv_ThisCoreClosingEpoch} -gt ${iv_CloseEpoch} ]
         then
           iv_ThisCoreClosingEpoch=${iv_CloseEpoch}
         fi
   
-        iv_CoreHoursTimeSecs=$((${iv_CoreHoursTimeSecs}+${iv_ThisCoreClosingEpoch}-${iv_ThisCoreOpeningEpoch}))
+        iv_CoreHoursCountUntilClosedSecs=$((${iv_ThisCoreClosingEpoch}-${iv_ThisCoreOpeningEpoch}))
+#        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "iv_CoreHoursCountUntilClosedSecs ${iv_CoreHoursCountUntilClosedSecs}"
+
+        if [ ${iv_CoreHoursCountUntilClosedSecs} -gt 0 ]
+        then
+          iv_CoreHoursTimeSecs=$((${iv_CoreHoursTimeSecs}+${iv_CoreHoursCountUntilClosedSecs}))
+        fi
  
       fi
 
@@ -894,6 +900,7 @@ nf_UpdateTotCounts() # update tot counts since last audit
       sv_InfoString="$(sf_ScanForSlot "open" "after" ${iv_CloseEpoch})"
       iv_OpenEpoch="$(echo ${sv_InfoString} | cut -d"," -f2)"
       iv_CloseEpoch="$(echo ${sv_InfoString} | cut -d"," -f3)"
+      
       iv_AuditEpoch=${iv_OpenEpoch}
       
 #      GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "NormalHoursTimeSecs ${iv_OfficeHoursTimeSecs}"
@@ -908,6 +915,32 @@ nf_UpdateTotCounts() # update tot counts since last audit
     if [ ${iv_AuditEpoch} -ge ${iv_CurrOpenEpoch} ]
     then
     
+      # added
+      iv_ThisCoreOpeningEpoch=$(date -r ${iv_AuditEpoch} -v${iv_CoreOpeningHour}H -v${iv_CoreOpeningMinute}M -v0S "+%s")
+      iv_ThisCoreClosingEpoch=$(date -r ${iv_AuditEpoch} -v${iv_CoreClosingHour}H -v${iv_CoreClosingMinute}M -v0S "+%s")
+    
+      if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_AuditEpoch} ]
+      then
+        iv_ThisCoreOpeningEpoch=${iv_AuditEpoch}
+      fi
+  
+      if [ ${iv_ThisCoreClosingEpoch} -gt ${iv_CurrCloseEpoch} ]
+      then
+        iv_ThisCoreClosingEpoch=${iv_CurrCloseEpoch}
+      fi
+  
+      if [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_ThisCoreClosingEpoch} ]
+      then
+        iv_CoreHoursCountUntilClosedSecs=$((${iv_ThisCoreClosingEpoch}-${iv_ThisCoreOpeningEpoch}))
+      else
+        iv_CoreHoursCountUntilClosedSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_ThisCoreOpeningEpoch}))
+      fi
+
+      if [ ${iv_CoreHoursCountUntilClosedSecs} -gt 0 ]
+      then
+        iv_CoreHoursTimeSecs=$((${iv_CoreHoursTimeSecs}+${iv_CoreHoursCountUntilClosedSecs}))
+      fi
+
       if [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_CurrCloseEpoch} ]
       then
         iv_OfficeHoursCountUntilClosedSecs=$((${iv_CurrCloseEpoch}-${iv_AuditEpoch}))
@@ -923,26 +956,6 @@ nf_UpdateTotCounts() # update tot counts since last audit
       iv_AuditEpoch=${GLB_iv_ThisScriptStartEpoch}
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Back audit complete at $(date -r ${iv_AuditEpoch} "+%Y%m%d-%H:%M.%S")"
  
-      # added
-      iv_ThisCoreOpeningEpoch=$(date -r ${iv_AuditEpoch} -v${iv_CoreOpeningHour}H -v${iv_CoreOpeningMinute}M -v0S "+%s")
-      iv_ThisCoreClosingEpoch=$(date -r ${iv_AuditEpoch} -v${iv_CoreClosingHour}H -v${iv_CoreClosingMinute}M -v0S "+%s")
-    
-      if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_CurrCloseEpoch} ]
-      then
- 
-        if [ ${iv_ThisCoreOpeningEpoch} -lt ${iv_AuditEpoch} ]
-        then
-          iv_ThisCoreOpeningEpoch=${iv_AuditEpoch}
-        fi
-  
-        if [ ${iv_ThisCoreClosingEpoch} -gt ${iv_CloseEpoch} ]
-        then
-          iv_ThisCoreClosingEpoch=${iv_CloseEpoch}
-        fi
-  
-        iv_CoreHoursTimeSecs=$((${iv_CoreHoursTimeSecs}+${iv_ThisCoreClosingEpoch}-${iv_ThisCoreOpeningEpoch}))
- 
-      fi
     fi
 
     iv_OfficeHoursTotSecs=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:Audit:OfficeHoursTotSecs")
@@ -1031,7 +1044,7 @@ nf_UpdateUseCounts() # update use counts since last audit
         iv_ThisCoreOpeningEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v${iv_CoreOpeningHour}H -v${iv_CoreOpeningMinute}M -v0S "+%s")
         iv_ThisCoreClosingEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v${iv_CoreClosingHour}H -v${iv_CoreClosingMinute}M -v0S "+%s")
 
-        if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_ThisCoreClosingingEpoch} ]
+        if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_ThisCoreClosingEpoch} ] 
         then
           if [ ${GLB_iv_ThisScriptStartEpoch} -gt ${iv_ThisCoreOpeningEpoch} ]
           then

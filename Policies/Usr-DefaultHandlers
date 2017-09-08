@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the default handlers for specific file types
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.15
+# Modified: 07-Sep-2017
 #
 # This policy uses duti to set the default handler types.
 # I am uncertain as to whether it would be best to have this run as root (for all users?)
@@ -21,7 +21,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -107,11 +107,14 @@ GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_Optiona
 
 # ---
 
-# Exit if we are root
-if [ "${GLB_sv_ThisUserName}" = "root" ]
-then
+# Exit if we are an unsupported user
+case ${GLB_sv_ThisUserName} in
+    
+root|_mbsetupuser)
   GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
-fi
+  ;;
+  
+esac
 
 # Exit if no-one is logged in
 if test -z "${GLB_sv_LoggedInUserName}"

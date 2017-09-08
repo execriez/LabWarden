@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Forgets wireless SSIDs and passwords
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.15
+# Modified: 02-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.15"
 
 if [ $# -eq 0 ]
 then
@@ -136,12 +136,12 @@ Sys-Boot|Sys-PolicyInstall)
     sv_SSIDName="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SSID:${iv_LoopCount}")"
     if test -n "${sv_SSIDName}"
     then
-      if test -n "$(networksetup -listpreferredwirelessnetworks en1 | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks" | grep "^${sv_SSIDName}$")"
+      if test -n "$(networksetup -listpreferredwirelessnetworks ${GLB_sv_WirelessInterfaceDevice} | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks" | grep "^${sv_SSIDName}$")"
       then
-        bv_HaveRemovedSSIDs="true"
         GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing '${sv_SSIDName}' from preferred networks on ${GLB_sv_WirelessInterfaceDevice}"
         networksetup -removepreferredwirelessnetwork en1 "${sv_SSIDName}"
       fi
+      # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
       security delete-generic-password -D "AirPort network password" -l "${sv_SSIDName}" /Library/Keychains/System.keychain
     fi
   done

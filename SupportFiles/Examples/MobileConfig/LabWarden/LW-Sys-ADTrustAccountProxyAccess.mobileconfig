@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>AA5B840C-345E-41F0-A215-B7242C3EFBC6</key>
+			<key>BCD156F2-10F5-4307-BB15-1DFA3F3BEE94</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -18,10 +18,12 @@
 						<string>/System/Library/PrivateFrameworks/ApplePushService.framework/apsd</string>
 						<string>/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd</string>
 						<string>/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeaccountd</string>
+						<string>/System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/storeassetd</string>
 						<string>/System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc</string>
 						<string>/System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd</string>
 						<string>/System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app</string>
 						<string>/System/Library/PrivateFrameworks/PassKitCore.framework/passd</string>
+						<string>/System/Library/PrivateFrameworks/SoftwareUpdate.framework/Versions/A/Resources/suhelperd</string>
 						<string>/usr/libexec/captiveagent</string>
 						<string>/usr/libexec/keyboardservicesd</string>
 						<string>/usr/libexec/locationd</string>
@@ -59,11 +61,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>AA5B840C-345E-41F0-A215-B7242C3EFBC6</string>
+			<string>BCD156F2-10F5-4307-BB15-1DFA3F3BEE94</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>AA5B840C-345E-41F0-A215-B7242C3EFBC6</string>
+			<string>BCD156F2-10F5-4307-BB15-1DFA3F3BEE94</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -73,7 +75,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-ADTrustAccountProxyAccess</string>
 	<key>PayloadIdentifier</key>
-	<string>ADA6B2A9-3529-4C9F-AC58-B4E4B633A694</string>
+	<string>86B75466-B007-4F7F-91E3-23F216671270</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -83,7 +85,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>ADA6B2A9-3529-4C9F-AC58-B4E4B633A694</string>
+	<string>86B75466-B007-4F7F-91E3-23F216671270</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>
