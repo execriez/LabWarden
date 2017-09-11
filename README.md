@@ -9,11 +9,13 @@ Custom Policies for MacOS that can be distributed via AD or an MDM
 
 ## Introduction
 
-LabWarden is a suite of policy scripts that control different aspects of MacOS.
+LabWarden is an endpoint management tool for implementing custom scripts as if they were policies. A Labwarden policy consists of a custom script and an accompanying custom mobileconfig file. 
 
-These policies use mobileconfig files as a way to specify policy "options" and to determine how the policy is "triggered".
+The mobileconfig specifies policy (script) "options" and determines how the policy is "triggered". LabWarden policies can be triggered by various system events - such as System Boot, User Login, Application Launch, Application Quit, etc.
 
-LabWarden policies can be triggered by various system events - such as System Boot, User Login, Application Launch, Application Quit, etc.
+Removing a policy is as simple as uninstalling the mobileconfig.
+
+LabWarden has many policy scripts pre-built - but there's no reason you couldn't turn your own existing scripts into policies. Take a look at the examples.
 
 In an AD setup, LabWarden allows mobileconfig files to be stored directly within AD without having to extend the AD schema. This provides a mechanism to "scope" policies to specific users and workstations.
 
@@ -118,7 +120,7 @@ Now that the policy is activated - we can test it - try the following.
 
 When you are done testing - uninstall the "Gen-ExamplePolicy" mobileconfig. This will deactivate the associated policy.
 	
-A quick description of the available policies can be found in the "LabWarden Policies (brief)" section later.
+A quick description of all available mobileconfigs and associated policies can be found in the "LabWarden mobileconfig files" section later.
 
 Please read this section and if you decide you have no use for LabWarden, follow the uninstall instructions from the "Uninstalling" section above.
 
@@ -2572,6 +2574,10 @@ LabWarden makes use of the following tools:
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.15 - 11-Sep-2017
+
+* Updated the readme.
 
 2.0.15 - 08-Sep-2017
 
