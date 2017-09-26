@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets system Network Proxy options
 # Author:   Mark J Swift
-# Version:  2.0.14
-# Modified: 23-Aug-2017
+# Version:  2.0.16
+# Modified: 21-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-NetworkUp     (as root)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.14"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -103,7 +103,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-sf_OptionIsActiveForThisDomain() # [subkey]
+bf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -242,7 +242,7 @@ Sys-NetworkUp|Sys-PolicyInstall)
   # Get DHCP option 15 (domain)
   sv_NetworkServiceDHCPOption15=$(echo "show State:/Network/Service/${sv_NetworkServiceName}/DHCP" | scutil | grep "Option_15" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||" | sed -E "s/^<data> 0x//;s/00$//" | xxd -r -p)
 
-  bv_ConfigActive=$(sf_OptionIsActiveForThisDomain)
+  bv_ConfigActive=$(bf_OptionIsActiveForThisDomain)
   if [ "${bv_ConfigActive}" = "true" ]
   then
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Enabling proxy settings for ${sv_NetworkServiceDeviceName} (${sv_NetworkServiceInterfaceName})"

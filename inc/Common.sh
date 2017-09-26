@@ -332,17 +332,45 @@ then
     
     sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
     touch "${sv_FlagDirPath}/${sv_Flag}"
+    chown "$(whoami)" "${sv_FlagDirPath}/${sv_Flag}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Creating flag '${sv_FlagDirPath}/${sv_Flag}'"
+  }
+
+  GLB_nf_TestNamedFlag()
+  {
+    local sv_Flag
+    local sv_FlagDirPath
+    local sv_Result
+    local sv_FlagOwner
+
+    sv_Flag="${1}"
+    
+    sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+    
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Testing flag '${sv_FlagDirPath}/${sv_Flag}'"
+    sv_Result="false"
+    if test -e "${sv_FlagDirPath}/${sv_Flag}"
+    then
+      sv_FlagOwner=$(stat -f '%Su' "${sv_FlagDirPath}/${sv_Flag}")
+      if [ "${sv_FlagOwner}" = "$(whoami)" ]
+      then
+        sv_Result="true"
+      fi
+    fi
+    
+    echo "${sv_Result}"
   }
 
   GLB_nf_DeleteNamedFlag()
   {
     local sv_Flag
-    local sv_LockDirPath
+    local sv_FlagDirPath
 
     sv_Flag="${1}"
     
     sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
     rm -f "${sv_FlagDirPath}/${sv_Flag}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Deleting flag '${sv_FlagDirPath}/${sv_Flag}'"
   }
 
   GLB_nf_QuickExit()   # Quickly exit the script 
@@ -647,11 +675,17 @@ then
     sv_WakeType=${2}
     iv_SchedEpoch=${3}
   
+    if [ ${GLB_iv_SystemVersionStampAsNumber} -ge 168558592]
+    then
+      sv_Tag="pmset"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting the 'owner' in a 'pmset sched' command does not appear to work on MacOS 10.12 and later"
+    fi
+
     iv_NowEpoch=$(date -u "+%s")
   
     if [ ${iv_NowEpoch} -lt ${iv_SchedEpoch} ]
     then
-      # check there isnt a named scheduled already
+      # Check there isnt a named scheduled already - ignored on 10.12 since owner not set correctly
       pmset -g sched | grep -i "${sv_WakeType}" | grep -i "${sv_Tag}" | tr -s " " | cut -d " " -f5-6 | while read sv_SchedLine
       do
         pmset schedule cancel ${sv_WakeType} "${sv_SchedLine}" "${sv_Tag}" 2>/dev/null
@@ -659,6 +693,8 @@ then
   
       sv_SchedLine=$(date -r ${iv_SchedEpoch} "+%m/%d/%y %H:%M:%S")
       pmset schedule ${sv_WakeType} "${sv_SchedLine}" "${sv_Tag}"
+
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Scheduled ${sv_WakeType} $(date -r ${iv_SchedEpoch} "+%Y%m%d-%H:%M.%S")"
     fi
   }
   
@@ -1022,33 +1058,17 @@ then
         sleep 1
       done
 
-      sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
-      while read sv_Flag
-      do
-        sv_FlagOwner=$(stat -f '%Su' "${sv_FlagDirPath}/${sv_Flag}")
-
-        case ${sv_Flag} in
-        
-          Restart)
-          if [ "${sv_FlagOwner}" = "root" ]
-          then
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
-            shutdown -r now
-          fi
-          ;;
-        
-          Shutdown)
-          if [ "${sv_FlagOwner}" = "root" ]
-          then
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
-            shutdown -h now
-          fi
-          ;;
-          
-        esac
-        rm -f "${sv_FlagDirPath}/${sv_Flag}" 
-              
-      done < <(ls -1 "${sv_FlagDirPath}")
+      if [ "$(GLB_nf_TestNamedFlag Restart)" = "true" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
+        shutdown -r now
+      fi
+      
+      if [ "$(GLB_nf_TestNamedFlag Shutdown)" = "true" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
+        shutdown -h now
+      fi
   
     fi
   }
@@ -1323,8 +1343,12 @@ then
           sv_MountShare=$(echo ${sv_MountEntry} | sed -E 's|(^.*) on (.*) (\(.*\))|\1|' | sed 's|'${GLB_sv_LoggedInUserName}'@||')
           if test -n "$(echo "${GLB_sv_LoggedInUserHomeNetworkURI}" | sed "s|^[^:]*:||" | grep -E "^${sv_MountShare}")"
           then
-            GLB_sv_LoggedInUserHomeNetworkDirPath=$(GLB_sf_urldecode "${sv_MountPoint}$(echo ${GLB_sv_LoggedInUserHomeNetworkURI} | sed "s|^[^:]*:||;s|^"${sv_MountShare}"||")")
-            break
+            sv_LoggedInUserHomeNetworkDirPath=$(GLB_sf_urldecode "${sv_MountPoint}$(echo ${GLB_sv_LoggedInUserHomeNetworkURI} | sed "s|^[^:]*:||;s|^"${sv_MountShare}"||")")
+            if test -e "${sv_LoggedInUserHomeNetworkDirPath}"
+            then
+              GLB_sv_LoggedInUserHomeNetworkDirPath="${sv_LoggedInUserHomeNetworkDirPath}"
+              break
+            fi
           fi
         done < <(mount | grep "//${GLB_sv_LoggedInUserName}@")
       

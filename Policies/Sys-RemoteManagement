@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets up remote access to a workstation
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.16
+# Modified: 12-Sep-2017
 #
 # references:
 #  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
@@ -17,7 +17,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -114,6 +114,13 @@ nf_SetupARD()
   
   iv_ARDglobalResetEpoch="$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:ARDresetEpoch")"
   if test -z "${iv_ARDglobalResetEpoch}"
+  then
+    iv_ARDglobalResetEpoch=0
+  fi
+
+  # Check the current setup is set for remote logins
+  sv_ARDsetting="$(GLB_sf_GetPlistProperty "/Library/Preferences/com.apple.RemoteManagement.plist" ":ARD_AllLocalUsers"):$(GLB_sf_GetPlistProperty "/Library/Preferences/com.apple.RemoteManagement.plist" ":DirectoryGroupLoginsEnabled"):$(GLB_sf_GetPlistProperty "/Library/Preferences/com.apple.RemoteManagement.plist" ":LoadRemoteManagementMenuExtra")"
+  if [ ${sv_ARDsetting} != "false:true:true" ]
   then
     iv_ARDglobalResetEpoch=0
   fi

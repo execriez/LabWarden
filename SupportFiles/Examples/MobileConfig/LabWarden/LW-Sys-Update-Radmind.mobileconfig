@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</key>
+			<key>6582E020-6503-4A27-9181-53D44FC14489</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -34,18 +34,20 @@
 				<string>Sys-Update</string>
 				<key>TriggeredBy</key>
 				<array>
+					<string>Sys-LoginWindow</string>
 					<string>Sys-LoginWindowIdle</string>
 					<string>Sys-ManualUpdate</string>
+					<string>Sys-Poll</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</string>
+			<string>6582E020-6503-4A27-9181-53D44FC14489</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>8151A9D6-D632-44DC-BE5B-0EDBC4F7CA1A</string>
+			<string>6582E020-6503-4A27-9181-53D44FC14489</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -55,7 +57,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-Update (Radmind)</string>
 	<key>PayloadIdentifier</key>
-	<string>FC36EADD-372C-4936-BC9E-6CFFEB710B12</string>
+	<string>D13F8347-1145-46D7-9DB1-2EB98C6B3307</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -65,7 +67,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>FC36EADD-372C-4936-BC9E-6CFFEB710B12</string>
+	<string>D13F8347-1145-46D7-9DB1-2EB98C6B3307</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

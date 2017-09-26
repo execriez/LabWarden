@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.16
+# Modified: 21-Sep-2017
 #
 # Reference: Remove network home question mark from dock - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -104,7 +104,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-sf_OptionIsActiveForThisDomain() # [subkey]
+bf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -218,7 +218,7 @@ fi
 case ${sv_EventName} in
     
 Sys-ActiveDirectoryUp|Sys-PolicyInstall)
-  bv_ConfigActive=$(sf_OptionIsActiveForThisDomain)
+  bv_ConfigActive=$(bf_OptionIsActiveForThisDomain)
 
   if [  "${bv_ConfigActive}" = "true" ]
   then

@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user sidebar contents (makes use of mysides)
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 07-Sep-2017
+# Version:  2.0.16
+# Modified: 13-Sep-2017
 #
 # Reference: see https://GitHub.com/mosen - mysides, set the sidebar content 
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -141,12 +141,25 @@ sf_RawGetURI() # ObjectName - Get URI for the object with the given name without
   GLB_sf_urldecode "$("${GLB_sv_BinDirPath}"/mysides 2>/dev/null list | grep -E "^${sv_ObjectName} -> " | cut -d '>' -f2 | sed 's|^[ ]*||' | head -n1)"
 }
 
-sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given FileURI, and get the originating filepath if the URI points to a link
+# If parameter 1 is a path instead of a URI - turn it into a URI by prepending 'file://'.
+# If the URI is a filepath that points to a directory, make sure it has a trailing /
+# If parameter 2 is null or true then..
+#   Make HOMEDIR substitutions to the given URI.
+#   If the URI is a file URI that points to a link - get the originating filepath.
+sf_SanitiseURI() # URI [deref]
 {
   local sv_FileURI
+  local sv_OriginalFileURI
 
   # Get URI
   sv_FileURI="${1}"
+
+  # Get dereference flag
+  bv_Deref="${2}"
+  if [ -z "${bv_Deref}" ]
+  then
+    bv_Deref="true"
+  fi
 
   # if it's a file URI - strip it back
   if [ -n "$(echo "${sv_FileURI}" | grep -E 'file://')" ]
@@ -156,28 +169,31 @@ sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given FileURI, an
 
   if [ -n "${sv_FileURI}" ]
   then
-    # if it's not a URI - its a file path so remove any trailing / (we will add one later if necessary)
+    # if at this point it's not a URI - its a file path so remove any trailing / (we will add one later if necessary)
     if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
     then
       sv_FileURI="$(echo "${sv_FileURI}" | sed 's|[/]*$||')"  
     fi
     
-    # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
-    sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_sv_LoggedInUserHomeDirPath}"|;s|LOCALHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|;s|NETWORKHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
-
-    # make ALTHOME substitutions to the given URI
-    if [ "${GLB_bv_LoggedInUserHomeIsLocal}" = "true" ]
+    if [ "${bv_Deref}" = "true" ]
     then
-      # The user home is local, so the alternative home is the network home
-      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+      # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
+      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_sv_LoggedInUserHomeDirPath}"|;s|LOCALHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|;s|NETWORKHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
 
-    else
-      # The user home is on the network, so the alternative home is the local home
-      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|")"
+      # make ALTHOME substitutions to the given URI
+      if [ "${GLB_bv_LoggedInUserHomeIsLocal}" = "true" ]
+      then
+        # The user home is local, so the alternative home is the network home
+        sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserHomeNetworkDirPath}"|")"
+
+      else
+        # The user home is on the network, so the alternative home is the local home
+        sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_sv_LoggedInUserLocalHomeDirPath}"|")"
  
+      fi
     fi
   
-    # if it's not a URI - its a file path
+    # if at this point it's not a URI - its a file path
     if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
     then
       if test -z "${sv_FileURI}"
@@ -187,19 +203,25 @@ sf_SanitiseURI() # FileURI - make HOMEDIR substitutions to the given FileURI, an
       else
         if test -e "${sv_FileURI}"
         then
-          if test -L "${sv_FileURI}"
+          if [ "${bv_Deref}" = "true" ]
           then
-            # If the filepath references a link, get the originating filepath
-            sv_OriginalFileURI="$(stat -f %Y "${sv_FileURI}")"
-            if test -e "${sv_OriginalFileURI}"
+            if test -L "${sv_FileURI}"
             then
-              sv_FileURI="${sv_OriginalFileURI}"
+              # If the filepath references a link, get the originating filepath
+              sv_OriginalFileURI="$(stat -f %Y "${sv_FileURI}")"
+              if test -e "${sv_OriginalFileURI}"
+              then
+                sv_FileURI="${sv_OriginalFileURI}"
+              fi
             fi
           fi
-          if test -d "${sv_FileURI}"
+          if ! test -L "${sv_FileURI}"
           then
-            # If the filepath references a directory, add a trailing /
-            sv_FileURI="${sv_FileURI}/"
+            if test -d "${sv_FileURI}"
+            then
+              # If the filepath references a directory, add a trailing /
+              sv_FileURI="${sv_FileURI}/"
+            fi
           fi
         fi
       fi
@@ -317,7 +339,7 @@ nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with
       
       else
         # Entry already exists for this object
-        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}")"
+        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}" "false")"
         
         # Check if the entry is different than what we are adding
         if [ "${sv_ObjectFileURI}" != "${sv_ExistingURI}" ]

@@ -2,11 +2,12 @@
 #
 # Short:    Sys Policy script - Runs a custom update script
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.16
+# Modified: 21-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-ManualUpdate    (as root)
+#   Sys-LoginWindow     (as root)
 #   Sys-LoginWindowIdle (as root)
 #
 # Called as follows:    
@@ -14,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -103,7 +104,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-sf_OptionIsActiveForThisDomain() # [subkey]
+bf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -152,6 +153,142 @@ sf_OptionIsActiveForThisDomain() # [subkey]
   echo "${bv_IsActive}"
 }
 
+bf_UpdatesAllowed() # returns true if updates are allowed to run right now
+{
+  local iv_CurrOutOfHoursStartTime
+  local iv_CurrOutOfHoursStartHour
+  local iv_CurrOutOfHoursStartMinute
+  local iv_CurrOutOfHoursStartEpoch
+  local iv_CurrOutOfHoursEndTime
+  local iv_CurrOutOfHoursEndHour
+  local iv_CurrOutOfHoursEndMinute
+  local iv_CurrOutOfHoursEndEpoch
+  local iv_LastUpdateEpoch
+  local bv_DoUpdate
+  local bv_OutOfHoursPowerOn
+  local iv_NextUpdateEpoch
+  local iv_NextOutOfHoursStartEpoch
+  local iv_NextOutOfHoursEndEpoch
+  local iv_NextOutOfHoursUpdateEpoch
+  
+  iv_CurrOutOfHoursStartTime=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursStartTime" | grep -E "^[0-9]{1,2}:[0-9]{2}$")
+  if test -n "${iv_CurrOutOfHoursStartTime}"
+  then
+    # Get update start time before now
+    iv_CurrOutOfHoursStartHour=$(echo "${iv_CurrOutOfHoursStartTime}" | cut -d":" -f1)
+    iv_CurrOutOfHoursStartMinute=$(echo "${iv_CurrOutOfHoursStartTime}" | cut -d":" -f2)
+    iv_CurrOutOfHoursStartEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v${iv_CurrOutOfHoursStartHour}H -v${iv_CurrOutOfHoursStartMinute}M -v0S "+%s")
+
+    if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+    then
+      iv_CurrOutOfHoursStartEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v-1d "+%s")
+    fi
+
+    iv_CurrOutOfHoursEndTime=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursEndTime" | grep -E "^[0-9]{1,2}:[0-9]{2}$")
+    if test -n "${iv_CurrOutOfHoursEndTime}"
+    then
+      iv_CurrOutOfHoursEndHour=$(echo "${iv_CurrOutOfHoursEndTime}" | cut -d":" -f1)
+      iv_CurrOutOfHoursEndMinute=$(echo "${iv_CurrOutOfHoursEndTime}" | cut -d":" -f2)
+      iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v${iv_CurrOutOfHoursEndHour}H -v${iv_CurrOutOfHoursEndMinute}M -v0S "+%s")
+
+      if [ ${iv_CurrOutOfHoursEndEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+      then
+        iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursEndEpoch} -v+1d "+%s")
+      fi
+        
+      # Adjust end to allow at least one Sys-LoginWindowPoll to happen - if an update is scheduled at the end of the out-of-hours period
+      iv_CurrOutOfHoursEndEpoch=$((${iv_CurrOutOfHoursEndEpoch}-${GLB_iv_SysLoginWindowPollTriggerSecs}*2))
+      if [ ${iv_CurrOutOfHoursEndEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+      then
+        # The defined period is clearly not long enough, so null the value
+        iv_CurrOutOfHoursEndEpoch=""
+      fi
+
+    fi
+  fi
+
+  if test -z "${iv_CurrOutOfHoursEndEpoch}"
+  then
+    # The defined period is unset or invalid, so assume it's OK between 3:00am and 4:00am
+    iv_CurrOutOfHoursStartEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v3H -v0M -v0S "+%s")
+    if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+    then
+      iv_CurrOutOfHoursStartEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v-1d "+%s")
+    fi
+    
+    iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v4H -v0M -v0S "+%s")
+    if [ ${iv_CurrOutOfHoursEndEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+    then
+      iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursEndEpoch} -v+1d "+%s")
+    fi
+  fi
+
+  if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOutOfHoursEndEpoch} ]
+  then
+    iv_LastUpdateEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LastUpdateEpoch")
+    if test -z "${iv_LastUpdateEpoch}"
+    then
+      iv_LastUpdateEpoch=0
+    fi
+      
+    if [ ${iv_LastUpdateEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "We are out-of-hours, so updates are enabled"
+      bv_DoUpdate="true"
+        
+    else
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "An update has recently happened, so updates are disabled"
+      bv_DoUpdate="false"
+        
+    fi
+      
+  else
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "We are within working hours, so updates are disabled"
+    bv_DoUpdate="false"
+      
+  fi
+
+  if [ "${bv_DoUpdate}" = "false" ]
+  then
+    iv_LastUpdateEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LastUpdateEpoch")
+    if test -z "${iv_LastUpdateEpoch}"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Updates have never run, so updates have been enabled"
+      bv_DoUpdate="true"
+    fi
+  fi
+
+  bv_OutOfHoursPowerOn=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursPowerOn")
+  if [ "${bv_OutOfHoursPowerOn}" = "true" ]
+  then
+    # Get the existing next scheduled update value
+    iv_NextUpdateEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NextUpdateEpoch")
+    if test -z "${iv_NextUpdateEpoch}"
+    then
+      iv_NextUpdateEpoch=0
+    fi
+
+    # Check if the next scheduled update has already passed, and if so schedule another one
+    if [ ${GLB_iv_ThisScriptStartEpoch} -ge ${iv_NextUpdateEpoch} ]
+    then
+      # -- work out a good random-ish time to power on for the next Update
+      iv_NextOutOfHoursStartEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v+1d "+%s")
+      iv_NextOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursEndEpoch} -v+1d "+%s")
+      iv_NextOutOfHoursUpdateEpoch=$(jot -r 1 ${iv_NextOutOfHoursStartEpoch} ${iv_NextOutOfHoursEndEpoch})
+      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NextUpdateEpoch" "${iv_NextOutOfHoursUpdateEpoch}"
+      GLB_nf_schedule4epoch "${GLB_sv_ThisScriptFileName}" "poweron" ${iv_NextOutOfHoursUpdateEpoch}
+
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Next update will likely be $(date -r ${iv_NextOutOfHoursUpdateEpoch} "+%Y%m%d-%H:%M.%S")"
+    fi
+      
+  else
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "PowerOn updates aren't scheduled"
+      
+  fi
+
+  echo "${bv_DoUpdate}"
+}
+
 nf_DoUpdate()
 {
   local bv_UpdateScriptActive
@@ -161,7 +298,7 @@ nf_DoUpdate()
   local iv_UpdateExeArgIndex
   
   # Note, only active when on the specified domain(s) - can be null, ALL, NONE, ADDOMAIN or your.company.domain
-  bv_UpdateScriptActive=$(sf_OptionIsActiveForThisDomain "UpdateScript")
+  bv_UpdateScriptActive=$(bf_OptionIsActiveForThisDomain "UpdateScript")
     
   if [ "${bv_UpdateScriptActive}" = "false" ]
   then
@@ -202,16 +339,13 @@ nf_DoUpdate()
           # Do a software update
           GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Running update (${sv_UpdateExeFilePath})"
           eval "${sv_UpdateExeFilePath}"
-       fi
+
+          GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:LastUpdateEpoch" "${GLB_iv_ThisScriptStartEpoch}"
+        fi
       fi
     fi
       
-    # Do a full group policy update
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating group policies (via gpupdate)."
-    /usr/local/LabWarden/util/gpupdate "-force"
-
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Ideally we should restart now"
-    
   fi
   
 }
@@ -235,15 +369,27 @@ fi
 
 case ${sv_EventName} in
     
+Sys-PolicyInstall|Sys-LoginWindow|Sys-Poll)
+  # This function returns true if updates are allowed, and schedules a poweron for the next update if necessary
+  bv_DoUpdate=$(bf_UpdatesAllowed)
+  ;;
+    
 Sys-ManualUpdate)
   # Manual update requested via /usr/local/LabWarden/util/Update
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Running a manual Update."
   
   # Perform a workstation update (software and group policies)
   nf_DoUpdate
+
+  # Do a full group policy update
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating group policies (via gpupdate)."
+  /usr/local/LabWarden/util/gpupdate "-force"
   ;;
   
 Sys-LoginWindowIdle)
+  # This function returns true if updates are allowed, and schedules a poweron for the next update if necessary
+  bv_DoUpdate=$(bf_UpdatesAllowed)
+
   iv_IdleSecs=$(GLB_if_SystemIdleSecs)
   GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Workstation Idle for ${iv_IdleSecs} secs"
 
@@ -251,145 +397,31 @@ Sys-LoginWindowIdle)
   if test -z "${iv_LoginWindowIdleShutdownSecs}"
   then
     iv_LoginWindowIdleShutdownSecs=0
-  fi
-
-  iv_NextUpdateEpoch=$(GLB_sf_GetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NextUpdateEpoch")
-  if test -z "${iv_NextUpdateEpoch}"
-  then
-    iv_NextUpdateEpoch=0
-  fi
-
-  if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_NextUpdateEpoch} ]
-  then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Next update time not yet reached $(date -r ${iv_NextUpdateEpoch} "+%Y%m%d-%H:%M.%S")"
-
-  else
-    iv_CurrOutOfHoursStartTime=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursStartTime" | grep -E "^[0-9]{1,2}:[0-9]{2}$")
-    if test -n "${iv_CurrOutOfHoursStartTime}"
-    then
-      # Get update start time before now
-      iv_CurrOutOfHoursStartHour=$(echo "${iv_CurrOutOfHoursStartTime}" | cut -d":" -f1)
-      iv_CurrOutOfHoursStartMinute=$(echo "${iv_CurrOutOfHoursStartTime}" | cut -d":" -f2)
-      iv_CurrOutOfHoursStartEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v${iv_CurrOutOfHoursStartHour}H -v${iv_CurrOutOfHoursStartMinute}M -v0S "+%s")
-
-      if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
-      then
-        iv_CurrOutOfHoursStartEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v-1d "+%s")
-      fi
-
-      iv_CurrOutOfHoursEndTime=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursEndTime" | grep -E "^[0-9]{1,2}:[0-9]{2}$")
-      if test -n "${iv_CurrOutOfHoursEndTime}"
-      then
-        iv_CurrOutOfHoursEndHour=$(echo "${iv_CurrOutOfHoursEndTime}" | cut -d":" -f1)
-        iv_CurrOutOfHoursEndMinute=$(echo "${iv_CurrOutOfHoursEndTime}" | cut -d":" -f2)
-        iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v${iv_CurrOutOfHoursEndHour}H -v${iv_CurrOutOfHoursEndMinute}M -v0S "+%s")
-
-        if [ ${iv_CurrOutOfHoursEndEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
-        then
-          iv_CurrOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursEndEpoch} -v+1d "+%s")
-        fi
-      fi
-    fi
-
-    # Adjust end to allow at least one Sys-LoginWindowPoll to happen - if an update is scheduled at the end of the out-of-hours period
-    iv_CurrOutOfHoursEndEpoch=$((${iv_CurrOutOfHoursEndEpoch}-${GLB_iv_SysLoginWindowPollTriggerSecs}*2))
-    if [ ${iv_CurrOutOfHoursEndEpoch} -lt ${iv_CurrOutOfHoursStartEpoch} ]
-    then
-      # The period is clearly not long enough
-      iv_CurrOutOfHoursEndEpoch=""
-    fi
-
     bv_DoUpdate="false"
-    
-    if test -z "${iv_CurrOutOfHoursEndEpoch}"
-    then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Out of hours slot is undefined or invalid"
-      if [ ${iv_LoginWindowIdleShutdownSecs} -gt 0 ]
-      then
-        if [ ${iv_IdleSecs} -gt ${iv_LoginWindowIdleShutdownSecs} ]
-        then
-          # Update if we are about to do an idle Shutdown
-          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating before an idle shutdown"
-          bv_DoUpdate="true"
-        fi
-      fi
-      
-    else
-      # -- work out a good random-ish time to power on for the next Update
-      iv_NextOutOfHoursStartEpoch=$(date -r ${iv_CurrOutOfHoursStartEpoch} -v+1d "+%s")
-      iv_NextOutOfHoursEndEpoch=$(date -r ${iv_CurrOutOfHoursEndEpoch} -v+1d "+%s")
-      iv_NextOutOfHoursUpdateEpoch=$(jot -r 1 ${iv_NextOutOfHoursStartEpoch} ${iv_NextOutOfHoursEndEpoch})
-      
-      bv_OutOfHoursPowerOn=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:OutOfHoursPowerOn")
-      if [ "${bv_OutOfHoursPowerOn}" = "true" ]
-      then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Scheduled PowerOn $(date -r ${iv_NextOutOfHoursUpdateEpoch} "+%Y%m%d-%H:%M.%S")"
-        GLB_nf_schedule4epoch "${GLB_sv_ThisScriptFileName}" "poweron" ${iv_NextOutOfHoursUpdateEpoch}
-        
-        if [ ${GLB_iv_ThisScriptStartEpoch} -lt ${iv_CurrOutOfHoursEndEpoch} ]
-        then
-          # Do an update
-          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Performing an out-of-hours update"
-          bv_DoUpdate="true"
-        fi
-      
-      else
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Updates aren't scheduled"
-        if [ ${iv_LoginWindowIdleShutdownSecs} -gt 0 ]
-        then
-          if [ ${iv_IdleSecs} -gt ${iv_LoginWindowIdleShutdownSecs} ]
-          then
-            # Shutdown if the workstation has been idle
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating before an idle shutdown"
-            bv_DoUpdate="true"
-          fi
-        fi
-        
-      fi
-    fi
-    
-    if [ "${bv_DoUpdate}" != "true" ]
-    then
-      if [ ${iv_NextUpdateEpoch} = 0 ]
-      then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating for the first time"
-        bv_DoUpdate="true"
-      fi
-    fi
-    
-    if [ "${bv_DoUpdate}" = "true" ]
-    then
-      nf_DoUpdate
-      
-      # If no next update can be determined, assume it's OK sometime after 4:00am
-      if test -z "${iv_NextOutOfHoursUpdateEpoch}"
-      then
-        iv_NextOutOfHoursUpdateEpoch=$(date -r ${GLB_iv_ThisScriptStartEpoch} -v4H -v0M -v0S "+%s")
-        if [ ${iv_NextOutOfHoursUpdateEpoch} -lt ${GLB_iv_ThisScriptStartEpoch} ]
-        then
-          iv_NextOutOfHoursUpdateEpoch=$(date -r ${iv_NextOutOfHoursUpdateEpoch} -v+1d "+%s")
-        fi
-      fi
-          
-      GLB_nf_SetPlistProperty "${sv_ThisPolicyGlobalPrefFilePath}" ":${sv_PolicyName}:GlobalPrefs:NextUpdateEpoch" "${iv_NextOutOfHoursUpdateEpoch}"
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Next update will likely be $(date -r ${iv_NextOutOfHoursUpdateEpoch} "+%Y%m%d-%H:%M.%S")"
-
-      GLB_nf_CreateNamedFlag "Restart"
-    fi
-    
   fi
 
-  
+  if [ ${iv_LoginWindowIdleShutdownSecs} -gt 0 ]
+  then
+    if [ ${iv_IdleSecs} -lt ${iv_LoginWindowIdleShutdownSecs} ]
+    then
+      bv_DoUpdate="false"  
+    fi
+  fi
+
+  if [ "${bv_DoUpdate}" = "true" ]
+  then
+    nf_DoUpdate
+    GLB_nf_CreateNamedFlag "Restart"
+  fi
+
   if [ ${iv_LoginWindowIdleShutdownSecs} -gt 0 ]
   then
     if [ ${iv_IdleSecs} -gt ${iv_LoginWindowIdleShutdownSecs} ]
     then
-      # Shutdown if the workstation has been idle
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating group policies before an idle shutdown"
+      # Do a full group policy update
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Updating group policies (via gpupdate)."
       /usr/local/LabWarden/util/gpupdate "-force"
-    fi
-    if [ ${iv_IdleSecs} -gt ${iv_LoginWindowIdleShutdownSecs} ]
-    then
+
       # Shutdown if the workstation is still idle
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Workstation has been idle too long - we should shutdown"
       GLB_nf_CreateNamedFlag "Shutdown"
@@ -397,7 +429,7 @@ Sys-LoginWindowIdle)
   fi
   ;;
   
-Sys-PolicyInstall|Sys-PolicyUninstall)
+Sys-PolicyUninstall)
   # Do nothing
   ;;
   

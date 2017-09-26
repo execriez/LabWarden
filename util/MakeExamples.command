@@ -100,6 +100,54 @@ sf_MakeConfigFile()   # PolicyName Tag ConfigType - returns string "<ConfigFileP
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
+sv_PolicyName="Sys-Update"
+sv_Tag="Radmind"
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-LoginWindow"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-LoginWindowIdle"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:2" "Sys-ManualUpdate"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:3" "Sys-Poll"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursPowerOn" "true"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursStartTime" "22:00"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursEndTime" "05:00"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:ActiveForDomain:0" "ALL"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:Exe:0" "file://localhost/usr/local/LabWarden/lib/RadmindUpdate"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:Exe:1" "192.168.0.3,sha1,0,-I,42000"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LoginWindowIdleShutdownSecs" "1200"        # Should we shut workstations down if idle at the LoginWindow    
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+sv_PolicyName="Sys-MirrorDisplay"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-ConsoleUserLoggedIn"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+#exit 0
+# ---
 sv_PolicyName="Sys-WiFiRemoveUnknownSSIDs"
 sv_Tag=""
 
@@ -805,35 +853,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Exampl
 #exit 0
 # ---
 
-sv_PolicyName="Sys-Update"
-sv_Tag="Radmind"
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-LoginWindowIdle"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-ManualUpdate"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursPowerOn" "true"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursStartTime" "22:00"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursEndTime" "05:00"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:ActiveForDomain:0" "ALL"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:Exe:0" "file://localhost/usr/local/LabWarden/lib/RadmindUpdate"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:Exe:1" "192.168.0.3,sha1,0,-I,42000"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LoginWindowIdleShutdownSecs" "1200"        # Should we shut workstations down if idle at the LoginWindow    
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-#exit 0
-# ---
 sv_PolicyName="Sys-ADUserExperience"
 sv_Tag="HomeForceLocal"
 

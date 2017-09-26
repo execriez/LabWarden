@@ -2,7 +2,7 @@
 #
 # Short:    Sys Policy script - Sets the system time (ntp) server
 # Author:   Mark J Swift
-# Version:  2.0.10
+# Version:  2.0.16
 # Modified: 12-Jun-2017
 #
 # Triggered by the following events:
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -102,7 +102,7 @@ fi
 # ---
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-sf_OptionIsActiveForThisDomain() # [subkey]
+bf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -171,7 +171,7 @@ fi
 case ${sv_EventName} in
     
 Sys-NetworkUp|Sys-PolicyInstall)
-  bv_ConfigActive=$(sf_OptionIsActiveForThisDomain)
+  bv_ConfigActive=$(bf_OptionIsActiveForThisDomain)
   
   if [  "${bv_ConfigActive}" = "true" ]
   then

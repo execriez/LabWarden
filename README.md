@@ -9,7 +9,7 @@ Custom Policies for MacOS that can be distributed via AD or an MDM
 
 ## Introduction
 
-LabWarden is an endpoint management tool for implementing custom scripts as if they were policies. A Labwarden policy consists of a custom script and an accompanying custom mobileconfig file. 
+LabWarden is an endpoint management tool for implementing custom scripts as policies. A Labwarden policy consists of a custom script and an accompanying custom mobileconfig file. 
 
 The mobileconfig specifies policy (script) "options" and determines how the policy is "triggered". LabWarden policies can be triggered by various system events - such as System Boot, User Login, Application Launch, Application Quit, etc.
 
@@ -1584,35 +1584,6 @@ The policy allows you install packages that have been tar gzipped and split into
 
 The example policy config should be configured to your own needs.
 
-### Sys-UpdatePackage
-This policy updates an installed package to a later version. It is called as root and triggered by the **Sys-NetworkUp** event.
-
-The **PackageID** specifies the id for the package.
-
-The **VersionString** key specifies the a minimum version of the package that should be running.
-
-If the running version is less than the **VersionString**, then the policy will attempt to install the update package from the location specified in the **URI** key.
-
-	<key>Config</key>
-	<dict>
-		<key>PackageID</key>
-		<string>com.github.execriez.labwarden</string>
-		<key>URI</key>
-		<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
-		<key>VersionString</key>
-		<string>2.0.10</string>
-	</dict>
-	<key>Name</key>
-	<string>Sys-UpdatePackage</string>
-	<key>TriggeredBy</key>
-	<array>
-		<string>Sys-NetworkUp</string>
-	</array>
-
-The package URI could point to a package on the internet, or on your local network. The package needs to be in a location that is accessible.
-
-The example config shows how the running version of LabWarden can be updated to a a later version. Once an updated version of LabWarden is published, an updated policy config should be pushed to your workstations (i.e. via an MDM or AD). The policy will then install the update from the published location. 
-
 ### Sys-NetworkProxy
 This policy sets the web proxy. It is called as root and triggered by the **Sys-NetworkUp** and **Sys-Boot** events.
 
@@ -1999,6 +1970,35 @@ A value of 0, indicates that we should not power off when idle.
 
 The example policy config should be configured to your own needs.
 
+
+### Sys-UpdatePackage
+This policy updates an installed package to a later version. It is called as root and triggered by the **Sys-NetworkUp** event.
+
+The **PackageID** specifies the id for the package.
+
+The **VersionString** key specifies the a minimum version of the package that should be running.
+
+If the running version is less than the **VersionString**, then the policy will attempt to install the update package from the location specified in the **URI** key.
+
+	<key>Config</key>
+	<dict>
+		<key>PackageID</key>
+		<string>com.github.execriez.labwarden</string>
+		<key>URI</key>
+		<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
+		<key>VersionString</key>
+		<string>2.0.10</string>
+	</dict>
+	<key>Name</key>
+	<string>Sys-UpdatePackage</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+The package URI could point to a package on the internet, or on your local network. The package needs to be in a location that is accessible.
+
+The example config shows how the running version of LabWarden can be updated to a a later version. Once an updated version of LabWarden is published, an updated policy config should be pushed to your workstations (i.e. via an MDM or AD). The policy will then install the update from the published location. 
 
 ### Sys-WiFiRemoveUnknownSSIDs
 This policy removes all SSIDs that are not in a list of known SSIDs. It is called as root and triggered by an **Sys-Boot** event.
@@ -2568,12 +2568,25 @@ LabWarden makes use of the following tools:
 * [duti](https://github.com/moretension/duti "duti")
 * [dockutil](https://github.com/kcrawford/dockutil "dockutil")
 * [iHook](https://sourceforge.net/projects/ihook/ "iHook")
-* [LoginHookWarden](https://github.com/execriez/LoginHookWarden "LoginHookWarden")
 * [mysides](https://github.com/mosen/mysides "mysides")
 * [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden")
 * [rsync](https://rsync.samba.org "rsync")
 
 ## History
+
+2.0.16 - 26-Sep-2017
+
+* The policy Sys-RemoteManagement now checks the expected setup regularly in case someone changes the settings after the policy has already set things up.
+
+* The policy Sys-Update is now also triggered during the Sys-LoginWindow and Sys-Poll events, in order to schedule possible future poweron updates that were originally only scheduled during a Sys-LoginWindowIdle event. This hopefully fixes an issue where scheduled updates didn't always happen.
+
+* Fix added to policy Sys-Update since the "pmset schedule" command does not appear to set the "owner" correctly in MacOS 10.12.
+
+* Fixed a bug in Usr-DockContent and Usr-SidebarContent that didn't handle symbolic links correctly when adding a new entry or checking an existing entry.
+
+* Common.sh now checks if the user network home directory exists before setting the value GLB_sv_LoggedInUserHomeNetworkDirPath.
+
+* Minor change. sf_OptionIsActiveForThisDomain() has always returned a bool value, so it has been renamed to bf_OptionIsActiveForThisDomain() in Gen-OfficeHours, Sys-ADUserExperience, Sys-NetworkProxy, Sys-TimeServer and Sys-Update.
 
 2.0.15 - 11-Sep-2017
 

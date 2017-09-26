@@ -2,8 +2,8 @@
 #
 # Short:    Gen Policy script - Enforces User Access to Opening Hours and collects usage stats
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 05-Sep-2017
+# Version:  2.0.16
+# Modified: 21-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-Boot        (as root)
@@ -18,7 +18,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.16"
 
 if [ $# -eq 0 ]
 then
@@ -652,7 +652,7 @@ nf_SetupAudit() # setup audit counts for first time
 }
 
 # check config "ActiveForDomain" setting to see if we are active or not. Can pass an optional subkey.
-sf_OptionIsActiveForThisDomain() # [subkey]
+bf_OptionIsActiveForThisDomain() # [subkey]
 {
   local bv_IsActive
   local iv_IsActiveForDomainCount
@@ -724,7 +724,7 @@ bf_ForceLogoutIsActive() # Return true if force logouts are in effect
 
     # Note, only active when on the specified domain(s) - can be null, ALL, NONE, ADDOMAIN or your.company.domain
     # Note, at start-up the domain will be null - so be aware
-    bv_ForceLogoutIsActive=$(sf_OptionIsActiveForThisDomain "ForceLogout")
+    bv_ForceLogoutIsActive=$(bf_OptionIsActiveForThisDomain "ForceLogout")
     
     if [ "${bv_ForceLogoutIsActive}" = "true" ]
     then
