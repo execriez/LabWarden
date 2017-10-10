@@ -2,20 +2,21 @@
 #
 # Short:    Sys Policy script - Runs a custom update script
 # Author:   Mark J Swift
-# Version:  2.0.16
-# Modified: 21-Sep-2017
+# Version:  2.0.17
+# Modified: 07-Oct-2017
 #
 # Triggered by the following events:
-#   Sys-ManualUpdate    (as root)
 #   Sys-LoginWindow     (as root)
 #   Sys-LoginWindowIdle (as root)
+#   Sys-Poll            (as root)
+#   Sys-ManualTrigger   (as root)
 #
 # Called as follows:    
 #   Sys-Update <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.16"
+sv_CodeVersion="2.0.17"
 
 if [ $# -eq 0 ]
 then
@@ -374,7 +375,7 @@ Sys-PolicyInstall|Sys-LoginWindow|Sys-Poll)
   bv_DoUpdate=$(bf_UpdatesAllowed)
   ;;
     
-Sys-ManualUpdate)
+Sys-ManualTrigger)
   # Manual update requested via /usr/local/LabWarden/util/Update
   GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Running a manual Update."
   
@@ -445,7 +446,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

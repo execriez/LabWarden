@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</key>
+			<key>1EAD7018-E0F6-4C2A-AF65-5E00A9560F4E</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -18,17 +18,18 @@
 				<string>Sys-InstallPackageFromFolder</string>
 				<key>TriggeredBy</key>
 				<array>
-					<string>Sys-LoginWindowIdle</string>
+					<string>Sys-Poll</string>
+					<string>Sys-ManualTrigger</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</string>
+			<string>1EAD7018-E0F6-4C2A-AF65-5E00A9560F4E</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>BAF9B78F-89CD-4AC7-8A68-886E1A36D149</string>
+			<string>1EAD7018-E0F6-4C2A-AF65-5E00A9560F4E</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -38,7 +39,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-InstallPackageFromFolder</string>
 	<key>PayloadIdentifier</key>
-	<string>2E4DECF8-1AD6-4873-B806-10D3CE08FCF6</string>
+	<string>8F01B512-1654-4CB5-9D62-80A65F59E14D</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -48,7 +49,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>2E4DECF8-1AD6-4873-B806-10D3CE08FCF6</string>
+	<string>8F01B512-1654-4CB5-9D62-80A65F59E14D</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

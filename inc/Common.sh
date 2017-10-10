@@ -105,8 +105,6 @@ then
   #  GLB_nf_schedule4epoch <TAG> <WAKETYPE> <EPOCH>                   - Schedule a wake or power on for a given epoch
   #  GLB_sf_ResolveFileURItoPath <fileuri>                            - Resolve a file URI to a local path (downloading the file if necessary)
   #  GLB_nf_QuickExit                                                 - Quickly exit a script
-  #  GLB_nf_TriggeredList <ConfigPlist> <EventName>                   - Internal private function
-  #  GLB_nf_TriggerEvent <eventHistory> <event> [OptionalParam]       - Internal private function
   #
   #  Key:
   #    GLB_ - LabWarden global variable
@@ -716,6 +714,8 @@ then
     local sv_RemoteConn
     local sv_RemoteDirPath
     local sv_SrcFileName
+    local sv_SrcFileExt
+    local sv_DstFileName
     local sv_SrcFilePath
     local sv_SrcFileProtocol
     local sv_SrcMountDirPath
@@ -729,199 +729,226 @@ then
   
     sv_SrcFileProtocol=$(echo ${sv_FileURI} | cut -d ":" -f1)    
     sv_SrcFileName="$(basename "${sv_FileURI}")"
+    sv_SrcFileExt=$(echo "${sv_SrcFileName}"|awk -F . '{if (NF>1) {print "."$NF}}')
      
+    sv_TempDirPath="${GLB_sv_ThisUserTempDirPath}/Resolved"
+    mkdir -p "${sv_TempDirPath}"
+
+    sv_DstFileName=$(echo ${sv_FileURI} | openssl dgst -sha256)${sv_SrcFileExt}
+    sv_DstFilePath="${sv_TempDirPath}/${sv_DstFileName}"
+    
     if test -n "$(echo ${sv_FileURI} | grep -E ".*/$")"
     then
+      sv_DstFilePath="${sv_DstFilePath}/"
       bv_IsDir="true"
     else
       bv_IsDir="false"
     fi
-  
-    case "$sv_SrcFileProtocol" in
-    file)
-      sv_Host=$(echo $sv_FileURI | cut -d "/" -f3 | tr "[A-Z]" "[a-z]" )
-      if [ "$sv_Host" = "localhost" -o "$sv_Host" = "" ]
-      then
-        sv_SrcFilePath="/"$(echo $sv_FileURI | cut -d "/" -f4-)
-        sv_DstFilePath="${sv_SrcFilePath}"
-      fi
-      ;;
-  
-    http|https|ftp)
-      sv_TempDirPath="$(mktemp -dq ${GLB_sv_ThisUserTempDirPath}/${GLB_sv_ThisScriptFileName}-Resolved-XXXXXXXX)"
-      sv_DstFilePath="${sv_TempDirPath}/${sv_SrcFileName}"
-        
-      curl --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
-      if ! test -s "$sv_DstFilePath"
-      then
-        # if the file is empty, delete it
-        rm -f "$sv_DstFilePath"
-      fi
-      ;;
-  
-    smb)
-      # Get Kerberos principal before the mount
-      sv_KprincipalBefore="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
-      
-      # Get Kerberos user (if any)
-      sv_KUser="$(echo "${sv_KprincipalBefore}" | cut -d"@" -f1)"
-  
-      # Get User, Password & Host
-      sv_SrvrConnString="$(echo ${sv_FileURI} | cut -d"/" -f3)"
-      sv_SrvrConnHost="$(echo ${sv_SrvrConnString} | cut -sd"@" -f2)"
-      if test -z "${sv_SrvrConnHost}"
-      then
-        sv_SrvrConnHost="${sv_SrvrConnString}"
-        sv_SrvrConnPass=""
-        if test -n "${sv_KUser}"
+
+    # Only continue if the file has not already been resolved
+    if ! test -e "${sv_DstFilePath}"
+    then
+
+      case "$sv_SrcFileProtocol" in
+      file)
+        sv_Host=$(echo $sv_FileURI | cut -d "/" -f3 | tr "[A-Z]" "[a-z]" )
+        if [ "$sv_Host" = "localhost" -o "$sv_Host" = "" ]
         then
-          sv_SrvrConnUser="${sv_KUser}"
-        else
-          sv_SrvrConnUser="Guest"
-          
-          if [ "${GLB_sv_ThisUserName}" = "root" ]
+          sv_SrcFilePath="/"$(echo $sv_FileURI | cut -d "/" -f4-)
+          if test -e "${sv_SrcFilePath}"
           then
-            if test -n "${GLB_sv_ADTrustAccount}"
+            if test -d "${sv_SrcFilePath}"
             then
-              sv_SrvrConnUser="${GLB_sv_ADTrustAccount}"
-              sv_SrvrConnPass="${GLB_sv_ADTrustPassword}"   
+              sv_DstFilePath="${sv_SrcFilePath}"
+            else
+              ln -fh "${sv_SrcFilePath}" "${sv_DstFilePath}"
             fi
-          fi   
-  
+          fi
         fi
-        
-      else
-        sv_SrvrConnString="$(echo ${sv_SrvrConnString} | cut -d"@" -f1)"
-        sv_SrvrConnPass="$(echo ${sv_SrvrConnString} | cut -sd":" -f2)"
-        if test -z "${sv_SrvrConnPass}"
+        ;;
+  
+      http|https|ftp)
+        curl --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
+        if ! test -s "${sv_DstFilePath}"
         then
-          sv_SrvrConnUser="${sv_SrvrConnString}"
+          # if the file is empty, delete it
+          rm -f "${sv_DstFilePath}"
+        fi
+        ;;
+  
+      smb)
+        # Get Kerberos principal before the mount
+        sv_KprincipalBefore="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
+      
+        # Get Kerberos user (if any)
+        sv_KUser="$(echo "${sv_KprincipalBefore}" | cut -d"@" -f1)"
+  
+        # Get User, Password & Host
+        sv_SrvrConnString="$(echo ${sv_FileURI} | cut -d"/" -f3)"
+        sv_SrvrConnHost="$(echo ${sv_SrvrConnString} | cut -sd"@" -f2)"
+        if test -z "${sv_SrvrConnHost}"
+        then
+          sv_SrvrConnHost="${sv_SrvrConnString}"
           sv_SrvrConnPass=""
+          if test -n "${sv_KUser}"
+          then
+            sv_SrvrConnUser="${sv_KUser}"
+          else
+            sv_SrvrConnUser="Guest"
+          
+            if [ "${GLB_sv_ThisUserName}" = "root" ]
+            then
+              if test -n "${GLB_sv_ADTrustAccount}"
+              then
+                sv_SrvrConnUser="${GLB_sv_ADTrustAccount}"
+                sv_SrvrConnPass="${GLB_sv_ADTrustPassword}"   
+              fi
+            fi   
+  
+          fi
+        
         else
-          sv_SrvrConnUser="$(echo ${sv_SrvrConnString} | cut -d":" -f1)" 
-        fi
-      fi
-      sv_SrvrConnPass=$(GLB_sf_urlencode "${sv_SrvrConnPass}")
-  
-      
-      sv_RemoteDirPath="$(echo ${sv_FileURI} | cut -d "/" -f4- | sed "s|/$||")"
-      if [ "${bv_IsDir}" = "false" ]
-      then
-        sv_RemoteDirPath="$(dirname "${sv_RemoteDirPath}")"
-      fi    
-      
-      sv_ExistingMountDirPath=$(mount | grep " (smbfs," | grep -i "//${sv_SrvrConnUser}@${sv_SrvrConnHost}/${sv_RemoteDirPath}" | sed -E "s|(.*)(\(smbfs,).*|\1|;s|(.*) on (.*)|\2|;s|[ ]*$||")
-  
-  	if test -n "${sv_ExistingMountDirPath}"
-  	then
-  	  sv_SrcMountDirPath="${sv_ExistingMountDirPath}"
-  	  
-  	else
-  	
-  	  # Decide where we will mount the remote directory
-        sv_SrcMountDirPath="$(mktemp -dq ${GLB_sv_ThisUserTempDirPath}/${GLB_sv_ThisScriptFileName}-Mount-XXXXXXXX)"
-  
-  	  # Build a connection string
-        if test -z "${sv_SrvrConnUser}"
-        then
-          sv_RemoteConn="//${sv_SrvrConnHost}/${sv_RemoteDirPath}"
-        else
+          sv_SrvrConnString="$(echo ${sv_SrvrConnString} | cut -d"@" -f1)"
+          sv_SrvrConnPass="$(echo ${sv_SrvrConnString} | cut -sd":" -f2)"
           if test -z "${sv_SrvrConnPass}"
           then
-            sv_RemoteConn="//${sv_SrvrConnUser}@${sv_SrvrConnHost}/${sv_RemoteDirPath}"
+            sv_SrvrConnUser="${sv_SrvrConnString}"
+            sv_SrvrConnPass=""
           else
-            sv_RemoteConn="//${sv_SrvrConnUser}:${sv_SrvrConnPass}@${sv_SrvrConnHost}/${sv_RemoteDirPath}"
+            sv_SrvrConnUser="$(echo ${sv_SrvrConnString} | cut -d":" -f1)" 
           fi
         fi
-        
-        # echo DEBUG /sbin/mount_smbfs -N "${sv_RemoteConn}" "${sv_SrcMountDirPath}"
-        if ! /sbin/mount_smbfs 2>/dev/null -N "${sv_RemoteConn}" "${sv_SrcMountDirPath}"
-        then
-          # Mount failed
-          
-          # Make double sure it's not mounted
-          if [ "$(stat -f%Sd "${sv_SrcMountDirPath}")" = "$(stat -f%Sd "/")" ]
-          then
-            # Only delete it if its empty
-            rmdir "${sv_SrcMountDirPath}"
-            sv_SrcMountDirPath=""
-          fi
-        fi    
-      
-      fi
+        sv_SrvrConnPass=$(GLB_sf_urlencode "${sv_SrvrConnPass}")
   
-      if test -n "${sv_SrcMountDirPath}"
-      then
-        # Remote directory is mounted
-        sv_TempDirPath="$(mktemp -dq ${GLB_sv_ThisUserTempDirPath}/${GLB_sv_ThisScriptFileName}-Resolved-XXXXXXXX)"
-        sv_DstFilePath="${sv_TempDirPath}/${sv_SrcFileName}"
-        
+      
+        sv_RemoteDirPath="$(echo ${sv_FileURI} | cut -d "/" -f4- | sed "s|/$||")"
         if [ "${bv_IsDir}" = "false" ]
         then
-          # copy file
-          if test -e "${sv_SrcMountDirPath}/${sv_SrcFileName}"
-          then
-            cp -p "${sv_SrcMountDirPath}/${sv_SrcFileName}" "${sv_DstFilePath}"
-          fi
+          sv_RemoteDirPath="$(dirname "${sv_RemoteDirPath}")"
+        fi    
+      
+        sv_ExistingMountDirPath=$(mount | grep " (smbfs," | grep -i "//${sv_SrvrConnUser}@${sv_SrvrConnHost}/${sv_RemoteDirPath}" | sed -E "s|(.*)(\(smbfs,).*|\1|;s|(.*) on (.*)|\2|;s|[ ]*$||")
+  
+        if test -n "${sv_ExistingMountDirPath}"
+        then
+  	      sv_SrcMountDirPath="${sv_ExistingMountDirPath}"
+  	  
         else
-          # copy directory
-          mkdir -p "${sv_DstFilePath}"
-          cp -pR "${sv_SrcMountDirPath}/" "${sv_DstFilePath}/"
+  	
+  	      # Decide where we will mount the remote directory
+          sv_SrcMountDirPath="$(mktemp -dq ${GLB_sv_ThisUserTempDirPath}/${GLB_sv_ThisScriptFileName}-Mount-XXXXXXXX)"
+  
+  	      # Build a connection string
+          if test -z "${sv_SrvrConnUser}"
+          then
+            sv_RemoteConn="//${sv_SrvrConnHost}/${sv_RemoteDirPath}"
+          else
+            if test -z "${sv_SrvrConnPass}"
+            then
+              sv_RemoteConn="//${sv_SrvrConnUser}@${sv_SrvrConnHost}/${sv_RemoteDirPath}"
+            else
+              sv_RemoteConn="//${sv_SrvrConnUser}:${sv_SrvrConnPass}@${sv_SrvrConnHost}/${sv_RemoteDirPath}"
+            fi
+          fi
+        
+          # echo DEBUG /sbin/mount_smbfs -N "${sv_RemoteConn}" "${sv_SrcMountDirPath}"
+          if ! /sbin/mount_smbfs 2>/dev/null -N "${sv_RemoteConn}" "${sv_SrcMountDirPath}"
+          then
+            # Mount failed
+          
+            # Make double sure it's not mounted
+            if [ "$(stat -f%Sd "${sv_SrcMountDirPath}")" = "$(stat -f%Sd "/")" ]
+            then
+              # Only delete it if its empty
+              rmdir "${sv_SrcMountDirPath}"
+              sv_SrcMountDirPath=""
+            fi
+          fi    
+      
         fi
   
-      fi
-      
-      if test -z "${sv_ExistingMountDirPath}"
-      then
         if test -n "${sv_SrcMountDirPath}"
         then
-          # unmount mount, only if it didnt already exist
-          # echo DEBUG /sbin/umount "${sv_SrcMountDirPath}"
-          /sbin/umount "${sv_SrcMountDirPath}"
-          
-          # Make double sure it's not mounted
-          if [ "$(stat -f%Sd "${sv_SrcMountDirPath}")" = "$(stat -f%Sd "/")" ]
+          # Remote directory is mounted
+
+          if [ "${bv_IsDir}" = "false" ]
           then
-            # Only delete it if its empty
-            rmdir "${sv_SrcMountDirPath}"
+            # copy file
+            if test -e "${sv_SrcMountDirPath}/${sv_SrcFileName}"
+            then
+              cp -p "${sv_SrcMountDirPath}/${sv_SrcFileName}" "${sv_DstFilePath}"
+            fi
+          else
+            # copy directory
+            mkdir -p "${sv_DstFilePath}"
+            cp -pR "${sv_SrcMountDirPath}/" "${sv_DstFilePath}"
           fi
   
         fi
-      fi
       
-      # Get Kerberos principal after all this kerfuffle
-      sv_KprincipalAfter="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
+        if test -z "${sv_ExistingMountDirPath}"
+        then
+          if test -n "${sv_SrcMountDirPath}"
+          then
+            # unmount mount, only if it didnt already exist
+            # echo DEBUG /sbin/umount "${sv_SrcMountDirPath}"
+            /sbin/umount "${sv_SrcMountDirPath}"
+          
+            # Make double sure it's not mounted
+            if [ "$(stat -f%Sd "${sv_SrcMountDirPath}")" = "$(stat -f%Sd "/")" ]
+            then
+              # Only delete it if its empty
+              rmdir "${sv_SrcMountDirPath}"
+            fi
+  
+          fi
+        fi
       
-      # If there is a new Kerberos principal - destroy it
-      if [ "${sv_KprincipalAfter}" != "${sv_KprincipalBefore}" ]
+        # Get Kerberos principal after all this kerfuffle
+        sv_KprincipalAfter="$(klist 2>/dev/null | grep "Principal:" | head -n1 | cut -d":" -f2 | sed "s|^[ ]*||")"
+      
+        # If there is a new Kerberos principal - destroy it
+        if [ "${sv_KprincipalAfter}" != "${sv_KprincipalBefore}" ]
+        then
+          kdestroy
+        fi
+  
+        ;;
+  
+      afp)
+        # Currently not supported
+        ;;
+  
+      *)
+        # assume that we were passed a path rather than a uri
+        sv_SrcFilePath="${sv_FileURI}"
+        if test -e "${sv_SrcFilePath}"
+        then
+          if test -d "${sv_SrcFilePath}"
+          then
+            sv_DstFilePath="${sv_SrcFilePath}"
+          else
+            ln -fh "${sv_SrcFilePath}" "${sv_DstFilePath}"
+          fi
+        fi
+        ;;
+  
+      esac	    
+  
+      if test -n "${sv_DstFilePath}"
       then
-        kdestroy
+        # check that file exists
+        if ! test -e "${sv_DstFilePath}"
+        then
+          sv_DstFilePath=""
+        fi
       fi
-  
-      ;;
-  
-    afp)
-      ;;
-  
-    *)
-      # assume that we were passed a path rather than a uri
-      sv_DstFilePath="${sv_FileURI}"
-      ;;
-  
-    esac	    
-  
-    if test -n "${sv_DstFilePath}"
-    then
-      # check that file exists
-      if ! test -e "${sv_DstFilePath}"
-      then
-        sv_DstFilePath=""
-      fi
+    
     fi
       
     echo "${sv_DstFilePath}"
   }
-  
+
   GLB_sf_PolicyFilePath() # <ConfigFilePath> <ConfigEntryName> - return path to policy given ConfigFilePath and ConfigEntryName
   {
     local sv_PolicyName
@@ -953,126 +980,7 @@ then
     fi
     echo "${sv_PolicyFilePath}"
   }
-  
-  # List policies in config that are triggered by the event - Internal function used by GLB_nf_TriggerEvent
-  GLB_nf_TriggeredList() # <ConfigPlist> <EventName>
-  {
-    local sv_ConfigPlist
-    local sv_EventName
-    local iv_DoesTriggerCount
-    local iv_DoesTriggerIndex
-    local sv_ConfigEntryName
     
-    sv_ConfigPlist="${1}"
-    sv_EventName="${2}"
-    iv_DoesTriggerCount="$(GLB_if_GetPlistArraySize "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger")"
-    for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
-    do
-      sv_ConfigEntryName=$(GLB_sf_GetPlistProperty "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
-      echo ${sv_ConfigEntryName}
-    done
-  }
-  
-  GLB_nf_TriggerEvent() # <eventHistory> <event> [OptionalParam]
-  {
-    local bv_EventHasPolicies
-    local iv_DoesTriggerCount
-    local sv_ConfigDirPath
-    local sv_EventHistory
-    local sv_EventName
-    local sv_OptionalParam
-    local sv_PolicyFilePath
-    local sv_PolicyName
-    local sv_ConfigEntryName
-    local sv_Flag
-    local sv_FlagDirPath
-    
-    # Get (full) event History
-    sv_EventHistory="${1}"
-  
-    # Get event that triggered this policy
-    sv_EventName="${2}"
-  
-    # Get optional parameter
-    sv_OptionalParam="${3}"
-   
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event occurred, '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}' as user '${GLB_sv_ThisUserName}'"
-  
-    # Make sure a badly defined config doesnt put us in an endless trigger loop
-    if test -n "$(echo ${sv_EventHistory} | tr ":" "\n" | grep -E "^"${sv_EventName}"$")"
-    then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Event loop in config."
-      
-    else
-      bv_EventHasPolicies="false"
-      
-      if test -n "${GLB_sv_LoggedInUserName}"
-      then
-        # Run through the user policies
-        sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Users/${GLB_sv_LoggedInUserName}"
-        while read sv_ConfigEntryName
-        do
-          if test -n "${sv_ConfigEntryName}"
-          then
-            sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_ConfigEntryName}.plist"
-            sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_ConfigEntryName}")
-            if test -n "${sv_PolicyFilePath}"
-            then
-              # Run script in background
-              GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
-              "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
-              bv_EventHasPolicies="true"
-            fi
-          fi
-        done < <(GLB_nf_TriggeredList "${sv_ConfigDirPath}/${GLB_sv_ProjectName}-Events.plist" "${sv_EventName}" | sort -u)
-      fi
-  
-      # Run through the workstation policies
-      sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Computers/${GLB_sv_Hostname}"
-      while read sv_ConfigEntryName
-      do
-        if test -n "${sv_ConfigEntryName}"
-        then
-          sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_ConfigEntryName}.plist"
-          sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_ConfigEntryName}")
-          if test -n "${sv_PolicyFilePath}"
-          then
-            # Run script in background
-            GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
-            "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
-            bv_EventHasPolicies="true"
-          fi
-        fi
-      done < <(GLB_nf_TriggeredList "${sv_ConfigDirPath}/${GLB_sv_ProjectName}-Events.plist" "${sv_EventName}" | sort -u)
-      
-      if [ "${bv_EventHasPolicies}" = "false" ]
-      then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event ignored, '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}' as user '${GLB_sv_ThisUserName}' (no associated policy)"
-      fi
-    
-      # We dont want to quit until the background scripts are finished or they might terminate early
-      while [ -n "$(jobs -r)" ]
-      do
-        # we don't want to hog the CPU - so lets sleep a while
-        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Waiting for events triggered by '${sv_EventHistory}:${sv_EventName}' to finish"
-        sleep 1
-      done
-
-      if [ "$(GLB_nf_TestNamedFlag Restart)" = "true" ]
-      then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
-        shutdown -r now
-      fi
-      
-      if [ "$(GLB_nf_TestNamedFlag Shutdown)" = "true" ]
-      then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
-        shutdown -h now
-      fi
-  
-    fi
-  }
-  
   # -- End Function Definition --
   
   # Take a note when this script started running

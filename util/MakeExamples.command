@@ -100,6 +100,67 @@ sf_MakeConfigFile()   # PolicyName Tag ConfigType - returns string "<ConfigFileP
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
+sv_PolicyName="Sys-RestartAfterLongSleep"
+sv_Tag="90"
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-WillSleep"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-WillWake"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LongSleepMins" "90"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+sv_PolicyName="Sys-InstallPackageFromFolder"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Idle"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-ManualTrigger"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:0" "/usr/local/Updates"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+
+sv_PolicyName="Sys-UpdatePackage"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Idle"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-ManualTrigger"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Package:0:ID" "${GLB_sv_ProjectSignature}"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Package:0:VersionString" "2.0.17"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Package:0:URI" "https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
 sv_PolicyName="Sys-Update"
 sv_Tag="Radmind"
 
@@ -112,8 +173,8 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_P
 
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-LoginWindow"
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:1" "Sys-LoginWindowIdle"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:2" "Sys-ManualUpdate"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:3" "Sys-Poll"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:2" "Sys-Idle"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:3" "Sys-ManualTrigger"
 
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:OutOfHoursPowerOn" "true"
 
@@ -125,6 +186,67 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Update
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UpdateScript:Exe:1" "192.168.0.3,sha1,0,-I,42000"
 
 GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:LoginWindowIdleShutdownSecs" "1200"        # Should we shut workstations down if idle at the LoginWindow    
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+sv_PolicyName="Sys-ShutdownWhenLidShut"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-WillSleep"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:ShutdownDelaySecs" "15"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+sv_PolicyName="Sys-CDPInfo"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-NetworkUp"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CDPsource:0:Device" "en0"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:CDPsource:0:Hardware" "Ethernet"
+
+/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
+
+# ---
+exit 0
+# ---
+sv_PolicyName="Sys-WirelessSetState"
+sv_Tag="static"
+
+sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
+sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
+# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-Boot"
+
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:WirelessState" "on"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RequireAdminIBSS" "true"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RequireAdminNetworkChange" "true"
+GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:RequireAdminPowerToggle" "true"
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 
@@ -468,27 +590,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:UserCa
 #exit 0
 # ---
 
-sv_PolicyName="Sys-UpdatePackage"
-sv_Tag=""
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-NetworkUp"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:PackageID" "${GLB_sv_ProjectSignature}"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:VersionString" "2.0.10"
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:URI" "https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg"
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
-#exit 0
-# ---
 sv_PolicyName="Usr-KeychainFix"
 sv_Tag=""
 
@@ -1226,24 +1327,6 @@ GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0
 
 /usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
 
-# ---
-sv_PolicyName="Sys-InstallPackageFromFolder"
-sv_Tag=""
-
-sv_Info="$(sf_MakeConfigFile "${sv_PolicyName}" "${sv_Tag}" "${sv_ConfigType}")"
-sv_ConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Name" "${sv_PolicyName}"
-# GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Type" "Policy"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:TriggeredBy:0" "Sys-LoginWindowIdle"
-
-GLB_nf_SetPlistProperty "${sv_ConfigFilePath}" "${sv_PropertyBase}:Config:Path:0" "/usr/local/Updates"
-
-/usr/local/LabWarden/util/PackForDeployment "${sv_ConfigFilePath}"
-
-# ---
 
 # ---
 

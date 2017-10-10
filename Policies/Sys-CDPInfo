@@ -1,0 +1,217 @@
+#!/bin/bash
+#
+# Short:    Sys Policy Script - Update RemoteDesktop Info Field 4 with CDP info
+# Author:   Mark J Swift
+# Version:  2.0.17
+# Modified: 30-Sep-2017
+#
+# Triggered by the following events:
+#   Sys-NetworkUp    (as root)
+#
+#   ... see associated config 'Sys-CDPInfo.mobileconfig'
+#
+# Called as follows:    
+#   Sys-CDPInfo <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.17"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user.
+# A null string signifies no-one is logged in, or this is a system event.
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_sv_LoggedInUserName="${sv_OptionalParam}"
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Usr-PolicyInstall & Usr-PolicyUninstall events (which are called as a normal user) are ignored by system policies
+
+if [ "${sv_EventName}" = "Usr-PolicyInstall" ] || [ "${sv_EventName}" = "Usr-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# ------------------
+
+# Lets handle the events
+
+case ${sv_EventName} in
+
+Sys-NetworkUp)
+  # (as root) - Do this when the network comes up
+
+  bv_ValidCDPsource="false"
+
+  # Check if the active network interface is in the list of valid CDP source interfaces
+  iv_ObjectCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:CDPsource")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_CDPsourceDevice="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:CDPsource:${iv_LoopCount}:Device")"
+    sv_CDPsourceHardware="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:CDPsource:${iv_LoopCount}:Hardware")"
+    if [ "${GLB_sv_NetworkServiceInterfaceDevice}" = "${sv_CDPsourceDevice}" ] && [ "${GLB_sv_NetworkServiceInterfaceHardware}" = "${sv_CDPsourceHardware}" ]
+    then
+      bv_ValidCDPsource="true"
+      break
+    fi
+  done
+
+  if [ "${bv_ValidCDPsource}" = "true" ]
+  then
+
+    sv_CDPFilePath="${GLB_sv_ThisScriptTempDirPath}/CDP.txt"
+    rm -f ${sv_CDPFilePath}
+  
+    # list the CDP info to a file
+    tcpdump -nn -v -i en0 -s 1500 -c 1 'ether[20:2] == 0x2000' > ${sv_CDPFilePath} &
+    iv_pid=$!
+
+    # Wait for the CDP file to contain some info
+    iv_DelayCount=0
+    while [ ${iv_DelayCount} -lt 90 ]
+    do
+      if test -s "${sv_CDPFilePath}"
+      then
+        break
+      fi
+  
+      # we don't want to hog the CPU - so lets sleep a while
+      sleep 1
+
+      iv_DelayCount=$((${iv_DelayCount}+1))
+    done
+
+    # If we got CDP info update the Remote access computer info field 4
+    if test -s "${sv_CDPFilePath}"
+    then
+      sv_CDPplatform=$(cat "${sv_CDPFilePath}" | tr -d "\t" | grep -E "^Platform" | sed "s|[^']* ||" | tr -d "'")
+      sv_CDPdeviceid=$(cat "${sv_CDPFilePath}" | tr -d "\t" | grep -E "^Device-ID" | sed "s|[^']* ||" | tr -d "'")
+      sv_CDPaddress=$(cat "${sv_CDPFilePath}" | tr -d "\t" | grep -E "^Address" | sed "s|[^']* ||" | tr -d "'")
+      sv_CDPport=$(cat "${sv_CDPFilePath}" | tr -d "\t" | grep -E "^Port-ID" | sed "s|[^']* ||" | tr -d "'")
+    
+      sv_ComputerInfo4="${sv_CDPplatform}, ${sv_CDPdeviceid} (${sv_CDPaddress}), ${sv_CDPport}"
+    
+      # Update the RemoteDesktop Computer Info Fields #4
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 "${sv_ComputerInfo4}"
+
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Setting ARD Computer Info #4 to '${sv_ComputerInfo4}'"
+
+    else
+      # Clear the RemoteDesktop Computer Info Fields #4
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
+      kill ${iv_pid}
+    
+    fi
+  else
+    # Clear the RemoteDesktop Computer Info Fields #4
+    /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
+  
+  fi
+  ;;
+
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Clear the RemoteDesktop Computer Info Fields #4
+  /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set4 -4 ""
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# Write a value to the local policy vars (root user and normal users have different local policies)
+GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:LastRunEpoch" "${GLB_iv_ThisScriptStartEpoch}"
+    
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

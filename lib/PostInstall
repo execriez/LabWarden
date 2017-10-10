@@ -62,8 +62,12 @@ then
   # Load LaunchDaemon plists
   while read sv_LaunchServiceFileName
   do
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Loading LaunchDaemon file ${sv_LaunchServiceFileName}"
-    launchctl load /Library/LaunchDaemons/${sv_LaunchServiceFileName}
+    sv_LaunchServiceName="$(echo ${sv_LaunchServiceFileName} | sed 's|.plist$||')"
+    if test -z "$(launchctl list | grep -i "${sv_LaunchServiceName}")"
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Loading LaunchDaemon ${sv_LaunchServiceName}"
+      launchctl load /Library/LaunchDaemons/${sv_LaunchServiceFileName}
+    fi
   done < <(ls -1 /Library/LaunchDaemons | grep "${GLB_sv_ProjectSignature}")
 
   sv_UserName=$(stat -f '%Su' /dev/console)
@@ -72,8 +76,12 @@ then
     # Load LaunchAgent plists
     while read sv_LaunchServiceFileName
     do
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Loading LaunchAgent file ${sv_LaunchServiceFileName} for user ${sv_UserName}"
-      sudo -u ${sv_UserName} launchctl load /Library/LaunchAgents/${sv_LaunchServiceFileName}
+      sv_LaunchServiceName="$(echo ${sv_LaunchServiceFileName} | sed 's|.plist$||')"
+      if test -z "$(sudo -u ${sv_UserName} launchctl list | grep -i "${sv_LaunchServiceName}")"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Loading LaunchAgent ${sv_LaunchServiceName} for user ${sv_UserName}"
+        sudo -u ${sv_UserName} launchctl load /Library/LaunchAgents/${sv_LaunchServiceFileName}
+      fi
     done < <(ls -1 /Library/LaunchAgents | grep "${GLB_sv_ProjectSignature}")
   fi
 

@@ -2,18 +2,19 @@
 #
 # Short:    Sys Policy script - Update the LabWarden installation to a later version
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.17
+# Modified: 05-Oct-2017
 #
 # Triggered by the following events:
-#   Sys-NetworkUp    (as root)
+#   Sys-Poll            (as root)
+#   Sys-ManualTrigger   (as root)
 #
 # Called as follows:    
 #   Sys-LabWardenUpdate <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.10"
+sv_CodeVersion="2.0.17"
 
 if [ $# -eq 0 ]
 then
@@ -137,66 +138,75 @@ fi
 
 case ${sv_EventName} in
     
-Sys-NetworkUp|Sys-PolicyInstall)
+Sys-Idle|Sys-ManualTrigger|Sys-PolicyInstall)
 
-  sv_UpdatePackageID="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:PackageID")"
-  sv_UpdateVersionString="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:VersionString")"
-  sv_UpdateURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:URI")"
+  iv_PackageCount="$(GLB_if_GetPlistArraySize "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Package")"
+  for (( iv_PackageIndex=0; iv_PackageIndex<${iv_PackageCount}; iv_PackageIndex++ ))
+  do
+    sv_PackageID="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Package:${iv_PackageIndex}:ID")"
+    sv_PackageVersionString="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Package:${iv_PackageIndex}:VersionString")"
+    sv_PackageURI="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:Package:${iv_PackageIndex}:URI")"
   
-  # Get the installed version string
-  sv_InstalledVersionString="$(pkgutil --pkg-info ${sv_UpdatePackageID} | grep -i "version:" | cut -d" " -f2)"
-  if test -z "${sv_InstalledVersionString}"
-  then
-    sv_InstalledVersionString="0"
-  fi
-
-  # Get the maximum length version string
-  iv_UpdateVersionLen=$(echo ${sv_UpdateVersionString} | tr "." "\n" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
-  iv_InstalledVersionLen=$(echo ${sv_InstalledVersionString} | tr "." "\n" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
-  if [ ${iv_UpdateVersionLen} -gt ${iv_InstalledVersionLen} ]
-  then
-    iv_VersionLen=${iv_UpdateVersionLen}
-  else
-    iv_VersionLen=${iv_InstalledVersionLen}
-  fi
-
-  # Extend version strings to the maximum
-  sv_UpdateVersionString=$(echo ${sv_UpdateVersionString}"$(jot -b "." ${iv_VersionLen} | tr "\n" "0")" | cut -d"." -f1-${iv_VersionLen})
-  sv_InstalledVersionString=$(echo ${sv_InstalledVersionString}"$(jot -b "." ${iv_VersionLen} | tr "\n" "0")" | cut -d"." -f1-${iv_VersionLen})
-
-  bv_UpdateHasLaterVersion="false"
-
-  for (( iv_Count = 1; iv_Count <= iv_VersionLen; iv_Count++ )); do
-    iv_UpdateDigit=$(echo ${sv_UpdateVersionString} | cut -d"." -f${iv_Count})
-    iv_InstalledDigit=$(echo ${sv_InstalledVersionString} | cut -d"." -f${iv_Count})
-    if [ ${iv_UpdateDigit} -lt ${iv_InstalledDigit} ]
+    # Get the installed version string
+    sv_InstalledVersionString="$(pkgutil --pkg-info ${sv_PackageID} | grep -i "version:" | cut -d" " -f2)"
+    if test -z "${sv_InstalledVersionString}"
     then
-      break
+      sv_InstalledVersionString="0"
     fi
-    if [ ${iv_UpdateDigit} -gt ${iv_InstalledDigit} ]
-    then
-      bv_UpdateHasLaterVersion="true"
-      break
-    fi
-  done
 
-  if [ "${bv_UpdateHasLaterVersion}" = "false" ]
-  then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${sv_UpdatePackageID} is up-to-date; nothing to do"
-    
-  else
-    sv_UpdatePackageFilePath=$(GLB_sf_ResolveFileURItoPath "${sv_UpdateURI}")
-    if test -z "${sv_UpdatePackageFilePath}"
+    # Get the maximum length version string
+    iv_PackageVersionLen=$(echo ${sv_PackageVersionString} | tr "." "\n" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
+    iv_InstalledVersionLen=$(echo ${sv_InstalledVersionString} | tr "." "\n" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
+    if [ ${iv_PackageVersionLen} -gt ${iv_InstalledVersionLen} ]
     then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Possible config error - UpdatePackageURI '${sv_UpdateURI}' is not resolvable."
-      
+      iv_VersionLen=${iv_PackageVersionLen}
     else
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing '${sv_UpdateURI}'."
-      installer 2>&1 -pkg "${sv_UpdatePackageFilePath}" -target / >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+      iv_VersionLen=${iv_InstalledVersionLen}
+    fi
+
+    # Extend version strings to the maximum
+    sv_PackageVersionString=$(echo ${sv_PackageVersionString}"$(jot -b "." ${iv_VersionLen} | tr "\n" "0")" | cut -d"." -f1-${iv_VersionLen})
+    sv_InstalledVersionString=$(echo ${sv_InstalledVersionString}"$(jot -b "." ${iv_VersionLen} | tr "\n" "0")" | cut -d"." -f1-${iv_VersionLen})
+
+    bv_UpdateHasLaterVersion="false"
+
+    for (( iv_Count = 1; iv_Count <= iv_VersionLen; iv_Count++ )); do
+      iv_UpdateDigit=$(echo ${sv_PackageVersionString} | cut -d"." -f${iv_Count})
+      iv_InstalledDigit=$(echo ${sv_InstalledVersionString} | cut -d"." -f${iv_Count})
+      if [ ${iv_UpdateDigit} -lt ${iv_InstalledDigit} ]
+      then
+        break
+      fi
+      if [ ${iv_UpdateDigit} -gt ${iv_InstalledDigit} ]
+      then
+        bv_UpdateHasLaterVersion="true"
+        break
+      fi
+    done
+
+    if [ "${bv_UpdateHasLaterVersion}" = "false" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${sv_PackageID} is up-to-date; nothing to do"
     
+    else
+      sv_UpdatePackageFilePath=$(GLB_sf_ResolveFileURItoPath "${sv_PackageURI}")
+      if test -z "${sv_UpdatePackageFilePath}"
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelErr} "Possible config error - UpdatePackageURI '${sv_PackageURI}' is not resolvable."
+      
+      else
+        if [ "$(stat -f '%Su' /dev/console)" = "root" ] || [ -z "$(installer -pkginfo -verbose -package "${sv_UpdatePackageFilePath}" | grep "Will Restart" | grep -E "YES$")" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Installing '${sv_PackageURI}'."
+          installer 2>&1 -pkg "${sv_UpdatePackageFilePath}" -target / >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+        else
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "User is logged in, delaying Install of '${sv_PackageURI}'."
+        fi
+      fi
+  
     fi
   
-  fi
+  done
   ;;
   
 Sys-PolicyUninstall)
@@ -215,7 +225,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

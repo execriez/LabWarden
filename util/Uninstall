@@ -113,9 +113,11 @@ fi
   
 if test -z "${sv_RootDirPath}"
 then
-  pkgscripts 2>/dev/null --forget "${GLB_sv_ProjectSignature}"
+  pkgutil 2>/dev/null --forget "${GLB_sv_ProjectSignature}"
+  
 else
-  pkgscripts 2>/dev/null --forget "${GLB_sv_ProjectSignature}" --volume "${sv_RootDirPath}"
+  pkgutil 2>/dev/null --forget "${GLB_sv_ProjectSignature}" --volume "${sv_RootDirPath}"
+  
 fi
 
 # Remove temporary files

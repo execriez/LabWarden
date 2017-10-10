@@ -348,8 +348,9 @@ Sys-PolicyUninstall)
   # Get the SSID
   sv_SSIDSTR="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SSIDSTR")"
 
-  # Remove any mobileconfig payload
-  profiles >/dev/null 2>&1 -R -p "${sv_ConfigIdentifier}"
+  # Remove any mobileconfig payload (disabled)
+  sv_ConfigIdentifier="${sv_SSIDSTR}-8021XWiFi"
+#  profiles >/dev/null 2>&1 -R -p "${sv_ConfigIdentifier}"
   ;;
 
 Sys-PolicyInstall)
@@ -368,7 +369,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

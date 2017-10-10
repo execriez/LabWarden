@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Remove unknown wireless SSIDs and passwords
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 02-Sep-2017
+# Version:  2.0.17
+# Modified: 28-Sep-2017
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.17"
 
 if [ $# -eq 0 ]
 then
@@ -136,13 +136,13 @@ Sys-Boot|Sys-PolicyInstall)
       GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Removing SSID '${sv_SSIDName}' and password from preferred networks on ${GLB_sv_WirelessInterfaceDevice}"
 
       # The SSID is not in the list, so we need to remove it  
-      networksetup -removepreferredwirelessnetwork en1 "${sv_SSIDName}"
+      networksetup -removepreferredwirelessnetwork "${GLB_sv_WirelessInterfaceDevice}" "${sv_SSIDName}"
 
       # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
       security delete-generic-password -D "AirPort network password" -l "${sv_SSIDName}" /Library/Keychains/System.keychain
     fi
       
-  done < <(networksetup -listpreferredwirelessnetworks ${GLB_sv_WirelessInterfaceDevice} | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks")
+  done < <(networksetup -listpreferredwirelessnetworks "${GLB_sv_WirelessInterfaceDevice}" | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks")
   ;;
 
 Sys-PolicyUninstall)
@@ -161,7 +161,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.17
+# Modified: 05-Oct-2017
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -53,6 +53,38 @@ GLB_sv_LoggedInUserName="${2}"
 sv_OptionalParam="${3}"
 
 # ---
+# The event history is the sequence of events that led to this event
+# Usually the history is blank, unless a policy deliberately triggers an event
+
+sv_EventHistory=""
+if test -n "$(echo ${sv_EventName} | grep ':')"
+then
+  # If there is a history of events, separate event name from event history
+  sv_EventHistory=$(echo "${sv_EventName}" | sed "s|:[^:]*$||")
+  sv_EventName=$(echo ${sv_EventHistory} | sed "s|.*:||")
+fi
+
+# ---
+# Check if a target policy has been passed in the event name
+# (i.e. /usr/local/LabWarden/lib/Trigger "Sys-AddPrinter.Sys-Poll")
+
+sv_TargetPolicyName=""
+if test -n "$(echo ${sv_EventName} | grep -E '\.')"
+then
+  # If there is a target policy, separate event name from target policy
+  sv_TargetPolicyName=$(echo "${sv_EventName}" | sed "s|\..*$||")
+  sv_EventName=$(echo ${sv_EventName} | sed "s|.*\.||")
+fi
+
+# ---
+
+# Check event history and quit if the event has already been handled - prevents trigger loops
+if test -n "$(echo ${sv_EventHistory} | tr ":" "\n" | sed "s|.*\.||" | grep -E "^"${sv_EventName}"$")"
+then
+  exit 0
+fi
+      
+# ---
 
 # Load the library, only if it is not already loaded
 if test -z "${GLB_sv_ProjectSignature}"
@@ -62,15 +94,41 @@ fi
 
 # ---
 
-sv_EventHistory=""
+# List policies in config that are triggered by the event
+GLB_nf_TriggeredList() # <ConfigPlist> <EventName>
+{
+  local sv_ConfigPlist
+  local sv_EventName
+  local iv_DoesTriggerCount
+  local iv_DoesTriggerIndex
+  local sv_ConfigEntryName
+    
+  sv_ConfigPlist="${1}"
+  sv_EventName="${2}"
+  iv_DoesTriggerCount="$(GLB_if_GetPlistArraySize "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger")"
+  for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
+  do
+    sv_ConfigEntryName=$(GLB_sf_GetPlistProperty "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+    echo ${sv_ConfigEntryName}
+  done
+}
+  
+# ---
 
-GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event '${sv_EventName}' triggered"
+if test -z "${sv_TargetPolicyName}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event '${sv_EventName}' triggered"
+else
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Targeted event '${sv_TargetPolicyName}.${sv_EventName}' triggered"
+fi
 
 # ---
 
+# Do a bit of housekeeping during certain events
+
 case "${sv_EventName}" in
 Sys-Boot)
-  # Make sure the login hooks are set up
+  # Make sure the login hooks are set up (but only if required)
   sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
   sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
 
@@ -125,7 +183,7 @@ Sys-ActiveDirectoryUp)
   fi
   ;;
     
-Sys-ConsoleUserLoggedIn)
+Sys-ConsoleUserLoggedIn|Usr-AtDesktop)
   if test -n "${GLB_sv_LoggedInUserName}"
   then
     # Update/apply user policies (but if already cached, does very little)
@@ -133,15 +191,7 @@ Sys-ConsoleUserLoggedIn)
   fi
   ;;
   
-Usr-AtDesktop)
-  if test -n "${GLB_sv_LoggedInUserName}"
-  then
-    # Update/apply user policies (but if already cached, does very little)
-    /usr/local/${GLB_sv_ProjectName}/util/gpupdate "-quick" "${GLB_sv_LoggedInUserName}"
-  fi
-  ;;
-
-Sys-LoginWindowPoll|Sys-Poll)
+Sys-Poll)
   if [ "${GLB_sv_ThisUserName}" = "root" ]
   then
     # Update/apply workstation policies (as root) (if deemed to old)
@@ -159,8 +209,137 @@ Usr-Poll)
 
 esac
 
+# ---
+
 # Check policies against event
-GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_EventName}" "${sv_OptionalParam}"
+
+bv_EventHasPolicies="false"
+  
+if test -n "${GLB_sv_LoggedInUserName}"
+then
+  # Run through the user policies
+  sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Users/${GLB_sv_LoggedInUserName}"
+  while read sv_ConfigEntryName
+  do
+    if test -n "${sv_ConfigEntryName}"
+    then
+      sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_ConfigEntryName}.plist"
+      sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_ConfigEntryName}")
+      if test -n "${sv_PolicyFilePath}"
+      then
+        # Run script in background
+        if test -z "${sv_TargetPolicyName}"
+        then
+          # Event isn't targeted
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
+        "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
+          bv_EventHasPolicies="true"
+        else
+          # Event is targeted
+          sv_PolicyName=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Name")
+          if [ "${sv_PolicyName}" = "${sv_TargetPolicyName}" ]
+          then
+            GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
+        "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
+            bv_EventHasPolicies="true"
+          fi
+        fi
+      fi
+    fi
+  done < <(GLB_nf_TriggeredList "${sv_ConfigDirPath}/${GLB_sv_ProjectName}-Events.plist" "${sv_EventName}" | sort -u)
+fi
+  
+# Run through the workstation policies
+sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/Computers/${GLB_sv_Hostname}"
+while read sv_ConfigEntryName
+do
+  if test -n "${sv_ConfigEntryName}"
+  then
+    sv_ConfigFilePath="${sv_ConfigDirPath}/${sv_ConfigEntryName}.plist"
+    sv_PolicyFilePath=$(GLB_sf_PolicyFilePath "${sv_ConfigFilePath}" "${sv_ConfigEntryName}")
+    if test -n "${sv_PolicyFilePath}"
+    then
+      # Run script in background
+      if test -z "${sv_TargetPolicyName}"
+      then
+        # Event isn't targeted
+        GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
+        "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
+        bv_EventHasPolicies="true"
+      else
+        # Event is targeted
+        sv_PolicyName=$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Name")
+        if [ "${sv_PolicyName}" = "${sv_TargetPolicyName}" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing: '${sv_PolicyFilePath}' '${sv_ConfigFilePath}' '${sv_ConfigEntryName}' '${sv_EventHistory}:${sv_EventName}' '${GLB_sv_LoggedInUserName}' '${sv_OptionalParam}'"
+          "${sv_PolicyFilePath}" "${sv_ConfigFilePath}" "${sv_ConfigEntryName}" "${sv_EventHistory}:${sv_EventName}" "${GLB_sv_LoggedInUserName}" "${sv_OptionalParam}" &
+          bv_EventHasPolicies="true"
+        fi
+      fi
+    fi
+  fi
+done < <(GLB_nf_TriggeredList "${sv_ConfigDirPath}/${GLB_sv_ProjectName}-Events.plist" "${sv_EventName}" | sort -u)
+  
+if [ "${bv_EventHasPolicies}" = "false" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event ignored, '${sv_EventName}' (no associated policy)"
+fi
+
+# We dont want to continue until all sub tasks are finished
+while [ -n "$(jobs -r)" ]
+do
+  # We don't want to hog the CPU - so lets sleep a while
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Waiting for policies triggered by '${sv_EventHistory}:${sv_EventName}' to finish"
+  sleep 1
+done
+
+# If we are root we will always be root
+while [ "${GLB_sv_ThisUserName}" = "root" ]
+do
+  # Create a list of 'Trigger' process PIDs
+  ps -U root -xo "pid, user, command" | grep "${GLB_sv_ThisScriptFilePath}" | grep -v "grep" | sed "s|^[ ]*||;s| .*||" | sort -u > "${GLB_sv_ThisScriptTempDirPath}/PID.txt"
+
+  # Get the PID of the 'Trigger' process with the highest PID
+  iv_HighestTriggerPID=$(cat "${GLB_sv_ThisScriptTempDirPath}/PID.txt" | tail -n1)
+  if [ ${GLB_iv_ThisScriptPID} != ${iv_HighestTriggerPID} ]
+  then
+    # All other 'Trigger' processes just quit
+    break
+  fi
+
+  # The 'Trigger' process with the highest PID processes all Shutdown and Restart requests
+  iv_TriggerCount=$(cat "${GLB_sv_ThisScriptTempDirPath}/PID.txt" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
+  if [ ${iv_TriggerCount} -eq 1 ]
+  then
+    # We only Shutdown or Restart when this is the only 'Trigger' process running
+
+    if [ "$(GLB_nf_TestNamedFlag Restart)" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Restarting workstation"
+      shutdown -r now
+    fi
+  
+    if [ "$(GLB_nf_TestNamedFlag Shutdown)" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Shutting down workstation"
+      shutdown -h now
+    fi
+    
+    break
+  fi
+
+done
+
+# ---
+
+if test -z "${sv_TargetPolicyName}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Event '${sv_EventName}' complete"
+else
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Targeted event '${sv_TargetPolicyName}.${sv_EventName}' complete"
+fi
+
+# ---
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

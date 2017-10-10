@@ -5,32 +5,38 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>43706D60-1E28-4908-B6D3-8AE4DD885BDD</key>
+			<key>9C3BB578-01F7-4E73-A19C-595064D9DA50</key>
 			<dict>
 				<key>Config</key>
 				<dict>
-					<key>PackageID</key>
-					<string>com.github.execriez.labwarden</string>
-					<key>URI</key>
-					<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
-					<key>VersionString</key>
-					<string>2.0.10</string>
+					<key>Package</key>
+					<array>
+						<dict>
+							<key>ID</key>
+							<string>com.github.execriez.labwarden</string>
+							<key>URI</key>
+							<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
+							<key>VersionString</key>
+							<string>2.0.17</string>
+						</dict>
+					</array>
 				</dict>
 				<key>Name</key>
 				<string>Sys-UpdatePackage</string>
 				<key>TriggeredBy</key>
 				<array>
-					<string>Sys-NetworkUp</string>
+					<string>Sys-Poll</string>
+					<string>Sys-ManualTrigger</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>43706D60-1E28-4908-B6D3-8AE4DD885BDD</string>
+			<string>9C3BB578-01F7-4E73-A19C-595064D9DA50</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>43706D60-1E28-4908-B6D3-8AE4DD885BDD</string>
+			<string>9C3BB578-01F7-4E73-A19C-595064D9DA50</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -40,7 +46,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-UpdatePackage</string>
 	<key>PayloadIdentifier</key>
-	<string>5F5CDF21-8DAB-4E7E-923B-04821203AB4D</string>
+	<string>03964763-B7F8-453C-9D41-DFB05278A5ED</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -50,7 +56,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>5F5CDF21-8DAB-4E7E-923B-04821203AB4D</string>
+	<string>03964763-B7F8-453C-9D41-DFB05278A5ED</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

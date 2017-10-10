@@ -2,14 +2,14 @@
 #
 # Short:    Perform a manual update
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.17
+# Modified: 07-Oct-2017
 #
 # Call from a shell as follows:    
 #   /usr/local/LabWarden/util/Update
 
 # ---
 
-# -- Trigger the Sys-ManualUpdate event --
+# -- Target the update policy with a Sys-ManualTrigger event --
 
-/usr/local/LabWarden/lib/Trigger "Sys-ManualUpdate" "$(whoami)"
+/usr/local/LabWarden/lib/Trigger "Sys-Update.Sys-ManualTrigger" "$(whoami)"

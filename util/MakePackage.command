@@ -186,10 +186,15 @@ EOF
   pkgbuild --component-plist "${GLB_sv_ThisScriptTempDirPath}"/component.plist --root ${sv_PkgRootDirPath} --identifier "${sv_PkgID}" --version "${GLB_sv_ProjectVersion}" --ownership preserve --install-location / "${GLB_sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg --scripts ${sv_PkgScriptDirPath}
 
   # -- Synthesise a temporary distribution.plist file --
-  productbuild --synthesize --package "${GLB_sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg "${GLB_sv_ThisScriptTempDirPath}"/synthdist.plist
+  productbuild --synthesize --package "${GLB_sv_ThisScriptTempDirPath}"/${sv_PkgName}.pkg "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist
 
   # -- add options for title, background, licence & readme --
-  awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${sv_PkgTitle}"'</title>\n<background file=\"background.jpg\" mime-type=\"image/jpg\" />\n<welcome file=\"Welcome.txt\"/>\n<license file=\"License.txt\"/>\n<readme file=\"ReadMe.txt\"/>"}; {print}' "${GLB_sv_ThisScriptTempDirPath}"/synthdist.plist > "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist
+  awk '/<\/installer-gui-script>/ && c == 0 {c = 1; print "<title>'"${sv_PkgTitle}"'</title>\n<background file=\"background.jpg\" mime-type=\"image/jpg\" />\n<welcome file=\"Welcome.txt\"/>\n<license file=\"License.txt\"/>\n<readme file=\"ReadMe.txt\"/>"}; {print}' "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist > "${GLB_sv_ThisScriptTempDirPath}"/distribution1.plist
+  cp -pf "${GLB_sv_ThisScriptTempDirPath}"/distribution1.plist "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist
+  
+  # -- add options for Title and Description to the pkginfo
+  cat "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist | sed 's|<choice id="'${sv_PkgID}'" visible="false">|<choice id="'${sv_PkgID}'" visible="false" title="'${sv_PkgName}'-'${GLB_sv_ProjectVersion}'" description="'${sv_PkgTitle}'">|' > "${GLB_sv_ThisScriptTempDirPath}"/distribution1.plist
+  cp -pf "${GLB_sv_ThisScriptTempDirPath}"/distribution1.plist "${GLB_sv_ThisScriptTempDirPath}"/distribution.plist
 
   # -- build the final package --
   cd "${GLB_sv_ThisScriptTempDirPath}"

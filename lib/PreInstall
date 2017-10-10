@@ -44,22 +44,72 @@ fi
 
 # ---
 
+if_VersionStringToNumber()
+{
+  local sv_VersionAsString
+  local iv_VersionAsNumber
+  local iv_Num
+  
+  sv_VersionAsString="${1}"
+  
+  iv_VersionAsNumber=0
+  for iv_Num in $(echo ${sv_VersionAsString}".0.0.0.0" | cut -d"." -f1-4 | tr "." "\n")
+  do
+    iv_VersionAsNumber=$((${iv_VersionAsNumber}*256+${iv_Num}))
+  done
+  
+  echo ${iv_VersionAsNumber}
+}
+
+# ---
+
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Performing pre-install checks"
 
 if test -z "${sv_RootDirPath}"
 then
-
-  if test -n "$(launchctl list | grep -i "${GLB_sv_ProjectSignature}")"
-  then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ProjectName} is already installed and running."
-#    exit 92
-  fi
+  bv_DoUninstall="false"
   
-  "${GLB_sv_ProjectDirPath}/util/UnInstall"
-  iv_Error="$?"
-  if [ "${iv_Error}" != "0" ]
+  sv_InstalledVersion="$(pkgutil --pkg-info ${GLB_sv_ProjectSignature} | grep -i "version:" | cut -d" " -f2)"
+  if test -z "${sv_InstalledVersion}"
   then
-    exit ${iv_Error}
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Installing ${GLB_sv_ProjectName} version ${GLB_sv_ProjectVersion}"
+
+  else
+    iv_ProjectVersionAsNumber=$(if_VersionStringToNumber "${GLB_sv_ProjectVersion}")
+    iv_InstalledVersionAsNumber=$(if_VersionStringToNumber "${sv_InstalledVersion}")
+    if [ ${iv_ProjectVersionAsNumber} -eq ${iv_InstalledVersionAsNumber} ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Re-installing ${GLB_sv_ProjectName} version ${GLB_sv_ProjectVersion}"
+      
+    else
+      if [ ${iv_ProjectVersionAsNumber} -lt ${iv_InstalledVersionAsNumber} ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Downgrading ${GLB_sv_ProjectName} from version ${sv_InstalledVersion} to version ${GLB_sv_ProjectVersion} (requires an uninstall)."
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Downgrade requires an uninstall."
+        bv_DoUninstall="true"
+
+      else
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Updating ${GLB_sv_ProjectName} from version ${sv_InstalledVersion} to version ${GLB_sv_ProjectVersion}."
+        if [ "$(echo ${GLB_sv_ProjectVersion}.0.0.0 | cut -d'.' -f1-2)" != "$(echo ${sv_InstalledVersion}.0.0.0 | cut -d'.' -f1-2)" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Non-patch (major or minor) update requires an uninstall."
+          bv_DoUninstall="true"
+        fi
+      
+      fi
+    
+    fi
+
+  fi
+
+  if [ "${bv_DoUninstall}" = "true" ]
+  then  
+    "${GLB_sv_ProjectDirPath}/util/UnInstall"
+    iv_Error="$?"
+    if [ "${iv_Error}" != "0" ]
+    then
+      exit ${iv_Error}
+    fi
   fi
 
 fi

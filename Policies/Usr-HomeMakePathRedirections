@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  2.0.15
+# Version:  2.0.17
 # Modified: 07-Sep-2017
 #
 # This policy creates symbolic links at a path within a network users home folder that 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.17"
 
 if [ $# -eq 0 ]
 then
@@ -205,7 +205,7 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
     fi
 
     # Backup location for existing files/folders that might be replaced by a link
-    sv_BackupDirPath="${sv_TargetHomeDirPath}Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
+    sv_BackupDirPath="${sv_TargetHomeDirPath}/Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
 
     # Read entries from file
     while read sv_ReqdLinkEntry
@@ -598,7 +598,7 @@ esac
 GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
 
 # Trigger an event
-#GLB_nf_TriggerEvent "${sv_EventHistory}" "${sv_PolicyName}" "${sv_OptionalParam}"
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
 
 # Remove temporary files
 rm -fPR "${GLB_sv_ThisScriptTempDirPath}"

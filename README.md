@@ -404,6 +404,7 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-AddEntriesToHostsFile.mobileconfig               - Adds entries to the /etc/hosts file.
 	LW-Sys-AddPrinter-MarketingLaser2020.mobileconfig       - Example of how to Add a SMB printer
 	LW-Sys-AddPrinter-MarketingLaser2020direct.mobileconfig - Example of how to Add a network printer
+	LW-Sys-CDPInfo.mobileconfig                             - Sets the Apple Remote Desktop 'Computer info #4' field with switch and port information.
 	LW-Sys-Defaults-Debug.mobileconfig                      - Over-rides inbuilt hard-coded defaults to enable debug messages in the log.
 	LW-Sys-Defaults.mobileconfig                            - Over-rides inbuilt hard-coded defaults.
 	LW-Sys-DeleteFiles-FlashPlayer.mobileconfig             - Deletes files from the system volume - in this example, Adobe Flash Player. It will reboot after the files have been deleted.
@@ -413,7 +414,8 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-NetworkProxy-AutoProxy.mobileconfig              - Sets system Network Proxy options to auto.
 	LW-Sys-PolicyBanner.mobileconfig                        - Sets a policy banner which is displayed at the Login Window.
 	LW-Sys-RemoteManagement.mobileconfig                    - Sets up remote access for local users, network users and network groups.
-	LW-Sys-RestartIfNetMount.mobileconfig                   - Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted.
+	LW-Sys-RestartAfterLongSleep-90.mobileconfig            - Will reboot if the workstation is woken after a long sleep (90 mins) 	LW-Sys-RestartIfNetMount.mobileconfig                   - Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted.
+	LW-Sys-ShutdownWhenLidShut.mobileconfig                 - Shuts down a laptop if the lid is closed for more that 15 seconds
 	LW-Sys-SleepSettings-10mins.mobileconfig                - Sets the screen to sleep after 10 mins.
 	LW-Sys-SleepSettings-never.mobileconfig                 - Sets the screen to never sleep.
 	LW-Sys-TimeServer-Apple.mobileconfig                    - Sets the system time (ntp) server
@@ -423,6 +425,7 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-WirelessForgetSSID.mobileconfig                  - Forgets a list of wireless SSIDs and associated passwords.
 	LW-Sys-WirelessSetState-off.mobileconfig                - Turns wireless off.
 	LW-Sys-WirelessSetState-on.mobileconfig                 - Turns wireless on and allows non admins to switch networks.
+	LW-Sys-WirelessSetState-static.mobileconfig             - Turns wireless on and only allows admins to switch networks.
 	LW-Sys-WorkstationInfo.mobileconfig                     - Updates the loginwindow text and RemoteDesktop Info Fields with workstation info.
 	LW-Usr-CheckQuotaOnNetHome.mobileconfig                 - Checks if a users network drive is getting full.
 	LW-Usr-CreateFolder.mobileconfig                        - Creates folders in the users home folder at login.
@@ -485,6 +488,18 @@ Passed to a policy as an event when the policy is first installed
 
 ### Sys-PolicyUninstall
 Passed to a policy as an event when the policy is uninstalled
+
+### Sys-IdleSleep
+Trigerred when the system is about to sleep due to idleness
+
+### Sys-WillSleep
+Trigerred when the system has started to sleep
+
+### Sys-WillWake
+Trigerred when the system has started the wake up process
+
+### Sys-HasWoken
+Trigerred when the system has finished waking up
 
 ## User Events (user policy triggers)
 
@@ -1400,6 +1415,34 @@ If **alldomains** is set to false, '/Search' and '/Search/Contacts' default are 
 The example policy config should be configured to your own needs.
 
 
+### Sys-CDPinfo
+
+This policy checks the network for Cisco Discovery Protocol packets and sets the Apple Remote Desktop 'Computer info #4' field with switchport information. 
+
+This allows you to see which switch and port a Mac is plugged in to directly from ARD. Only tested on Cisco switches.
+
+The config contains an array called CDPsource that contains the device and hardware names of valid CDP sources. Only these sources will be checked for CDP packets.
+
+	<key>Config</key>
+	<dict>
+		<key>CDPsource</key>
+		<array>
+			<dict>
+				<key>Device</key>
+				<string>en0</string>
+				<key>Hardware</key>
+				<string>Ethernet</string>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Sys-CDPInfo</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-NetworkUp</string>
+	</array>
+
+
 ### Sys-Defaults
 
 This policy over-rides inbuilt hard-coded defaults. These are the current defaults that can be changed:
@@ -1793,6 +1836,23 @@ If you have some directory users who need to remotely view and control other peo
 
 They will then be able to connect to the remote screens of affected workstations via the Finder menu "connect to Server..." with the address "vnc://someworkstation.local".
 
+### Sys-RestartAfterLongSleep
+This policy reboots if the workstation is woken after a long sleep. It is called as root and triggered by the **Sys-WillSleep** and **Sys-WillWake** events.
+
+It has one configurable key, **LongSleepMins** that declares the longest time in minutes that sleep is allowed before a wake from sleep forces a restart.
+
+	<key>Config</key>
+	<dict>
+		<key>LongSleepMins</key>
+		<integer>90</integer>
+	</dict>
+	<key>Name</key>
+	<string>Sys-RestartAfterLongSleep</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-WillSleep</string>
+		<string>Sys-WillWake</string>
+	</array>
 
 ### Sys-RestartIfNetMounts
 This policy reboots if the workstation is at the LoginWindow and the system detects that there is a network drive mounted. This could indicate that a user has not been logged out properly - or that a screen is locked and someone has clicked "Switch User". It is called as root and triggered by the **Sys-LoginWindow** event.
@@ -1805,6 +1865,24 @@ The policy has no configurable options.
 	<array>
 		<string>Sys-LoginWindow</string>
 	</array>
+
+### Sys-ShutdownWhenLidShut
+
+This policy shuts down a laptop if the lid is closed for more that a pre-defined length of time (specified in the config).
+
+	<key>Config</key>
+	<dict>
+		<key>ShutdownDelaySecs</key>
+		<integer>15</integer>
+	</dict>
+	<key>Name</key>
+	<string>Sys-ShutdownWhenLidShut</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Sys-WillSleep</string>
+	</array>
+
+The example policy config should be configured to your own needs.
 
 ### Sys-SleepSettings
 This policy system sleep options. It is called as root and triggered by the **Sys-LoginWindow** and **Sys-ConsoleUserLoggedIn** events.
@@ -2571,8 +2649,39 @@ LabWarden makes use of the following tools:
 * [mysides](https://github.com/mosen/mysides "mysides")
 * [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden")
 * [rsync](https://rsync.samba.org "rsync")
+* [SleepWarden](https://github.com/execriez/SleepWarden/ "SleepWarden")
 
 ## History
+
+2.0.17 - 10-Oct-2017
+
+* Added policy 'Sys-CDPinfo' and associated config 'LW-Sys-CDPInfo.mobileconfig'. This policy checks the network for Cisco Discovery Protocol packets and sets the Apple Remote Desktop 'Computer info #4' field with switchport information. This allows you to see which switch and port a Mac is plugged in to directly from ARD. Only tested on Cisco switches.
+
+* Added the 'Sys-IdleSleep', 'Sys-WillSleep', 'Sys-WillWake' and 'Sys-HasWoken' events. This makes use of the 'SleepWarden' tool (see references).
+
+* Added policy 'Sys-ShutdownWhenLidShut' and associated config 'LW-Sys-ShutdownWhenLidShut.mobileconfig'. This policy shuts down a laptop if the lid is closed for more that a pre-defined length of time (specified in the config).
+
+* Added policy 'Sys-RestartAfterLongSleep' that will force a reboot if the workstation is woken after a long sleep. Added example config 'Sys-RestartAfterLongSleep-90.mobileconfig'.
+
+* Added example config 'LW-Sys-WirelessSetState-static.mobileconfig' that turns wireless on and only allows admins to switch networks.
+
+* Fixed a bug in policy 'Usr-HomeMakePathRedirections' that sometimes did not create redirection links to a users network folders. This would happen if a non-empty local folder existed with the same name as the required link. It should have backed up the local folder and then created the link. Instead it just failed. Introduced in 2.0.15
+
+* Fixed a bug in policies Sys-WirelessForgetSSID and Sys-WiFiRemoveUnknownSSIDs that assumed the wireless device was always en1. Thought I'd fixed this in 2.0.15
+
+* Fixed a bug in the uninstaller that did not forget the package receipt.
+
+* Fixed a bug in policy 'Sys-InstallPackageFromFolder' that did not set the policy global prefs correctly. This policy is now triggered by the 'Sys-Idle' event rather than 'Sys-LoginWindowIdle'. 
+
+* Altered 'Sys-UpdatePackage' config to require an array of packages to update. This policy is now triggered by the 'Sys-Idle' event rather than 'Sys-NetworkUp'.
+
+* The installer now doesn't always uninstall first - unless the major or minor version changes. This allows updates to happen in the background without much disruption to LabWarden services. LabWarden version numbers use the following syntax MAJOR.MINOR.PATCH
+
+* The 'Trigger' script is tidied up a bit and now allows you to target policies with events, which is useful for debugging - i.e. /usr/local/LabWarden/lib/Trigger "Sys-AddPrinter.Sys-Poll"
+
+* The '/usr/local/LabWarden/util/Update' script now uses a targeted 'Sys-Update.Sys-ManualTrigger' event instead of a general 'Sys-ManualUpdate' event. 
+
+* Restart and Shutdown commands are now delayed until all triggers have completed. Previously it was possible that a flagged shutdown or restart might happen in the middle of a triggered policy.
 
 2.0.16 - 26-Sep-2017
 
