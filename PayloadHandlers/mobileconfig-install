@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - install a .mobileconfig payload
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-install <somefile.mobileconfig> [user]
@@ -30,7 +30,7 @@ fi
 
 if ! test -e "${sv_PayloadFilePath}"
 then
-  GLB_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
+  GLB_nf_QuickExit "File not found - ${sv_PayloadFilePath}" ${GLB_iv_MsgLevelWarn}
 fi
 
 # ---

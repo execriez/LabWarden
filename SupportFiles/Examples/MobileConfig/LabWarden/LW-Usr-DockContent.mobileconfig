@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>CB49315B-2890-4395-9F1D-2300BE76C1EF</key>
+			<key>008CB7C0-A402-4B4B-9838-8A93440E5C33</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -15,13 +15,13 @@
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR</string>
+							<string>file://%HOMEPATH%</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Downloads</string>
+							<string>file://%HOMEPATH%/Downloads</string>
 						</dict>
 					</array>
 					<key>Remove</key>
@@ -88,11 +88,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>CB49315B-2890-4395-9F1D-2300BE76C1EF</string>
+			<string>008CB7C0-A402-4B4B-9838-8A93440E5C33</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>CB49315B-2890-4395-9F1D-2300BE76C1EF</string>
+			<string>008CB7C0-A402-4B4B-9838-8A93440E5C33</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -102,7 +102,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Usr-DockContent</string>
 	<key>PayloadIdentifier</key>
-	<string>BB471A54-C8C2-4705-87E3-C17FFB2F888A</string>
+	<string>77024898-245A-4C9D-A979-6B0B81757639</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -112,7 +112,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>BB471A54-C8C2-4705-87E3-C17FFB2F888A</string>
+	<string>77024898-245A-4C9D-A979-6B0B81757639</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

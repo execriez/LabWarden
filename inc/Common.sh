@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 26-Jul-2017
+# Version:  2.0.18
+# Modified: 18-Oct-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Common.sh
@@ -252,7 +252,10 @@ then
     fi
   }
   
-  GLB_bf_GrabNamedLock() # ; Flag MaxSecs ; Flag can be Restart,Shutdown,ReloadFinder,ReloadDock Secs is max number of secs to wait for lock
+  GLB_bf_GrabNamedLock() # ; Flag MaxSecs ; 
+  # Flag can be anything - LabWarden root user uses Restart, Shutdown, gpupdate 
+  # Secs is the max number of secs to wait for lock
+  # Returns "true" or "false"
   {
     local sv_Flag
     local sv_MaxSecs
@@ -269,7 +272,8 @@ then
       sv_MaxSecs=10
     fi
       
-    sv_LockDirPath="${GLB_sv_TempRoot}/Locks"
+    sv_LockDirPath="${GLB_sv_ThisUserTempDirPath}/Locks"
+    mkdir -p "${sv_LockDirPath}"
  
     bv_Result="false"
     while [ "${bv_Result}" = "false" ]
@@ -281,7 +285,7 @@ then
       sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
       if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Grabbed lock '${sv_Flag}'"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Grabbed lock '${sv_Flag}'"
         bv_Result="true"
         break
       fi
@@ -293,14 +297,14 @@ then
         break
       fi 
            
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Waiting for lock '${sv_Flag}'"
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Waiting for lock '${sv_Flag}'"
       sleep 1
     done
     
     echo "${bv_Result}"
   }  
 
-  GLB_nf_ReleaseNamedLock() # ; Flag ; Flag can be Restart,Shutdown,ReloadFinder,ReloadDock Secs is max number of secs to wait for lock
+  GLB_nf_ReleaseNamedLock() # ; Flag
   {
     local sv_Flag
     local sv_LockDirPath
@@ -308,14 +312,14 @@ then
 
     sv_Flag="${1}"
     
-    sv_LockDirPath="${GLB_sv_TempRoot}/Locks"
+    sv_LockDirPath="${GLB_sv_ThisUserTempDirPath}/Locks"
 
     if test -s "${sv_LockDirPath}/${sv_Flag}"
     then
       sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
       if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Releasing lock '${sv_Flag}'"
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Releasing lock '${sv_Flag}'"
         rm -f "${sv_LockDirPath}/${sv_Flag}"
       fi
     fi
@@ -328,7 +332,9 @@ then
 
     sv_Flag="${1}"
     
-    sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+    sv_FlagDirPath="${GLB_sv_ThisUserTempDirPath}/Flags"
+    mkdir -p "${sv_FlagDirPath}"
+    
     touch "${sv_FlagDirPath}/${sv_Flag}"
     chown "$(whoami)" "${sv_FlagDirPath}/${sv_Flag}"
 #    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Creating flag '${sv_FlagDirPath}/${sv_Flag}'"
@@ -343,7 +349,7 @@ then
 
     sv_Flag="${1}"
     
-    sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
+    sv_FlagDirPath="${GLB_sv_ThisUserTempDirPath}/Flags"
     
 #    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Testing flag '${sv_FlagDirPath}/${sv_Flag}'"
     sv_Result="false"
@@ -375,7 +381,12 @@ then
   {
     if test -n "${1}"
     then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "${1}"
+      if test -n "${2}"
+      then
+        GLB_nf_logmessage ${2} "${1}"
+      else
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${1}"
+      fi
     fi
     
     # Remove temporary files
@@ -634,7 +645,7 @@ then
       fi
     fi
   
-    printf %s "${sv_EntryValue}"
+    printf %s "${sv_EntryValue}" | sed "s|%COMPUTERNAME%|${GLB_sv_Hostname}|g;s|%USERNAME%|${GLB_sv_LoggedInUserName}|g;s|%HOMEPATH%|${GLB_sv_LoggedInUserHomeDirPath}|g;s|%HOMESHARE%|${GLB_sv_LoggedInUserHomeNetworkDirPath}|g;s|%HOMELOCAL%|${GLB_sv_LoggedInUserLocalHomeDirPath}|g;s|%DOMAIN%|${GLB_sv_ADDomainNameFlat}|g;"
   }
   
   # Get a property value from a plist file
@@ -696,6 +707,31 @@ then
     fi
   }
   
+  # Get the original file path - resolving any links
+  GLB_sf_OriginalFilePath()   # FilePath
+  {
+    local sv_Path
+    local sv_TruePath
+    local sv_PathPart
+    
+    sv_Path="${1}"
+    
+    sv_TruePath=""
+    while read sv_PathPart
+    do
+      if test -n "${sv_PathPart}"
+      then
+        sv_TruePath="${sv_TruePath}/${sv_PathPart}"
+        if test -L "${sv_TruePath}"
+        then
+          sv_TruePath="$(stat -f %Y "${sv_TruePath}")"
+        fi
+      fi
+    done < <(echo ${sv_Path}| tr "/" "\n")
+    
+    echo "${sv_TruePath}"
+  }
+
   # Takes a uri, and returns a local filename.
   # Remote files (http, ftp, smb), will be downloaded to a local file.
   # The returned filename may or may not exist
@@ -1326,14 +1362,6 @@ then
     mkdir -p "${GLB_sv_TempUsersRoot}"
     chown root:wheel "${GLB_sv_TempUsersRoot}"
     chmod 1777 "${GLB_sv_TempUsersRoot}"
-
-    mkdir -p "${GLB_sv_TempRoot}/Locks"
-    chown root:wheel "${GLB_sv_TempRoot}/Locks"
-    chmod 1777 "${GLB_sv_TempRoot}/Locks"
-
-    mkdir -p "${GLB_sv_TempRoot}/Flags"
-    chown root:wheel "${GLB_sv_TempRoot}/Flags"
-    chmod 1755 "${GLB_sv_TempRoot}/Flags"
   fi
     
   # Create a temporary directory private to this user (and admins)

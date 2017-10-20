@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>17F19CED-4A15-42C6-B4AE-0D644CFA71C3</key>
+			<key>AA4C24F1-836F-42AF-8756-DC3381178EFA</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -15,43 +15,43 @@
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR</string>
+							<string>file://%HOMEPATH%</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Desktop</string>
+							<string>file://%HOMEPATH%/Desktop</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Documents</string>
+							<string>file://%HOMEPATH%/Documents</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Downloads</string>
+							<string>file://%HOMEPATH%/Downloads</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Movies</string>
+							<string>file://%HOMEPATH%/Movies</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Music</string>
+							<string>file://%HOMEPATH%/Music</string>
 						</dict>
 						<dict>
 							<key>Label</key>
 							<string></string>
 							<key>URI</key>
-							<string>file://HOMEDIR/Pictures</string>
+							<string>file://%HOMEPATH%/Pictures</string>
 						</dict>
 					</array>
 					<key>Remove</key>
@@ -94,11 +94,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>17F19CED-4A15-42C6-B4AE-0D644CFA71C3</string>
+			<string>AA4C24F1-836F-42AF-8756-DC3381178EFA</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>17F19CED-4A15-42C6-B4AE-0D644CFA71C3</string>
+			<string>AA4C24F1-836F-42AF-8756-DC3381178EFA</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -108,7 +108,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Usr-SidebarContent</string>
 	<key>PayloadIdentifier</key>
-	<string>4BE313DA-B9E0-475E-84D4-B064947D2933</string>
+	<string>4BE6B5C0-189E-4985-8586-7FCDCE02CBB8</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -118,7 +118,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>4BE313DA-B9E0-475E-84D4-B064947D2933</string>
+	<string>4BE6B5C0-189E-4985-8586-7FCDCE02CBB8</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the default handlers for specific file types
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 07-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # This policy uses duti to set the default handler types.
 # I am uncertain as to whether it would be best to have this run as root (for all users?)
@@ -21,7 +21,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -127,7 +127,7 @@ fi
 # Exit if duti (see http://duti.org) is not installed
 if ! test -e "${GLB_sv_BinDirPath}"/duti
 then
-  GLB_nf_QuickExit "Policy aborted - duti (see http://duti.org) is not installed."
+  GLB_nf_QuickExit "Policy aborted - duti (see http://duti.org) is not installed." ${GLB_iv_MsgLevelErr}
 fi
 
 # ---

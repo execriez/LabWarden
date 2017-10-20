@@ -353,28 +353,35 @@ Any user or workstation that is a member of the osx-wgp-gpo-Mac-NoWebSpotlight g
 
 Here is a list of standard MacOS mobileconfig files included with LabWarden.
 
-	Mac-NoDSStoreOnNetwork.mobileconfig     - Stops .DS_Store files from being written to a network drive
-	Mac-NoNewDiskBackupOffer.mobileconfig   - Stops Time Machine from asking to use new drives as a backup
-	Mac-NoOffice2011Updates.mobileconfig    - Stops the initial Setup in MS Office 2011
-	Mac-NoReopenWindows.mobileconfig        - Stops open windows being re-opened at next login
-	Mac-NoWebSpotlight.mobileconfig         - Stops Spotlight from searching the web
-	Mac-NoiCloudOrSiriSetup.mobileconfig    - Stops the initial iCloud and Siri setup
-	Mac-NoiCloudSetup-10v9.mobileconfig     - Stops the initial iCloud setup (Legacy - OS specific)
+	Mac-NoDSStoreOnNetwork.mobileconfig            - Stops .DS_Store files from being written to a network drive
+	Mac-NoNewDiskBackupOffer.mobileconfig          - Stops Time Machine from asking to use new drives as a backup
+	Mac-NoOffice2011Updates.mobileconfig           - Stops the initial Setup in MS Office 2011
+	Mac-NoReopenWindows.mobileconfig               - Stops open windows being re-opened at next login
+	Mac-NoWebSpotlight.mobileconfig                - Stops Spotlight from searching the web
+	Mac-NoiCloudOrSiriSetup.mobileconfig           - Stops the initial iCloud and Siri setup
+	Mac-NoiCloudSetup-10v9.mobileconfig            - Stops the initial iCloud setup (Legacy - OS specific)
 	Mac-NoiCloudSetup-10v10.mobileconfig
 	Mac-NoiCloudSetup-10v11.mobileconfig
 	Mac-NoiCloudSetup-10v12.mobileconfig
 	Mac-NoiCloudSetup-10v13.mobileconfig
-	Mac-RightClick.mobileconfig            - Enables right click on the mouse
-	Mac-SafariHomepage.mobileconfig        - Sets the homepage in Safari
-	Mac-UKLocale.mobileconfig              - Enables the UK locale
+	Mac-NoMSExcelFirstRunDialogs.mobileconfig      - Suppress MS Excel FirstRun Dialogs
+	Mac-NoMSOneNoteFirstRunDialogs.mobileconfig    - Suppress MS OneNote FirstRun Dialogs
+	Mac-NoMSOutlookFirstRunDialogs.mobileconfig    - Suppress MS Outlook FirstRun Dialogs
+	Mac-NoMSPowerpointFirstRunDialogs.mobileconfig - Suppress MS Powerpoint FirstRun Dialogs
+	Mac-NoMSWordFirstRunDialogs.mobileconfig       - Suppress MS Word FirstRun Dialogs
+	Mac-RightClick.mobileconfig                    - Enables right click on the mouse
+	Mac-SafariHomepage.mobileconfig                - Sets the homepage in Safari
+	Mac-UKLocale.mobileconfig                      - Enables the UK locale
 
 You can find other examples of OS X specific mobileconfigs on the web, these are good references (as of writing):
+
+<https://github.com/amsysuk/public_config_profiles>
 
 <https://github.com/gregneagle/profiles>
 
 <https://github.com/nmcspadden/profiles>
 
-<https://github.com/amsysuk/public_config_profiles>
+<https://github.com/rtrouton/profiles>
 
 ## LabWarden mobileconfig files
 
@@ -392,7 +399,7 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-App-FirefoxFixForNetworkHomes.mobileconfig           - Sets up Firefox so that it can run on network homes.
 	LW-App-Restrict.mobileconfig                            - Restricts the use of the Terminal.app and prevents application launches from user home areas and external drives.
 	LW-App-ShowHints.mobileconfig                           - Shows application specific hints when Logic Pro X or Adobe Premiere Pro are launched.
-	LW-Gen-Debug.mobileconfig                               - Writes internal variable debug info to a config file at "Sys-Boot" and "Usr-AtDesktop" events
+	LW-Gen-Debug.mobileconfig                               - Writes debug info to the log file at every event
 	LW-Gen-ExamplePolicy.mobileconfig                       - Activates the example General Policy script (A blank canvas)
 	LW-Gen-OfficeHours.mobileconfig                         - Enforces User Access to specific Opening Hours and collects usage stats
 	LW-Gen-UnloadAgentsAndDaemons-proxypopups.mobileconfig  - Unloads the "com.apple.UserNotificationCenter" Daemon to prevent proxy-popups. Does not work on 10.12+ when SIP is enabled.
@@ -420,7 +427,8 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-SleepSettings-never.mobileconfig                 - Sets the screen to never sleep.
 	LW-Sys-TimeServer-Apple.mobileconfig                    - Sets the system time (ntp) server
 	LW-Sys-Update-Radmind.mobileconfig                      - Sets the custom update script.
-	LW-Sys-UpdatePackage.mobileconfig                       - Updates an installed package to a later version, in this example LabWarden itself.
+	LW-Sys-UpdatePackage.mobileconfig                       - Updates an installed package to a later version from the web, in this example LabWarden itself.
+	LW-Sys-UpdatePackage-netlogon.mobileconfig              - Updates an installed package to a later version from your domain netlogon server, in this example LabWarden itself.
 	LW-Sys-WiFiRemoveUnknownSSIDs.mobileconfig              - Remove all SSIDs that are not in a list of known SSIDs
 	LW-Sys-WirelessForgetSSID.mobileconfig                  - Forgets a list of wireless SSIDs and associated passwords.
 	LW-Sys-WirelessSetState-off.mobileconfig                - Turns wireless off.
@@ -429,7 +437,8 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-Sys-WorkstationInfo.mobileconfig                     - Updates the loginwindow text and RemoteDesktop Info Fields with workstation info.
 	LW-Usr-CheckQuotaOnNetHome.mobileconfig                 - Checks if a users network drive is getting full.
 	LW-Usr-CreateFolder.mobileconfig                        - Creates folders in the users home folder at login.
-	LW-Usr-DefaultHandlers.mobileconfig                     - Sets the default handlers for specific file types.
+	LW-Usr-DefaultHandlers.mobileconfig                     - Sets the default handlers for specific file types
+	LW-Usr-DeleteFiles.mobileconfig                         - Deletes specific files and folders from a users home directory, in this example the "/Library/LaunchAgents" folder.
 	LW-Usr-DesktopWallpaperURI.mobileconfig                 - Sets the user Desktop Wallpaper to be a file on a server.
 	LW-Usr-DockContent.mobileconfig                         - Sets the user Dock content (makes use of dockutil).
 	LW-Usr-ExamplePolicy.mobileconfig                       - Activates the example User Policy script (A blank canvas)
@@ -818,14 +827,37 @@ The example policy config should be configured to your own needs.
 
 ### Gen-Debug
 
-Writes internal global variables info to the policy prefs. You should modify the **TriggeredBy** array to catch the events that you wish to debug.
+Writes debug info to the log file. You should modify the **TriggeredBy** array to catch the events that you are interested in.
 
 	<key>Name</key>
 	<string>Gen-Debug</string>
 	<key>TriggeredBy</key>
 	<array>
+		<string>App-DidLaunch</string>
+		<string>App-DidTerminate</string>
+		<string>App-WillLaunch</string>
+		<string>Sys-ActiveDirectoryUp</string>
+		<string>Sys-ActiveDirectoryDown</string>
 		<string>Sys-Boot</string>
+		<string>Sys-ConsoleUserLoggedIn</string>
+		<string>Sys-ConsoleUserLoggedOut</string>
+		<string>Sys-ConsoleUserSwitch</string>
+		<string>Sys-HasWoken</string>
+		<string>Sys-Idle</string>
+		<string>Sys-LoginWindow</string>
+		<string>Sys-LoginWindowIdle</string>
+		<string>Sys-LoginWindowPoll</string>
+		<string>Sys-ManualTrigger</string>
+		<string>Sys-NetworkDown</string>
+		<string>Sys-NetworkUp</string>
+		<string>Sys-Poll</string>
+		<string>Sys-WillSleep</string>
+		<string>Sys-WillWake</string>
 		<string>Usr-AtDesktop</string>
+		<string>Usr-ConsoleUserLoggedIn</string>
+		<string>Usr-ConsoleUserSwitch</string>
+		<string>Usr-Idle</string>
+		<string>Usr-Poll</string>
 	</array>
 
 ### Gen-ExamplePolicy
@@ -2050,9 +2082,11 @@ The example policy config should be configured to your own needs.
 
 
 ### Sys-UpdatePackage
-This policy updates an installed package to a later version. It is called as root and triggered by the **Sys-NetworkUp** event.
+This policy updates installed packages to later versions. It is called as root and triggered by the **Sys-Poll** event.
 
-The **PackageID** specifies the id for the package.
+The **Package** array specifies a list of packages to update.
+
+The **ID** specifies the id for a package.
 
 The **VersionString** key specifies the a minimum version of the package that should be running.
 
@@ -2060,21 +2094,29 @@ If the running version is less than the **VersionString**, then the policy will 
 
 	<key>Config</key>
 	<dict>
-		<key>PackageID</key>
-		<string>com.github.execriez.labwarden</string>
-		<key>URI</key>
-		<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
-		<key>VersionString</key>
-		<string>2.0.10</string>
+		<key>Package</key>
+		<array>
+			<dict>
+				<key>ID</key>
+				<string>com.github.execriez.labwarden</string>
+				<key>URI</key>
+				<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
+				<key>VersionString</key>
+				<string>2.0.17</string>
+			</dict>
+		</array>
 	</dict>
 	<key>Name</key>
 	<string>Sys-UpdatePackage</string>
 	<key>TriggeredBy</key>
 	<array>
-		<string>Sys-NetworkUp</string>
+		<string>Sys-Poll</string>
+		<string>Sys-ManualTrigger</string>
 	</array>
 
-The package URI could point to a package on the internet, or on your local network. The package needs to be in a location that is accessible.
+The package URI could point to a package on the internet, or on your local network (e.g. smb://%DOMAIN%/NETLOGON/MacOS/Packages/LabWarden.pkg).
+
+The package needs to be in a location that is accessible.
 
 The example config shows how the running version of LabWarden can be updated to a a later version. Once an updated version of LabWarden is published, an updated policy config should be pushed to your workstations (i.e. via an MDM or AD). The policy will then install the update from the published location. 
 
@@ -2272,7 +2314,42 @@ This script uses **duti**. See the duti documentation for an explanation of the 
 		<string>Usr-AtDesktop</string>
 	</array>
 
-### UserDesktopWallpaperURI
+### Usr-DeleteFiles
+This policy can be used to delete specific files and folders from a users home directory. This policy is potentially unsafe if misconfigured.
+
+The policy is triggered by the **Usr-AtDesktop** and **Usr-Idle** events. 
+
+The config contains a key called **SafeFlag**. If true, deletes are limited to the users 'Library' folder in either the users local or network homes. 
+
+The config also contains an array called **Delete**. This array contains a key called **Path** that defines which file or folder to delete. This path is a path relative to the user home folder. 
+
+The **Delete** array also contains an sub-array called **Exclude**. This defines a list of paths to exclude from deletion. The exclude paths are relative to the **Path** key.
+
+	<key>Config</key>
+	<dict>
+		<key>SafeFlag</key>
+		<true/>
+		<key>Delete</key>
+		<array>
+			<dict>
+				<key>Path</key>
+				<string>/Library/LaunchAgents/</string>
+				<key>Exclude</key>
+				<array>
+					<string>org.virtualbox.vboxwebsrv.plist</string>
+				</array>
+			</dict>
+		</array>
+	</dict>
+	<key>Name</key>
+	<string>Usr-DeleteFiles</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>Usr-AtDesktop</string>
+		<string>Usr-Idle</string>
+	</array>
+
+### Usr-DesktopWallpaperURI
 This policy allows you to set the user Desktop Wallpaper. 
 
 The policy is triggered by an **Usr-AtDesktop** event. This means that the policy will be called as the user, after login, as the desktop loads.
@@ -2581,25 +2658,23 @@ It is called as the user. Files are synced down from the network at a **Usr-AtDe
 		<key>Path</key>
 		<array>
 			<string>/Library/Fonts/</string>
-			<string>/Library/Application Support/Firefox/</string>
-			<string>/Library/Application Support/Google/Chrome/Default</string>
-			<string>/Library/Application Support/Chromium/Default</string>
-			<string>/Library/Safari/</string>
-			<string>/Library/Application Support/Microsoft/</string>
-			<string>/Library/Application Support/Spotify/</string>
-			<string>/Library/Caches/com.apple.helpd/</string>
-			<string>/Library/Group Containers/</string>
-			<string>/Library/Preferences/com.microsoft.autoupdate2.plist</string>
-			<string>/Library/Preferences/com.microsoft.error_reporting.plist</string>
-			<string>/Library/Preferences/com.microsoft.office.plist</string>
-			<string>/Library/Preferences/com.microsoft.outlook.databasedaemon.plist</string>
-			<string>/Library/Preferences/com.microsoft.Word.plist</string>
-			<string>/Library/Preferences/com.microsoft.office.plist</string>
-			<string>/Library/Preferences/com.microsoft.Powerpoint.plist</string>
-			<string>/Library/Preferences/com.microsoft.Excel.plist</string>
-			<string>/Library/Preferences/com.microsoft.office.plist</string>
-			<string>/Library/Preferences/com.microsoft.outlook.office_reminders.plist</string>
-			<string>/Library/Preferences/com.microsoft.Outlook.plist</string>
+			<string>/Library/Application Support/Chromium/Default/Bookmarks</string>
+			<string>/Library/Application Support/Chromium/Default/Current Tabs</string>
+			<string>/Library/Application Support/Chromium/Default/History</string>
+			<string>/Library/Application Support/Chromium/Default/Preferences</string>
+			<string>/Library/Application Support/Chromium/First Run</string>
+			<string>/Library/Application Support/Google/Chrome/Default/Bookmarks</string>
+			<string>/Library/Application Support/Google/Chrome/Default/Current Tabs</string>
+			<string>/Library/Application Support/Google/Chrome/Default/History</string>
+			<string>/Library/Application Support/Google/Chrome/Default/Preferences</string>
+			<string>/Library/Application Support/Google/Chrome/First Run</string>
+			<string>/Library/Application Support/Firefox/profiles.ini</string>
+			<string>/Library/Application Support/Firefox/Profiles/mozilla.default/bookmarkbackups/</string>
+			<string>/Library/Application Support/Firefox/Profiles/mozilla.default/places.sqlite</string>
+			<string>/Library/Application Support/Firefox/Profiles/mozilla.default/prefs.js</string>
+			<string>/Library/Safari/Bookmarks.plist</string>
+			<string>/Library/Safari/History.db</string>
+			<string>/Library/Safari/TopSites.plist</string>
 		</array>
 	</dict>
 	<key>Name</key>
@@ -2653,6 +2728,28 @@ LabWarden makes use of the following tools:
 
 ## History
 
+2.0.18 - 20-Oct-2017
+
+* Fixed bug in 'LW-Usr-SyncLocalHomeToNetwork' that caused it to sometimes not sync. Also, sometimes Rsync could fail with 'rsync: get\_xattr\_data: lgetxattr(""..."","com.apple.FinderInfo",0) failed: Attribute not found (93)' due to a bug with MacOS and SMB mounted drives that sometimes creates a faulty file xattr that lists as "com.apple.FinderInfo -1".
+
+* Added the policy 'Usr-DeleteFiles' that can be used to delete specific files and folders from a users home directory. This policy is potentially unsafe if misconfigured.
+
+* The internal functions 'GLB\_bf\_GrabNamedLock', 'GLB\_nf\_ReleaseNamedLock', 'GLB\_nf\_CreateNamedFlag', 'GLB\_nf\_TestNamedFlag' and 'GLB\_nf\_DeleteNamedFlag' now work for normal users as well as the root user. The locks and flags created are only relevant to the user that created them.
+
+* 'gpupdate' and 'configupdate' now use locks, to prevent other instances from running at the same time. This prevents config update tug-of-war issues.
+
+* The policy 'App-FirefoxFirstSetup' now ensures that the active profile is always called 'mozilla.default'.
+
+* You can now use the following variables in configs %COMPUTERNAME%, %USERNAME%, %HOMEPATH%, %HOMESHARE%, %HOMELOCAL%, %DOMAIN%
+
+* The policy 'Gen-Debug' is updated to log which of the above variables are available during each event. This is one of the oldest policies and hadn't been updated for a while.
+
+* Updated the example 'LW-Usr-DockContent.mobileconfig' and 'LW-Usr-SidebarContent.mobileconfig' files to use the %HOMEPATH% variable. 
+
+* Updated the example 'LW-Usr-SyncLocalHomeToNetwork.mobileconfig' file to be a bit more useful - for syncing fonts and browser bookmarks to and from a network home.
+
+* Added the mobileconfigs 'Mac-NoMSExcelFirstRunDialogs.mobileconfig', 'Mac-NoMSOneNoteFirstRunDialogs.mobileconfig', 'Mac-NoMSOutlookFirstRunDialogs.mobileconfig', 'Mac-NoMSPowerpointFirstRunDialogs.mobileconfig' and Mac-NoMSWordFirstRunDialogs.mobileconfig which are heavily influenced by the rtrouton profiles. These are atandard MacOS configs, not LabWarden configs.
+ 
 2.0.17 - 10-Oct-2017
 
 * Added policy 'Sys-CDPinfo' and associated config 'LW-Sys-CDPInfo.mobileconfig'. This policy checks the network for Cisco Discovery Protocol packets and sets the Apple Remote Desktop 'Computer info #4' field with switchport information. This allows you to see which switch and port a Mac is plugged in to directly from ARD. Only tested on Cisco switches.

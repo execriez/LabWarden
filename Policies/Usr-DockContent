@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Dock content (makes use of dockutil)
 # Author:   Mark J Swift
-# Version:  2.0.16
-# Modified: 13-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Reference: https://github.com/kcrawford - dockutil, set the dock content 
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.16"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -436,14 +436,14 @@ fi
 # Exit if dockutil (see https://github.com/kcrawford) is not installed
 if ! test -e "${GLB_sv_BinDirPath}"/dockutil
 then
-  GLB_nf_QuickExit "Policy aborted - dockutil (see https://github.com/kcrawford) is not installed."
+  GLB_nf_QuickExit "Policy aborted - dockutil (see https://github.com/kcrawford) is not installed." ${GLB_iv_MsgLevelErr}
 fi
 
 # ---
 
 if [ $(if_RawTestCall) -ne 0 ]
 then
-  GLB_nf_QuickExit "Policy aborted - something went wrong unexpectedly."
+  GLB_nf_QuickExit "Policy aborted - something went wrong unexpectedly." ${GLB_iv_MsgLevelErr}
 fi
 
 case ${sv_EventName} in

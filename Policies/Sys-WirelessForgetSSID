@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Forgets wireless SSIDs and passwords
 # Author:   Mark J Swift
-# Version:  2.0.17
-# Modified: 28-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.17"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -119,7 +119,7 @@ fi
 # Exit if there is no wi-fi hardware
 if test -z "${GLB_sv_WirelessInterfaceDevice}"
 then
-  GLB_nf_QuickExit "Policy aborted - There is no Wi-Fi hardware (thats odd)"
+  GLB_nf_QuickExit "Policy aborted - There is no Wi-Fi hardware (thats odd)" ${GLB_iv_MsgLevelWarn}
 fi
 
 # ---

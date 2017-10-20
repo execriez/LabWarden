@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Package</key>
+					<array>
+						<dict>
+							<key>ID</key>
+							<string>com.github.execriez.labwarden</string>
+							<key>URI</key>
+							<string>smb://%DOMAIN%/NETLOGON/MacOS/Packages/LabWarden.pkg</string>
+							<key>VersionString</key>
+							<string>2.0.18</string>
+						</dict>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-UpdatePackage</string>
+				<key>TriggeredBy</key>
+				<array>
+					<string>Sys-Idle</string>
+					<string>Sys-ManualTrigger</string>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-UpdatePackage (netlogon)</string>
+	<key>PayloadIdentifier</key>
+	<string>7BE98FBC-0D8A-4569-B174-194699F2A941</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>7BE98FBC-0D8A-4569-B174-194699F2A941</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

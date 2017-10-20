@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.microsoft.Outlook</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>FirstRunExperienceCompletedO15</key>
+								<true/>
+								<key>SendAllTelemetryEnabled</key>
+								<false/>
+								<key>kSubUIAppCompletedFirstRunSetup1507</key>
+								<true/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>AC9C4810-9F34-44CD-8C5F-59C85B89E8EF</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>AC9C4810-9F34-44CD-8C5F-59C85B89E8EF</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>No MS Outlook FirstRun Dialogs</string>
+	<key>PayloadDisplayName</key>
+	<string>Mac NoMSOutlookFirstRunDialogs</string>
+	<key>PayloadIdentifier</key>
+	<string>4EDDF418-2F48-4F1F-A509-B6A6F39CC765</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>4EDDF418-2F48-4F1F-A509-B6A6F39CC765</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

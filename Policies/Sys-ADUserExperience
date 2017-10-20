@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets how user homes on network accounts are handled as determined by the "User Experience" tab of the Directory Utility app
 # Author:   Mark J Swift
-# Version:  2.0.16
-# Modified: 21-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Reference: Remove network home question mark from dock - jclark - https://jamfnation.jamfsoftware.com/discussion.html?id=10753
 #
@@ -15,7 +15,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.16"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -227,35 +227,35 @@ Sys-ActiveDirectoryUp|Sys-PolicyInstall)
     sv_PropertyString="Create mobile account at login";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTmobile="${sv_PropertyValue}"
 	
     sv_PropertyString="Require confirmation";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTmobileconfirm="${sv_PropertyValue}"
 	
     sv_PropertyString="Force home to startup disk";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTlocalhome="${sv_PropertyValue}"
 	
     sv_PropertyString="Mount home as sharepoint";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTsharepoint="${sv_PropertyValue}"
 	
     sv_PropertyString="Use Windows UNC path for home";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTuseuncpath="${sv_PropertyValue}"
 	
@@ -264,7 +264,7 @@ Sys-ActiveDirectoryUp|Sys-PolicyInstall)
       sv_PropertyString="Network protocol to be used";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||")
 	  if test -z "${sv_PropertyValue}"
 	  then
-        GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+        GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	  fi
       sv_ActiveOPTprotocol="${sv_PropertyValue}"
     fi
@@ -272,14 +272,14 @@ Sys-ActiveDirectoryUp|Sys-PolicyInstall)
     sv_PropertyString="Authentication from any domain";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||;s|Enabled|enable|;s|Disabled|disable|")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
 	sv_ActiveOPTallomains="${sv_PropertyValue}"
 	
     sv_PropertyString="Preferred Domain controller";sv_PropertyValue=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||")
 	if test -z "${sv_PropertyValue}"
 	then
-      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'"
+      GLB_nf_QuickExit "Policy aborted - dsconfigad string expected but not found '${sv_PropertyString}'" ${GLB_iv_MsgLevelWarn}
 	fi
     sv_ActiveOPTpreferredserver="${sv_PropertyValue}"
 	if [ "${sv_ActiveOPTpreferredserver}" = "not set" ]

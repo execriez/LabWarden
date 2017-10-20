@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  2.0.6
-# Modified: 27-May-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-verify <somefile.mobileconfig> [user]
@@ -30,7 +30,7 @@ fi
 
 if ! test -e "${sv_PayloadFilePath}"
 then
-  GLB_nf_QuickExit "File not found - ${sv_PayloadFilePath}"
+  GLB_nf_QuickExit "File not found - ${sv_PayloadFilePath}" ${GLB_iv_MsgLevelWarn}
 fi
 
 # ---
@@ -58,7 +58,7 @@ then
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is installed OK"
 
   else
-    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed"
+    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed" ${GLB_iv_MsgLevelWarn}
     
   fi  
   
@@ -68,7 +68,7 @@ else
     GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is already installed"
     
   else
-    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed"
+    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed" ${GLB_iv_MsgLevelWarn}
     
   fi  
 fi

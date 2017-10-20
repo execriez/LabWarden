@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Desktop Wallpaper
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 07-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -119,7 +119,7 @@ fi
 # Exit if the user home folder doesn't exist
 if [ ! -e "${GLB_sv_LoggedInUserHomeDirPath}" ]
 then
-  GLB_nf_QuickExit "Policy aborted - home folder doesn't exist."
+  GLB_nf_QuickExit "Policy aborted - home folder doesn't exist." ${GLB_iv_MsgLevelWarn}
 fi
 
 # ---

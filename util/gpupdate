@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 12-Jun-2017
+# Version:  2.0.18
+# Modified: 11-Oct-2017
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.13"
+sv_CodeVersion="2.0.18"
 
 # ---
 
@@ -266,8 +266,21 @@ sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can b
 if test -z "${sv_GPOuser}"
 then
   GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption}  (version ${sv_CodeVersion})"
+  
+  # Grab  lock
+  if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}") = "false" ]
+  then
+    GLB_nf_QuickExit "'${GLB_sv_ThisScriptFileName}' aborted. Another instance is already running ."
+  fi
+  
 else
   GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption} '${sv_GPOuser}'  (version ${sv_CodeVersion})"
+  
+  # Grab  lock
+  if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}-${sv_GPOuser}") = "false" ]
+  then
+    GLB_nf_QuickExit "'${GLB_sv_ThisScriptFileName}' aborted for user '${GLB_sv_ThisUserName}'. Another instance is already running ."
+  fi
 fi
 
 # ---
@@ -710,6 +723,23 @@ fi
 
 # --- now strip the configs from the installed mobileconfigs
 # (code moved to configupdate which is launched via a watchpath LaunchDaemon)
+
+# ---
+
+if test -z "${sv_GPOuser}"
+then
+  # Release lock
+  GLB_nf_ReleaseNamedLock "${GLB_sv_ThisScriptFileName}"
+  
+else
+  # Release lock
+  GLB_nf_ReleaseNamedLock "${GLB_sv_ThisScriptFileName}-${sv_GPOuser}"
+  
+fi
+
+# ---
+
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "'${GLB_sv_ThisScriptFileName}' complete"
 
 # ---
 

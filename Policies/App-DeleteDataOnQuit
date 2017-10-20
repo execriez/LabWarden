@@ -2,8 +2,8 @@
 #
 # Short:    App Policy Script - Deletes application data when an application quits
 # Author:   Mark J Swift
-# Version:  2.0.15
-# Modified: 07-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # Triggered by the following events:
 #   App-DidTerminate (as user)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -152,13 +152,13 @@ fi
 # Exit if the user home is undefined
 if test -z "${GLB_sv_LoggedInUserHomeDirPath}"
 then
-  GLB_nf_QuickExit "Policy aborted - user home is not defined"
+  GLB_nf_QuickExit "Policy aborted - user home is not defined" ${GLB_iv_MsgLevelWarn}
 fi
 
 # Exit if the user home does not exist
 if ! test -e "${GLB_sv_LoggedInUserHomeDirPath}"
 then
-  GLB_nf_QuickExit "Policy aborted - user home '${GLB_sv_LoggedInUserHomeDirPath}' does not exist"
+  GLB_nf_QuickExit "Policy aborted - user home '${GLB_sv_LoggedInUserHomeDirPath}' does not exist" ${GLB_iv_MsgLevelWarn}
 fi
 
 # ---

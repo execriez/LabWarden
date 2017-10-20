@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Update configs from installed mobileconfigs
 # Author:   Mark J Swift
-# Version:  2.0.13
-# Modified: 27-Jul-2017
+# Version:  2.0.18
+# Modified: 11-Oct-2017
 #
 # Called as follows:    
 #   configupdate [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.13"
+sv_CodeVersion="2.0.18"
 
 # ---
 
@@ -25,24 +25,37 @@ fi
 
 # ---
 
-sv_UserName=${1}
-
-# ---
-
 # Here we start for real
 
 # ---
 
-if test -z "${sv_UserName}"
-then
-  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} (version ${sv_CodeVersion})"
-else
-  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} '${sv_UserName}'  (version ${sv_CodeVersion})"
-fi
-
 if [ "${GLB_sv_ThisUserName}" != "root" ]
 then
   exit 0
+fi
+
+# ---
+
+sv_UserName=${1}
+
+if test -z "${sv_UserName}"
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} (version ${sv_CodeVersion})"
+  
+  # Grab  lock
+  if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}") = "false" ]
+  then
+    GLB_nf_QuickExit "'${GLB_sv_ThisScriptFileName}' aborted. Another instance is already running ."
+  fi
+  
+else
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} '${sv_UserName}'  (version ${sv_CodeVersion})"
+  
+  # Grab  lock
+  if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}-${sv_UserName}") = "false" ]
+  then
+    GLB_nf_QuickExit "'${GLB_sv_ThisScriptFileName}' '${sv_UserName}' aborted. Another instance is already running ."
+  fi
 fi
 
 # ---
@@ -75,7 +88,7 @@ fi
  
 sv_ConfigDirPath="${GLB_sv_ProjectConfigDirPath}/Config/${sv_ObjectContext}/${sv_ObjectName}"
 
-# --- now strip the configs from the installed mobileconfigs
+# --- now check that the config files exist and have the correct privs
 
 sv_ConfigTmpDirPath="${GLB_sv_ThisScriptTempDirPath}/${sv_ObjectName}/Config"
 mkdir -p "${sv_ConfigTmpDirPath}"
@@ -120,7 +133,24 @@ fi
 chown root:wheel "${sv_EventsFilePath}"
 chmod 755 "${sv_EventsFilePath}"
 
-# ---
+# --- make sure the managed prefs files exists and wait a short time (2 secs) until there are no more updates
+
+sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_sv_ProjectSignature}.plist"
+if [ ! -e "${sv_ManagedPrefsFilePath}" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating empty '${sv_ManagedPrefsFilePath}'"
+  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
+  chown root:wheel "${sv_ManagedPrefsFilePath}"
+  chmod 644
+fi
+
+# Wait until there hasn't been a change to the managed pref file for a short time
+while [ $(($(date -u "+%s")-$(stat -f "%m" "${sv_ManagedPrefsFilePath}"))) -le 2 ]
+do
+  sleep 1
+done
+
+# --- now strip the configs from the installed mobileconfigs
   
 bv_CheckConfig="true"
 
@@ -394,14 +424,24 @@ do
 
 done
 
-sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_sv_ProjectSignature}.plist"
-if [ ! -e "${sv_ManagedPrefsFilePath}" ]
+# ---
+
+# Release configupdate lock
+
+if test -z "${sv_UserName}"
 then
-  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating empty '${sv_ManagedPrefsFilePath}'"
-  /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
-  chown root:wheel "${sv_ManagedPrefsFilePath}"
-  chmod 644
+  # Release lock
+  GLB_nf_ReleaseNamedLock "${GLB_sv_ThisScriptFileName}"
+  
+else
+  # Release lock
+  GLB_nf_ReleaseNamedLock "${GLB_sv_ThisScriptFileName}-${sv_UserName}"
+  
 fi
+
+# ---
+
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "'${GLB_sv_ThisScriptFileName}' complete"
 
 # ---
 

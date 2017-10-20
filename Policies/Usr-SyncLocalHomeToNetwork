@@ -2,7 +2,7 @@
 #
 # Short:    Usr Policy script - Syncs specified folders from the users local home to network home
 # Author:   Mark J Swift
-# Version:  2.0.15
+# Version:  2.0.18
 # Modified: 07-Sep-2017
 #
 # Triggered by the following events:
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.15"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -111,12 +111,25 @@ nf_SyncFiles() # Src Dst
       then
         # Only sync if the source dir is not empty
         mkdir -p "${sv_DstDirPath}"
+        # Remove any "com.apple.FinderInfo" xattr attribute
+        while read sv_FilePath
+        do
+          if test -n "$(ls -ld@ "${sv_FilePath}" | grep -E '\tcom.apple.FinderInfo\t[ ]*\-1')"
+          then
+            xattr -ds 'com.apple.FinderInfo' "${sv_FilePath}"
+          fi
+        done < <(find "${sv_SrcDirPath}")
         GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing rsync -rltDxXv '${sv_SrcDirPath}/' '${sv_DstDirPath}' --delete"
         ${GLB_sv_BinDirPath}/rsync -rltDxXv "${sv_SrcDirPath}/" "${sv_DstDirPath}" --delete
       fi
     else
       # Sync File
-      mkdir -p "$(dirname "${sv_SrcDirPath}")"
+      mkdir -p "$(dirname "${sv_DstDirPath}")"
+      # Remove any "com.apple.FinderInfo" xattr attribute
+      if test -n "$(ls -ld@ "${sv_SrcDirPath}" | grep 'com.apple.FinderInfo')"
+      then
+        xattr -ds 'com.apple.FinderInfo' "${sv_SrcDirPath}"
+      fi
       GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Executing rsync -rltDxXv '${sv_SrcDirPath}' '${sv_DstDirPath}'"
       ${GLB_sv_BinDirPath}/rsync -rltDxXv "${sv_SrcDirPath}" "${sv_DstDirPath}"
     fi
@@ -157,19 +170,19 @@ fi
 # Exit if the user home is undefined or the share is unavailable
 if [ -z "${GLB_sv_LoggedInUserHomeNetworkDirPath}" ]
 then
-  GLB_nf_QuickExit "Policy aborted - Network home is undefined or the share is unavailable."
+  GLB_nf_QuickExit "Policy aborted - Network home is undefined or the share is unavailable." ${GLB_iv_MsgLevelWarn}
 fi
 
 # Exit if the Network home doesn't exist or is unavailable
 if [ ! -e "${GLB_sv_LoggedInUserHomeNetworkDirPath}" ]
 then
-  GLB_nf_QuickExit "Policy aborted - Network home doesn't exist or is unavailable."
+  GLB_nf_QuickExit "Policy aborted - Network home doesn't exist or is unavailable." ${GLB_iv_MsgLevelWarn}
 fi
 
 # Exit if the user home doesn't exist
 if [ ! -e "${GLB_sv_LoggedInUserHomeDirPath}" ]
 then
-  GLB_nf_QuickExit "Policy aborted - Home folder doesn't exist."
+  GLB_nf_QuickExit "Policy aborted - Home folder doesn't exist." ${GLB_iv_MsgLevelWarn}
 fi
 
 # Exit if the user home is on the network

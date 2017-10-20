@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  2.0.17
-# Modified: 07-Sep-2017
+# Version:  2.0.18
+# Modified: 19-Oct-2017
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.17"
+sv_CodeVersion="2.0.18"
 
 if [ $# -eq 0 ]
 then
@@ -513,7 +513,7 @@ fi
 # Exit if the user home folder doesn't exist
 if [ ! -e "${GLB_sv_LoggedInUserHomeDirPath}" ]
 then
-  GLB_nf_QuickExit "Policy aborted - home folder doesn't exist."
+  GLB_nf_QuickExit "Policy aborted - home folder doesn't exist." ${GLB_iv_MsgLevelWarn}
 fi
 
 # Exit if user is a local account
@@ -572,7 +572,7 @@ Usr-ConsoleUserLoggedIn)
       # User home is on the network, but there is no local home
         
       nf_UnmakePathRedirections
-      GLB_nf_QuickExit "Policy aborted - Local home is unavailable - that's odd."
+      GLB_nf_QuickExit "Policy aborted - Local home is unavailable - that's odd." ${GLB_iv_MsgLevelWarn}
     
     else
       nf_MakePathRedirections
