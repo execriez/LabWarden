@@ -2,14 +2,18 @@
 #
 # Short:    Payload Handler Script - uninstall a .mobileconfig payload
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 19-Oct-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-uninstall <somefile.mobileconfig> [user]
 #
 # Without a user specified, uninstalls for the workstation.
 # With a user, uninstalls for the specified user.
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 

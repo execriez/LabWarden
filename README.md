@@ -3,6 +3,7 @@
 
 ![Logo](images/LabWarden.jpg "Logo")
 
+
 ## Brief
 
 Custom Policies for MacOS that can be distributed via AD or an MDM
@@ -38,7 +39,7 @@ If the installer package isn't available, you can run the command-line installer
 
 The installer will install the following files and directories:
 
-	/Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.AppWarden.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
@@ -46,7 +47,9 @@ The installer will install the following files and directories:
 	/Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.SleepWarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ManagedPrefs.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
 	/usr/LabWarden/
 
@@ -2715,18 +2718,36 @@ If you need to deploy your custom policy via AD, then use '/usr/local/LabWarden/
 
 LabWarden makes use of the following tools:
 
-* [AppWarden](https://github.com/execriez/AppWarden/ "AppWarden")
-* [CocoaDialog](https://mstratman.github.io/cocoadialog/ "CocoaDialog")
-* [ConsoleUserWarden](https://github.com/execriez/ConsoleUserWarden/ "ConsoleUserWarden")
-* [duti](https://github.com/moretension/duti "duti")
-* [dockutil](https://github.com/kcrawford/dockutil "dockutil")
-* [iHook](https://sourceforge.net/projects/ihook/ "iHook")
-* [mysides](https://github.com/mosen/mysides "mysides")
-* [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden")
-* [rsync](https://rsync.samba.org "rsync")
-* [SleepWarden](https://github.com/execriez/SleepWarden/ "SleepWarden")
+* [AppWarden](https://github.com/execriez/AppWarden/ "AppWarden") - Run custom code when a Mac OS app is launched or terminated
+* [CocoaDialog](https://mstratman.github.io/cocoadialog/ "CocoaDialog") - Create macOS dialogs from the command line
+* [ConsoleUserWarden](https://github.com/execriez/ConsoleUserWarden/ "ConsoleUserWarden") - Run custom code when the console user changes on MacOS
+* [duti](https://github.com/moretension/duti "duti") - A command-line tool to select default applications for document types and URL schemes on Mac OS X
+* [dockutil](https://github.com/kcrawford/dockutil "dockutil") - command line tool for managing dock items
+* [iHook](https://sourceforge.net/projects/ihook/ "iHook") - A Mac OS X graphical interface designed as a frontend for commandline executables
+* [mysides](https://github.com/mosen/mysides "mysides") - A command line application for managing OS X Finder sidebar favourites
+* [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden") - Run custom code when the primary network interface changes on MacOS
+* [rsync](https://rsync.samba.org "rsync") - an open source utility that provides fast incremental file transfer
+* [SleepWarden](https://github.com/execriez/SleepWarden/ "SleepWarden") - Run custom code when a MacOS system sleeps or wakes.
+
+LabWarden includes code from the following sources:
+
+* [CLCMacTeam](https://github.com/CLCMacTeam/IdleLogout/ "CLCMacTeam") - Terminal command to check idle seconds on USB devices
+* [cdown](https://gist.github.com/cdown/1163649/ "cdown") - urlencode/urldecode functions
+* [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+2.0.19 - 25-Oct-2017
+
+* Added 'SafeMode' flag to the config for policy 'LW-Usr-SyncLocalHomeToNetwork'. The policy now restricts syncs to the users Library folder if the 'SafeMode' flag is true. The 'SafeMode' flag is assumed true if undefined. You should note that syncing anything but the Library folder can be potentially unsafe if misconfigured.
+
+* Added the 'sv_CodeVersion' variable to various routines that didn't have a code version. 
+
+* Logging is altered to show the code version, and previous logs are tgz archived up to a maximum of 10 previous logs.
+
+* The function 'GLB_sf_ResolveFileURItoPath' now uses 'GLB_sf_OriginalFilePath' on file paths to resolve links.
+
+* Updated the references section of the readme.
 
 2.0.18 - 20-Oct-2017
 

@@ -2,12 +2,16 @@
 #
 # Short:    Uninstall Project (command-line)
 # Author:   Mark J Swift
-# Version:  2.0.11
-# Modified: 14-Jun-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 #
 # Called as follows:    
 #   sudo Uninstall [<root_dirpath>]
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 

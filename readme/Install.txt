@@ -12,7 +12,7 @@ If the installer package isn't available, you can run the command-line installer
 
 The installer will install the following files and directories:
 
-  /Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+  /Library/LaunchAgents/com.github.execriez.labwarden.AppWarden.plist
   /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
   /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
   /Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
@@ -20,7 +20,9 @@ The installer will install the following files and directories:
   /Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
   /Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
   /Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.SleepWarden.plist
   /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ManagedPrefs.plist
   /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
   /usr/LabWarden/
 

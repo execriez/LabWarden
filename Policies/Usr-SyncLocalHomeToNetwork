@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Syncs specified folders from the users local home to network home
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 07-Sep-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.18"
+sv_CodeVersion="2.0.19"
 
 if [ $# -eq 0 ]
 then
@@ -195,7 +195,18 @@ fi
 
 case ${sv_EventName} in
     
-Usr-AtDesktop|Usr-PolicyInstall)
+Usr-AtDesktop)
+  GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "This policy can be potentially unsafe if misconfigured"
+
+  bv_SafeFlag="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:SafeFlag")"
+  if [ "${bv_SafeFlag}" = "false" ]
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Safe mode off, syncs are not restricted to the user Library folder"
+  else
+    bv_SafeFlag="true"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Safe mode on, syncs are restricted to the user Library folder"
+  fi
+
   GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:SyncIsActive" "true"
   GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Syncing files down [ LOCAL <-- NET ] "
 
@@ -209,16 +220,29 @@ Usr-AtDesktop|Usr-PolicyInstall)
   
     if test -n "${sv_ReqdObjectFilePath}"
     then
+      # If the filepath references a link, get the originating filepath
+      sv_SrcDirPath=$(GLB_sf_OriginalFilePath "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}")
+      sv_DstDirPath=$(GLB_sf_OriginalFilePath "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}")
+
+      if [ "${bv_SafeFlag}" = "true" ]
+      then
+        sv_SrcDirPath="$(echo ${sv_SrcDirPath} | grep "${GLB_sv_LoggedInUserHomeNetworkDirPath}/Library")"
+        sv_DstDirPath="$(echo ${sv_DstDirPath} | grep "${GLB_sv_LoggedInUserHomeDirPath}/Library")"
+      fi
+    
       # Sync the prefs down
-      GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Syncing down '${sv_ReqdObjectFilePath}'"
-      nf_SyncFiles "${GLB_sv_LoggedInUserHomeNetworkDirPath}${sv_ReqdObjectFilePath}" "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+      if [ -n "${sv_SrcDirPath}" ] && [ -n "${sv_DstDirPath}" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Syncing down '${sv_ReqdObjectFilePath}'"
+        nf_SyncFiles "${sv_SrcDirPath}" "${sv_DstDirPath}"
+      fi
     fi
   done
 
   GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:SyncIsActive" "false"
   ;;
 
-Usr-Poll|Usr-PolicyUninstall)
+Usr-Poll)
   bv_SyncIsActive="$(GLB_sf_GetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:SyncIsActive")"
 
   if [ "${bv_SyncIsActive}" = "false" ]
@@ -243,6 +267,10 @@ Usr-Poll|Usr-PolicyUninstall)
     done
     GLB_nf_SetPlistProperty "${sv_ThisUserLocalPrefFilePath}" ":${sv_ConfigEntryName}:LocalPrefs:SyncIsActive" "false"
   fi
+  ;;
+  
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
   ;;
   
 *)

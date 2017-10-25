@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 18-Oct-2017
+# Version:  2.0.19
+# Modified: 25-Oct-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Common.sh
@@ -216,6 +216,9 @@ then
     local iv_LogLevel
     local sv_Message
     local sv_LogLevel
+    local sv_WorkingDirPath
+    local iv_LoopCount
+    local iv_EmptyBackupIndex
     
     iv_LogLevel=${1}
     sv_Message="${2}"
@@ -230,25 +233,57 @@ then
         GLB_iv_LogLevelTrap=${GLB_iv_LogLevelTrapDefault}
       fi
     
-      if [ ${iv_LogLevel} -le ${GLB_iv_LogLevelTrap} ]
+      if [ "${GLB_bv_LogIsActive}" = "true" ]
       then
-        sv_LogLevel="$(GLB_sf_LogLevel ${iv_LogLevel})"
-  
-        if [ "${GLB_bv_LogIsActive}" = "true" ]
+        if [ ${iv_LogLevel} -le ${GLB_iv_LogLevelTrap} ]
         then
-          # Check if we need to start a new log
-          if test -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+        
+          # Backup old style previous log if it exists
+          if [ -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.previous.log" ]
+          then
+            sv_WorkingDirPath="$(pwd)"
+            cd "${GLB_sv_ThisUserLogDirPath}"
+            tar -czf "${GLB_sv_ProjectSignature}.log.0.tgz" "${GLB_sv_ProjectSignature}.previous.log"
+            rm -f "${GLB_sv_ProjectSignature}.previous.log"
+            cd "${sv_WorkingDirPath}"
+          fi
+          
+          # Backup log if it gets too big
+          if [ -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log" ]
           then
             if [ $(stat -f "%z" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log") -gt ${GLB_iv_MaxLogSizeBytes} ]
             then
-              mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.previous.log"
+              for (( iv_LoopCount=0; iv_LoopCount<=8; iv_LoopCount++ ))
+              do
+                if [ ! -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz" ]
+                then
+                  break
+                fi
+              done
+    
+              iv_EmptyBackupIndex=${iv_LoopCount}
+    
+              for (( iv_LoopCount=${iv_EmptyBackupIndex}; iv_LoopCount>0; iv_LoopCount-- ))
+              do
+                mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.$((${iv_LoopCount}-1)).tgz" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz"
+              done
+    
+              sv_WorkingDirPath="$(pwd)"
+              cd "${GLB_sv_ThisUserLogDirPath}"
+              tar -czf "${GLB_sv_ProjectSignature}.log.0.tgz" "${GLB_sv_ProjectSignature}.log"
+              cd "${sv_WorkingDirPath}"
+              rm -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
             fi
           fi
   
-          echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
-          echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]: ${sv_LogLevel}: ${sv_Message}"
+          # Make the log entry
+          sv_LogLevel="$(GLB_sf_LogLevel ${iv_LogLevel})"
+          echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+          echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"
+
         fi
       fi
+      
     fi
   }
   
@@ -726,6 +761,10 @@ then
         then
           sv_TruePath="$(stat -f %Y "${sv_TruePath}")"
         fi
+        if test -z "${sv_TruePath}"
+        then
+          break
+        fi
       fi
     done < <(echo ${sv_Path}| tr "/" "\n")
     
@@ -785,20 +824,16 @@ then
     if ! test -e "${sv_DstFilePath}"
     then
 
-      case "$sv_SrcFileProtocol" in
+      case "${sv_SrcFileProtocol}" in
       file)
-        sv_Host=$(echo $sv_FileURI | cut -d "/" -f3 | tr "[A-Z]" "[a-z]" )
-        if [ "$sv_Host" = "localhost" -o "$sv_Host" = "" ]
+        sv_Host=$(echo "${sv_FileURI}" | cut -d "/" -f3 | tr "[A-Z]" "[a-z]" )
+        if [ "${sv_Host}" = "localhost" -o "${sv_Host}" = "" ]
         then
-          sv_SrcFilePath="/"$(echo $sv_FileURI | cut -d "/" -f4-)
-          if test -e "${sv_SrcFilePath}"
+          sv_SrcFilePath="/"$(echo ${sv_FileURI} | cut -d "/" -f4-)
+          sv_DstFilePath="$(GLB_sf_OriginalFilePath "${sv_SrcFilePath}")"
+          if test -z "${sv_DstFilePath}"
           then
-            if test -d "${sv_SrcFilePath}"
-            then
-              sv_DstFilePath="${sv_SrcFilePath}"
-            else
-              ln -fh "${sv_SrcFilePath}" "${sv_DstFilePath}"
-            fi
+            sv_DstFilePath="${sv_SrcFilePath}"
           fi
         fi
         ;;

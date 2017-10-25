@@ -2,14 +2,18 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 19-Oct-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-verify <somefile.mobileconfig> [user]
 #
 # Without a user specified, verifies for the workstation.
 # With a user, verifies for the specified user.
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 

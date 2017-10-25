@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Deletes files and folder from the users home folder
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 14-Oct-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Triggered by the following events:
 #   Usr-AtDesktop           (as user)
@@ -16,7 +16,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.18"
+sv_CodeVersion="2.0.19"
 
 if [ $# -eq 0 ]
 then
@@ -219,7 +219,7 @@ Usr-AtDesktop|Usr-Idle)
         
         if test -d "${sv_ProcessFilePath}"
         then
-          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting files and folders from '${sv_ProcessFilePath}' "
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Looking for files and folders to delete from '${sv_ProcessFilePath}' "
           iv_fcount=0
           iv_dcount=0
 

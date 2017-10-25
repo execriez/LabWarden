@@ -2,12 +2,16 @@
 #
 # Short:    Install Project (command-line)
 # Author:   Mark J Swift
-# Version:  2.0.10
+# Version:  2.0.19
 # Modified: 12-Jun-2017
 #
 #
 # Called as follows:    
 #   sudo Install [<root_dirpath>]
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 

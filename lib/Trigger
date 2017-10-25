@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  2.0.17
-# Modified: 05-Oct-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -34,6 +34,16 @@
 #   Sys-Logout                       (as root)
 #   Usr-Login                        (as user)
 #   Usr-Logout                       (as user)
+
+# ---
+
+sv_CodeVersion="2.0.19"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
 
 # ---
 

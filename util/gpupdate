@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Perform a Group Policy update
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 11-Oct-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Called as follows:    
 #   gpupdate [-force|-quick] [<user>]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.18"
+sv_CodeVersion="2.0.19"
 
 # ---
 
@@ -265,7 +265,7 @@ sf_ListGroups() # <Context> <ObjectName> - List object membership. Context can b
 
 if test -z "${sv_GPOuser}"
 then
-  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption}  (version ${sv_CodeVersion})"
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption}"
   
   # Grab  lock
   if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}") = "false" ]
@@ -274,7 +274,7 @@ then
   fi
   
 else
-  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption} '${sv_GPOuser}'  (version ${sv_CodeVersion})"
+  GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "${GLB_sv_ThisScriptFileName} ${sv_GPoption} '${sv_GPOuser}'"
   
   # Grab  lock
   if [ $(GLB_bf_GrabNamedLock "${GLB_sv_ThisScriptFileName}-${sv_GPOuser}") = "false" ]

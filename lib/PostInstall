@@ -2,14 +2,18 @@
 #
 # Short:    Perform post-install checks
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 #
 # Called as follows (by Install as root):    
 #   PostInstall
 
 # need to pass volume
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 

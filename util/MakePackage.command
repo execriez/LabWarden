@@ -2,12 +2,16 @@
 #
 # Short:    Utility script - Build installation package
 # Author:   Mark J Swift
-# Version:  2.0.10
-# Modified: 12-Jun-2017
+# Version:  2.0.19
+# Modified: 22-Oct-2017
 #
 # Called as follows:    
 #   MakePackage.command
 #
+
+# ---
+
+sv_CodeVersion="2.0.19"
 
 # ---
 
