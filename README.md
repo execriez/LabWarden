@@ -2634,7 +2634,7 @@ This policy enables or disables spotlight indexing on a users network home.
 
 It is called as the user and triggered by an **Usr-AtDesktop** event.
 
-On early MacOS versions, allowing multiple users to Build Spotlight indices on network volumes could cause a network volume DDOS. It's uncertain as to whether this is still the case, as Spotlight now caches some settings locally.
+On early MacOS versions, allowing multiple users to Build Spotlight indices on network volumes could cause a network volume DDOS. It's uncertain as to whether this is still the case.
 
 The policy has a one configurable key **SpotlightEnabled**, that determines whether or not Spotlight is enabled for the user home.
 
