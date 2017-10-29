@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</key>
+			<key>E79023B9-244A-4F6F-83D2-24676752DC89</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -17,7 +17,7 @@
 							<key>URI</key>
 							<string>smb://%DOMAIN%/NETLOGON/MacOS/Packages/LabWarden.pkg</string>
 							<key>VersionString</key>
-							<string>2.0.18</string>
+							<string>2.0.20</string>
 						</dict>
 					</array>
 				</dict>
@@ -32,11 +32,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</string>
+			<string>E79023B9-244A-4F6F-83D2-24676752DC89</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>37D2312E-B5C8-4EE3-878B-91BC6B0622D0</string>
+			<string>E79023B9-244A-4F6F-83D2-24676752DC89</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -46,7 +46,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-UpdatePackage (netlogon)</string>
 	<key>PayloadIdentifier</key>
-	<string>7BE98FBC-0D8A-4569-B174-194699F2A941</string>
+	<string>87995E3C-01C8-4CF2-95C7-3E81F7A12D34</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -56,7 +56,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>7BE98FBC-0D8A-4569-B174-194699F2A941</string>
+	<string>87995E3C-01C8-4CF2-95C7-3E81F7A12D34</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

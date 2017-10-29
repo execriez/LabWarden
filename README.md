@@ -70,7 +70,7 @@ If the uninstaller package isn't available, you can uninstall from a shell by ty
 
 The uninstaller will uninstall the following files and directories:
 
-	/Library/LaunchAgents/com.github.execriez.labwarden.appwarden.plist
+	/Library/LaunchAgents/com.github.execriez.labwarden.AppWarden.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
 	/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
@@ -78,7 +78,9 @@ The uninstaller will uninstall the following files and directories:
 	/Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.SleepWarden.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ManagedPrefs.plist
 	/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
 	/usr/LabWarden/
 
@@ -400,6 +402,7 @@ Here is a list of example LabWarden specific mobileconfig files included with La
 	LW-App-ExamplePolicy.mobileconfig                       - Activates the example Application Policy script (A blank canvas)
 	LW-App-FirefoxFirstSetup.mobileconfig                   - Creates a blank Firefox profile at first launch.
 	LW-App-FirefoxFixForNetworkHomes.mobileconfig           - Sets up Firefox so that it can run on network homes.
+	LW-App-PrefsPrimer                                      - copies a set of master prefs from an applications 'Contents/Resources' folder into the user prefs folder at application launch.
 	LW-App-Restrict.mobileconfig                            - Restricts the use of the Terminal.app and prevents application launches from user home areas and external drives.
 	LW-App-ShowHints.mobileconfig                           - Shows application specific hints when Logic Pro X or Adobe Premiere Pro are launched.
 	LW-Gen-Debug.mobileconfig                               - Writes debug info to the log file at every event
@@ -656,6 +659,34 @@ When user homes are on the network (i.e. not forced local) - then Firefox has tr
 This policy creates symbolic links to local versions of the files during application launch, and then deletes the symbolic links when the application quits.
 
 There are no configurable parameters.
+
+### LW-App-PrefsPrimer
+This policy copies a set of master prefs from an applications 'Contents/Resources' folder into the user prefs folder at application launch. Once copied it will not be copied again, unless the prefs are updated.
+
+It is called as the user and triggered by an **App-WillLaunch** event.
+
+The config contains no configurable options:
+
+	<key>Name</key>
+	<string>App-PrefsPrimer</string>
+	<key>TriggeredBy</key>
+	<array>
+		<string>App-WillLaunch</string>
+	</array>
+
+In order for the policy to work, you should create a 'App-PrefsPrimer' folder within the applications 'Contents/Resources/' folder as the image below.
+
+![App-PrefsPrimer](images/App-PrefsPrimer.jpg "App-PrefsPrimer")
+
+The 'General/Library/Preferences/' folder should contain a preference file. This file should at least contain an 'App-PrefsPrimer' attribute, which is a unique id for the preference set:
+
+	<key>App-PrefsPrimer</key>
+	<string>0F4C35F6-1D47-4BAF-8F1F-05C15F33960E</string>
+	
+Once a preference set is deployed, it will not be deployed again unless the unique id changes. The preference set is the complete contents of the 'General/Library/' folder
+
+To use different preferences on different workstations, change the folder 'General' to the workstation hostname.
+
 
 ### App-Restrict
 This policy script restricts application usage depending on a blacklist or whitelist. It is called as the user and triggered by an **App-WillLaunch** event.
@@ -1542,7 +1573,9 @@ The example policy config should be configured to your own needs.
 
 **USE WITH CAUTION**
 
-This policy deletes files from /. It will reboot after the files have been successfully deleted. It is called as root and triggered by the **Sys-Boot** event.
+This policy deletes files from /. It will reboot after the files have been successfully deleted. This policy is potentially unsafe if misconfigured.
+
+It is called as root and triggered by the **Sys-Boot** event.
 
 The config consists of a **Path** array, containing a list of files and directories that should be deleted. Useful if you want to quickly delete a bunch of files from a number of workstations.
 
@@ -1571,7 +1604,11 @@ The example policy config should be configured to your own needs.
 
 **USE WITH CAUTION**
 
-This policy deletes outdated local user profile folders from /Users and from /private/var/folders for network accounts. It is called as root and triggered by the  **Sys-Boot** event.
+This policy deletes outdated local user home folders for network accounts. The policy never deletes user homes for local accounts. This policy is potentially unsafe if misconfigured.
+
+It is called as root and triggered by the  **Sys-Boot** event.
+
+The **DeleteMobileAccounts** key declares whether mobile accounts should be considered for deletion. The flag is assumed false if not set. If true, when a mobile account user home is deleted, the user account is also deleted.
 
 The **LoginMinAgeDays** key defines a minimum age below which user folders should never be deleted. The example below sets this at 8. This means that user folders for accounts that have been logged in to within the last 8 days will not be considered for deletion.
 
@@ -1583,6 +1620,8 @@ The **UserCacheEarliestEpoch** key sets a value for the earliest profile creatio
 
 	<key>Config</key>
 	<dict>
+		<key>DeleteMobileAccounts</key>
+		<false/>
 		<key>LoginMaxAgeDays</key>
 		<integer>62</integer>
 		<key>LoginMinAgeDays</key>
@@ -1596,7 +1635,7 @@ The **UserCacheEarliestEpoch** key sets a value for the earliest profile creatio
 	<string>Sys-DeleteOldUserProfiles</string>
 	<key>TriggeredBy</key>
 	<array>
-		<string>Sys-Boot</string>
+		<string>Sys-Poll</string>
 	</array>
 
 The example policy config should be configured to your own needs.
@@ -2318,6 +2357,9 @@ This script uses **duti**. See the duti documentation for an explanation of the 
 	</array>
 
 ### Usr-DeleteFiles
+
+**USE WITH CAUTION**
+
 This policy can be used to delete specific files and folders from a users home directory. This policy is potentially unsafe if misconfigured.
 
 The policy is triggered by the **Usr-AtDesktop** and **Usr-Idle** events. 
@@ -2652,12 +2694,20 @@ The policy has a one configurable key **SpotlightEnabled**, that determines whet
 
 ### Usr-SyncLocalHomeToNetwork
 
-This policy syncs specified folders from the users local home to network home. It is only relevant for network accounts where "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility".
+**USE WITH CAUTION**
 
-It is called as the user. Files are synced down from the network at a **Usr-AtDesktop** event. Files are synced back up to the network at a **Usr-Poll** event.
+This policy syncs specified folders from the users local home to network home. This policy is potentially unsafe if misconfigured.
+
+It is called as a user and is only relevant for user network accounts where "Force local home directory on startup disk" is enabled in the "User experience" tab of "Directory Utility".
+
+Files are synced down from the network at a **Usr-AtDesktop** event. Files are synced back up to the network at a **Usr-Poll** event.
+
+The config contains a key called **SafeFlag**. If true, syncs are limited to the users 'Library' folder within the users local and network homes. 
 
 	<key>Config</key>
 	<dict>
+		<key>SafeFlag</key>
+		<true/>
 		<key>Path</key>
 		<array>
 			<string>/Library/Fonts/</string>
@@ -2737,6 +2787,22 @@ LabWarden includes code from the following sources:
 
 ## History
 
+2.0.20 - 27-Oct-2017
+
+* Fixed a bug in the policy 'Usr-CreateFolder' with the 'NETWORKHOME' option, that would create an extra erroneous link at the destination folder.
+
+* Added policy 'App-PrefsPrimer' that can copy a set of master prefs from an applications 'Contents/Resources' folder into the user prefs folder at application launch.
+
+* The policy 'Sys-DeleteOldUserProfiles' is now triggered by the 'Sys-Poll' event and can delete mobile accounts via the 'DeleteMobileAccounts' flag. This flag is assumed 'false' if not present. The policy is also now quicker to terminate if it finds there is nothing to do. The example config file is updated accordingly.
+
+* The routines 'mobileconfig-install', 'mobileconfig-Uninstall' and 'mobileconfig-verify' now log the payload display name in the log files.
+
+* The version on the 'Trigger' routine is now always the same as the LabWarden release version. This allows you to more easily see in the log file which version of LabWarden is installed.
+
+* Log entries now also show a timezone to avoid ambiguity when the clocks change.
+
+* Fixed a bug that could happen if a log entry was made while the logs were being backed up.
+
 2.0.19 - 25-Oct-2017
 
 * Added 'SafeMode' flag to the config for policy 'LW-Usr-SyncLocalHomeToNetwork'. The policy now restricts syncs to the users Library folder if the 'SafeMode' flag is true. The 'SafeMode' flag is assumed true if undefined. You should note that syncing anything but the Library folder can be potentially unsafe if misconfigured.
@@ -2748,6 +2814,8 @@ LabWarden includes code from the following sources:
 * The function 'GLB_sf_ResolveFileURItoPath' now uses 'GLB_sf_OriginalFilePath' on file paths to resolve links.
 
 * Updated the references section of the readme.
+
+* You can now use the following variable in configs %FQADDOMAIN%, which is the fully qualified active directory domain of the workstaion.
 
 2.0.18 - 20-Oct-2017
 

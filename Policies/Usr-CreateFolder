@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates folders in the users home folder
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 19-Oct-2017
+# Version:  2.0.20
+# Modified: 26-Oct-2017
 #
 # Triggered by the following events:
 #   Usr-ConsoleUserLoggedIn (as user)
@@ -14,7 +14,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.18"
+sv_CodeVersion="2.0.20"
 
 if [ $# -eq 0 ]
 then
@@ -156,8 +156,11 @@ Usr-ConsoleUserLoggedIn|Usr-AtDesktop|Usr-PolicyInstall)
                 /bin/mkdir -p "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectDirPath}"
               fi
             fi
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating link ${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
-            ln -sf "${GLB_sv_LoggedInUserHomeNetworkDirPath}" "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+            if ! test -e "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Creating link ${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+              ln -sf "${GLB_sv_LoggedInUserHomeNetworkDirPath}" "${GLB_sv_LoggedInUserHomeDirPath}${sv_ReqdObjectFilePath}"
+            fi
           fi
         fi
       else

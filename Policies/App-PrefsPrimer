@@ -1,0 +1,244 @@
+#!/bin/bash
+#
+# Short:    App Policy Script - Setup prefs for an app from an apps Content dir.
+# Author:   Mark J Swift
+# Version:  2.0.20
+# Modified: 14-Oct-2017
+#
+# Triggered by the following events:
+#   App-WillLaunch (as user)
+#
+# Called as follows:    
+#   App-PrefsPrimer <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
+
+# ---
+
+sv_CodeVersion="2.0.20"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
+
+# ---
+
+# Get the config file path
+sv_ConfigFilePath="${1}"
+if test -z "${sv_ConfigFilePath}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get config entry name. This is the entry in the config that holds the configurable parameters for this policy.
+sv_ConfigEntryName="${2}"
+
+# Get event History
+sv_EventHistory="${3}"
+
+# Calculate the event that triggered this policy.
+sv_EventName="$(echo ${sv_EventHistory} | tr ":" "\n" | tail -n 1)"
+if test -z "${sv_EventName}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# Get the name of the logged in user, a null string signifies no-one is logged in
+GLB_sv_LoggedInUserName="${4}"
+
+# Get optional parameter
+# This is a general variable that is currently used to pass the following info:
+#   Application info during a AppWillLaunch, AppDidLaunch or AppDidTerminate event.
+#   User info during a Sys-ConsoleUserLoggedIn, Sys-ConsoleUserLoggedOut, Sys-ConsoleUserSwitch, Sys-Login or Sys-Logout event.
+sv_OptionalParam="${5}"
+
+# Get info from optional parameter
+case ${sv_EventName} in
+
+App-WillLaunch|App-DidLaunch|App-DidTerminate)
+
+  # Get ApplicationBundleIdentifier e.g. com.apple.TextEdit
+  # Note, older applications may return "(null)"
+  sv_ThisAppBundleIdentifier="$(echo ${sv_OptionalParam} | cut -d":" -f3)"
+
+  # Get notification e.g. WillLaunch, DidLaunch or DidTerminate
+  sv_ThisAppNotificationType="$(echo ${sv_OptionalParam} | cut -d":" -f1)"
+
+  # Get Date/Time Epoch of the notification
+  iv_ThisAppNotificationEpoch="$(echo ${sv_OptionalParam} | cut -d":" -f2)"
+
+  # Get ApplicationName e.g. TextEdit
+  sv_ThisAppName="$(echo ${sv_OptionalParam} | cut -d":" -f4)"
+
+  # Get ApplicationPath e.g. /Applications/TextEdit.app
+  sv_ThisAppFilePath="$(echo ${sv_OptionalParam} | cut -d":" -f5)"
+
+  # Get ApplicationProcessIdentifier - i.e. the process ID
+  sv_ThisAppProcessID="$(echo ${sv_OptionalParam} | cut -d":" -f6)"
+  
+  # Note, we should quickly quit if are running an App that we are not interested in
+
+  # ------------------
+  # BEGIN YOUR CODE HERE
+
+  # We could test for a specific App, but in this example we are interested in all Apps
+  #
+  # if [ "${sv_ThisAppBundleIdentifier}" != "org.mozilla.firefox" ]
+  # then
+  #   exit 0
+  # fi
+
+  # END YOUR CODE HERE
+  # ------------------
+  ;;
+  
+esac
+
+# ---
+
+# Load the library, only if it is not already loaded
+if test -z "${GLB_sv_ProjectSignature}"
+then
+  . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'CommonLib' for a complete list.
+
+# ---
+
+# Get policy name (Name of this script)
+sv_PolicyName="${GLB_sv_ThisScriptName}"
+
+# ---
+
+# Calculate the pref file paths
+
+# Local prefs are referenced by Policy UUID and are local to the running user. These are deleted when the policy is updated or uninstalled.
+sv_ThisUserLocalPrefFilePath="${GLB_sv_ThisUserPrefDirPath}/${sv_ConfigEntryName}.plist"
+
+# Global prefs are referenced by Policy Name and are read/write root but read-only for normal users. These survive policy updates and uninstalls.
+sv_ThisPolicyGlobalPrefFilePath="${GLB_sv_ProjectConfigDirPath}/Config/Global/${sv_PolicyName}.plist"
+
+# ---
+
+# Sys-PolicyInstall & Sys-PolicyUninstall events (which are called as the root user) are ignored by application policies
+
+if [ "${sv_EventName}" = "Sys-PolicyInstall" ] || [ "${sv_EventName}" = "Sys-PolicyUninstall" ]
+then
+  GLB_nf_logmessage ${GLB_iv_MsgLevelDebug} "Event '${sv_EventHistory}' ignored by policy '${sv_PolicyName}'"
+  exit 0
+fi
+
+# ---
+
+# Execute the Policy
+
+# Take a note of the Policy call
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy '${sv_PolicyName}' ${sv_OptionalParam} triggered by event '${sv_EventHistory}' as user '${GLB_sv_ThisUserName}'"
+
+# ---
+
+# Exit if we are an unsupported user
+case ${GLB_sv_ThisUserName} in
+    
+root|_mbsetupuser)
+  GLB_nf_QuickExit "Policy aborted - User '${GLB_sv_ThisUserName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+  
+esac
+
+# Exit if no-one is logged in
+if test -z "${GLB_sv_LoggedInUserName}"
+then
+  GLB_nf_QuickExit "Policy aborted - No-one is logged in."
+fi
+   
+# ---
+
+# Exit if the user home is undefined
+if test -z "${GLB_sv_LoggedInUserHomeDirPath}"
+then
+  GLB_nf_QuickExit "Policy aborted - user home is not defined" ${GLB_iv_MsgLevelWarn}
+fi
+
+# Exit if the user home does not exist
+if ! test -e "${GLB_sv_LoggedInUserHomeDirPath}"
+then
+  GLB_nf_QuickExit "Policy aborted - user home '${GLB_sv_LoggedInUserHomeDirPath}' does not exist" ${GLB_iv_MsgLevelWarn}
+fi
+
+# ---
+
+case ${sv_EventName} in
+    
+App-WillLaunch)  
+  sv_MasterPrefsDirPath="${sv_ThisAppFilePath}/Contents/Resources/${sv_PolicyName}/${GLB_sv_Hostname}/Library/"
+  if ! test -e "${sv_MasterPrefsDirPath}"
+  then
+    sv_MasterPrefsDirPath="${sv_ThisAppFilePath}/Contents/Resources/${sv_PolicyName}/General/Library/"
+  fi
+  sv_MasterPrefsFilePath="${sv_MasterPrefsDirPath}Preferences/${sv_ThisAppBundleIdentifier}.plist"
+  if test -f "${sv_MasterPrefsFilePath}"
+  then
+    bv_CopyPrefs="true"
+    sv_MasterPrefsFileID="$(GLB_sf_GetPlistProperty "${sv_MasterPrefsFilePath}" ":${sv_PolicyName}")"
+    sv_RunningPrefsDirPath="${GLB_sv_LoggedInUserHomeDirPath}/Library/"
+    sv_RunningPrefsFilePath="${sv_RunningPrefsDirPath}Preferences/${sv_ThisAppBundleIdentifier}.plist"
+    if test -f "${sv_RunningPrefsFilePath}"
+    then
+      sv_RunningPrefsFileID="$(GLB_sf_GetPlistProperty "${sv_RunningPrefsFilePath}" ":${sv_PolicyName}")"
+      if [ "${sv_MasterPrefsFileID}" = "${sv_RunningPrefsFileID}" ]
+      then
+        bv_CopyPrefs="false"
+      fi
+    fi
+    if [ "${bv_CopyPrefs}" = "true" ]
+    then
+      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Copying master prefs to user prefs folder"
+      
+      # Quit App
+      kill ${sv_ThisAppProcessID}
+      
+      # Copy prefs
+      while read sv_MasterPrefFilePath
+      do
+        sv_RunningPrefFilePath=$(echo "${sv_MasterPrefFilePath}" | sed "s|^${sv_MasterPrefsDirPath}|${sv_RunningPrefsDirPath}|")
+        if test -d "${sv_RunningPrefFilePath}"
+        then
+          mkdir -p "${sv_RunningPrefFilePath}"
+        else
+          cp "${sv_MasterPrefFilePath}" "${sv_RunningPrefFilePath}"
+        fi
+      done < <(find "${sv_MasterPrefsFilePath}")
+
+      # Re-launch App
+      /usr/bin/open -b "${sv_ThisAppBundleIdentifier}"
+    fi
+  fi
+  ;;
+
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_nf_QuickExit "Policy aborted - Trigger '${sv_EventName}' is not supported by policy '${sv_PolicyName}'"
+  ;;
+
+esac
+
+# ---
+
+# Take a note that the Policy is complete
+GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Policy done."
+
+# Trigger an event
+#/usr/local/LabWarden/lib/Trigger "${sv_EventHistory}:${sv_PolicyName}" "$(whoami)" "${sv_OptionalParam}"
+
+# Remove temporary files
+rm -fPR "${GLB_sv_ThisScriptTempDirPath}"
+
+# ---

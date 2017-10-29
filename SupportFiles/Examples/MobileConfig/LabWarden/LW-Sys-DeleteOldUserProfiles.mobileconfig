@@ -5,10 +5,12 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</key>
+			<key>79438A5D-5810-4702-8445-F50750D828D4</key>
 			<dict>
 				<key>Config</key>
 				<dict>
+					<key>DeleteMobileAccounts</key>
+					<false/>
 					<key>LoginMaxAgeDays</key>
 					<integer>62</integer>
 					<key>LoginMinAgeDays</key>
@@ -22,17 +24,17 @@
 				<string>Sys-DeleteOldUserProfiles</string>
 				<key>TriggeredBy</key>
 				<array>
-					<string>Sys-Boot</string>
+					<string>Sys-Poll</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</string>
+			<string>79438A5D-5810-4702-8445-F50750D828D4</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>9B9D1F50-D3D2-46B0-96DB-F3320A296AE8</string>
+			<string>79438A5D-5810-4702-8445-F50750D828D4</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -42,7 +44,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-DeleteOldUserProfiles</string>
 	<key>PayloadIdentifier</key>
-	<string>3CF289E4-A5A2-4EB3-9CB7-0C51C50C84D8</string>
+	<string>33118280-7531-4FBB-9788-D49D8C0E4542</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -52,7 +54,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>3CF289E4-A5A2-4EB3-9CB7-0C51C50C84D8</string>
+	<string>33118280-7531-4FBB-9788-D49D8C0E4542</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

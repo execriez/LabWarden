@@ -2,8 +2,8 @@
 #
 # Short:    Gen Policy script - Writes debug info to the policy prefs
 # Author:   Mark J Swift
-# Version:  2.0.18
-# Modified: 13-Oct-2017
+# Version:  2.0.20
+# Modified: 29-Oct-2017
 #
 # Triggered by the following events:
 #   All events (as user or root)
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.18"
+sv_CodeVersion="2.0.20"
 
 if [ $# -eq 0 ]
 then
@@ -140,32 +140,37 @@ case ${sv_EventName} in
 *)
   if test -n "${GLB_sv_Hostname}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %COMPUTERNAME% ${GLB_sv_Hostname}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %COMPUTERNAME% '${GLB_sv_Hostname}'"
   fi
   
   if test -n "${GLB_sv_LoggedInUserName}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %USERNAME% ${GLB_sv_LoggedInUserName}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %USERNAME% '${GLB_sv_LoggedInUserName}'"
   fi
   
   if test -n "${GLB_sv_LoggedInUserHomeDirPath}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMEPATH% ${GLB_sv_LoggedInUserHomeDirPath}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMEPATH% '${GLB_sv_LoggedInUserHomeDirPath}'"
   fi
   
   if test -n "${GLB_sv_LoggedInUserHomeNetworkDirPath}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMESHARE% ${GLB_sv_LoggedInUserHomeNetworkDirPath}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMESHARE% '${GLB_sv_LoggedInUserHomeNetworkDirPath}'"
   fi
   
   if test -n "${GLB_sv_LoggedInUserLocalHomeDirPath}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMELOCAL% ${GLB_sv_LoggedInUserLocalHomeDirPath}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %HOMELOCAL% '${GLB_sv_LoggedInUserLocalHomeDirPath}'"
   fi
   
   if test -n "${GLB_sv_ADDomainNameFlat}"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %DOMAIN% ${GLB_sv_ADDomainNameFlat}"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %DOMAIN% '${GLB_sv_ADDomainNameFlat}'"
+  fi
+
+  if test -n "${GLB_sv_ADDomainNameDNS}"
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "(${sv_EventName}) %FQADDOMAIN% '${GLB_sv_ADDomainNameDNS}'"
   fi
   ;;
 

@@ -2,18 +2,18 @@
 #
 # Short:    Policy script - Deletes outdated user profiles
 # Author:   Mark J Swift
-# Version:  2.0.12
-# Modified: 27-Jun-2017
+# Version:  2.0.20
+# Modified: 27-Oct-2017
 #
 # Triggered by the following events:
-#   Sys-Boot (as root)
+#   Sys-Poll (as root)
 #
 # Called as follows:    
 #   Sys-DeleteOldUserProfiles <ConfigFilePath> <ConfigEntryName> <EventHistory> <LoggedInUser> <OptionalParam>
 
 # ---
 
-sv_CodeVersion="2.0.12"
+sv_CodeVersion="2.0.20"
 
 if [ $# -eq 0 ]
 then
@@ -101,6 +101,28 @@ fi
 
 # ---
 
+# Declare which file we are using to determine when a user last logged in
+sv_LastUseFile="/Library/Preferences/com.apple.finder.plist"
+
+# List all user "last login files" in no particular order - the "last login file" is a user file that was modified when the user last logged in
+sf_ListUserLastLoginFiles()
+{
+  local sv_UserDirName
+  local sv_LastUseFilePath
+
+  while read sv_UserDirName
+  do
+    sv_LastUseFilePath="/Users/${sv_UserDirName}${sv_LastUseFile}"
+    if [ -e "${sv_LastUseFilePath}" ]
+    then
+      echo ${sv_LastUseFilePath}
+    fi
+  done < <(ls -1 /Users)
+    
+}
+  
+# ---
+
 # Execute the Policy
 
 # Take a note of the Policy call
@@ -118,7 +140,9 @@ fi
 
 case ${sv_EventName} in
     
-Sys-Boot)
+Sys-Poll)
+  GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "This policy can be potentially unsafe if misconfigured"
+
   # Get the min disk space allowed before user folders are considered for deletion
   iv_MinDiskSpaceMegs="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:MinDiskSpaceMegs")"
 
@@ -129,7 +153,6 @@ Sys-Boot)
   
   # Get the age in days before which user folders that are never deleted
   iv_LoginMinAgeDays="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LoginMinAgeDays")"
-  
   if test -z "${iv_LoginMinAgeDays}"
   then
     iv_LoginMinAgeDays=8
@@ -137,7 +160,6 @@ Sys-Boot)
   
   # Get the days allowable between logins before profiles are deleted
   iv_LoginMaxAgeDays="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:LoginMaxAgeDays")"
-  
   if test -z "${iv_LoginMaxAgeDays}"
   then
     iv_LoginMaxAgeDays=62
@@ -145,109 +167,133 @@ Sys-Boot)
   
   # Get the earliest creation date/time allowable - cache files (in /private/var/folders) created earlier than this are deleted
   iv_UserCacheEarliestEpoch="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:UserCacheEarliestEpoch")"
-
   if test -z "${iv_UserCacheEarliestEpoch}"
   then
     iv_UserCacheEarliestEpoch=0
   fi
   
+  # Check whether we should delete mobile accounts
+  bv_DeleteMobileAccounts="$(GLB_sf_GetPlistProperty "${sv_ConfigFilePath}" ":${sv_ConfigEntryName}:Config:DeleteMobileAccounts")"
+  if test -z "${bv_DeleteMobileAccounts}"
+  then
+    bv_DeleteMobileAccounts="false"
+  fi
+
   while read sv_FolderDirPath
   do
     if test -d "${sv_FolderDirPath}"
     then
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Found user home for '${sv_FolderDirPath}'."
-    
       sv_UserName="$(stat -f "%Su" "${sv_FolderDirPath}")"
       
-      # Check if the user folder is potentially deletable (short-lived)
-      
-      # Check if user is a local account (returns "true" or "false")
-      if [ "$(dseditgroup -o checkmember -m "${sv_UserName}" -n . localaccounts | cut -d" " -f1)" = "yes" ]
+      # Check if the user has recently logged in
+      iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}${sv_LastUseFile}")
+      iv_AccountAgeSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_LastUseEpoch}))
+      if [ ${iv_AccountAgeSecs} -lt $((${iv_LoginMinAgeDays}*24*60*60)) ]
       then
-        bv_UserIsLocal="true"
-        bv_UserFolderIsShortLived="false"
-    
-      else
-        bv_UserIsLocal="false"
-    
-        # Network user folders are temporary (unless mobile)
-        sv_Attr="OriginalHomeDirectory";sv_Value="$(dscl 2>/dev/null localhost -read "/Local/Default/Users/${sv_UserName}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
-|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')"
-        if test -n "${sv_Value}"
-        then
-          bv_UserIsMobile="true"
-          bv_UserFolderIsShortLived="false"
-      
-        else
-          bv_UserIsMobile="false"
-          bv_UserFolderIsShortLived="true"
-      
-        fi
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping remaining folders, the owners have recently logged in."
+        break
       fi
-
-      if [ "${bv_UserFolderIsShortLived}" = "false" ]
+          
+      # Check if the user is currently logged in
+      if [ -n "$(who -q | grep -Ev "^#" | tr " " "\n" | sort -u | grep -Ev "^$" | grep -E "^"$(printf "%q" ${sv_UserName})"$")" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping '${sv_FolderDirPath}', owner '${sv_UserName}' is local or mobile."
-      
-      else
-        if test -e "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist"
-        then
-          sv_ReasonToDelete=""
-          
-          iv_LastUseEpoch=$(stat -f "%m" "${sv_FolderDirPath}/Library/Preferences/com.apple.finder.plist")
-          iv_AccountAgeSecs=$((${GLB_iv_ThisScriptStartEpoch}-${iv_LastUseEpoch}))
-          iv_FreeMegs=$(df -hm / | awk 'NR==2 {print $4}')
-          
-          if [ ${iv_FreeMegs} -lt ${iv_MinDiskSpaceMegs} ]
-          then
-            if [ ${iv_AccountAgeSecs} -gt $((${iv_LoginMinAgeDays}*24*60*60)) ]
-            then
-              sv_ReasonToDelete="low disk space (${iv_FreeMegs} megs)."
-            fi
-          fi
-          
-          if [ ${iv_AccountAgeSecs} -gt $((${iv_LoginMaxAgeDays}*24*60*60)) ]
-          then
-            sv_ReasonToDelete="user hasn't logged on for more than ${iv_LoginMaxAgeDays} days."
-          fi
-          
-          if test -n "${sv_ReasonToDelete}"
-          then
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting user home and user cache for '${sv_UserName}'; ${sv_ReasonToDelete}"
-          
-            # Delete the user folder
-            rm -fR "${sv_FolderDirPath}"
-          
-            # Delete the user cache folders
-            find /private/var/folders \( -depth 2 -prune \) -and -user "${sv_UserName}" -exec rm -fR "{}" \;
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping folder '${sv_FolderDirPath}', owner '${sv_UserName}' is logged in."
         
-          else
-            GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping '${sv_FolderDirPath}'; no reason to delete."
-      
-          fi
+      else
+        # Check if user is a local account
+        sv_UserIsLocal="$(dseditgroup -o checkmember -m "${sv_UserName}" -n . localaccounts | cut -d" " -f1)"
+        if [ -z "${sv_UserIsLocal}" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping folder '${sv_FolderDirPath}', owner '${sv_UserName}' is unknown."
           
-        fi
-      fi
+        else
+        
+        if [ "${sv_UserIsLocal}" = "yes" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping folder '${sv_FolderDirPath}', owner '${sv_UserName}' is local."
+    
+        else
       
-      
-      if test -n "${iv_UserCacheEarliestEpoch}"
-      then
-        while read sv_DelPath
-        do
-          iv_CreatedEpoch=$(stat -f "%c" "${sv_DelPath}")
-          if [ ${iv_CreatedEpoch} -lt ${iv_UserCacheEarliestEpoch} ]
+          # Network user folders are always temporary (unless mobile)
+          sv_Attr="OriginalHomeDirectory";sv_Value="$(dscl 2>/dev/null localhost -read "/Local/Default/Users/${sv_UserName}" ${sv_Attr})";iv_Err=$?;sv_Value="$(echo "${sv_Value}" | sed "s|^[^:]*:${sv_Attr}:| ${sv_Attr}: |" | tr -d "\r" | tr "\n" "\r" | sed 's| '${sv_Attr}': |\
+|'g | tail -n1 | tr "\r" "\n" | sed '/^\s*$/d')"
+          if test -n "${sv_Value}"
           then
-            GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting outdated user cache for '${sv_UserName}'"
-            rm -fR "${sv_DelPath}"
+            bv_UserIsMobile="true"
+      
+          else
+            bv_UserIsMobile="false"
+      
           fi
 
-        done < <(find /private/var/folders \( -depth 2 -prune \) -and \( -user "${sv_UserName}" \))
+            if [ "${bv_UserIsMobile}" = "true" ] && [ "${bv_DeleteMobileAccounts}" = "false" ]
+            then
+              GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping folder '${sv_FolderDirPath}', owner '${sv_UserName}' is mobile."
+      
+            else
+              sv_ReasonToDelete=""
+          
+              iv_FreeMegs=$(df -hm / | awk 'NR==2 {print $4}')
+              if [ ${iv_FreeMegs} -lt ${iv_MinDiskSpaceMegs} ]
+              then
+                sv_ReasonToDelete="low disk space (${iv_FreeMegs} megs)."
+              fi
+          
+              if [ ${iv_AccountAgeSecs} -gt $((${iv_LoginMaxAgeDays}*24*60*60)) ]
+              then
+                sv_ReasonToDelete="user hasn't logged on for more than ${iv_LoginMaxAgeDays} days."
+              fi
+          
+              if test -z "${sv_ReasonToDelete}"
+              then
+                GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Skipping remaining folders, no reason to delete."
+                break
+              fi
+          
+              GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting user home and user cache for '${sv_UserName}'; ${sv_ReasonToDelete}"
+          
+              # Delete the user folder
+              rm -fR "${sv_FolderDirPath}"
+          
+              # Delete the user cache folders
+              find /private/var/folders \( -depth 2 -prune \) -and -user "${sv_UserName}" -exec rm -fR "{}" \;
+              
+              # Delete the user account if it is a mobile account
+              if [ "${bv_UserIsMobile}" = "true" ]
+              then
+                GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting mobile account for '${sv_UserName}'"
+                dscl localhost delete /Local/Default/Users/"${sv_UserName}"
+              fi
+        
+            fi
+      
+            if test -n "${iv_UserCacheEarliestEpoch}"
+            then
+              while read sv_DelPath
+              do
+                iv_CreatedEpoch=$(stat -f "%c" "${sv_DelPath}")
+                if [ ${iv_CreatedEpoch} -lt ${iv_UserCacheEarliestEpoch} ]
+                then
+                  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Deleting outdated user cache for '${sv_UserName}'"
+                  rm -fR "${sv_DelPath}"
+                fi
+
+              done < <(find /private/var/folders \( -depth 2 -prune \) -and \( -user "${sv_UserName}" \))
+            fi
+          
+          fi
+        fi
       fi
-    
     fi
     
-  done < <(find /Users -iregex "/Users/[^/]*/Library/Preferences/com.apple.finder.plist" | xargs -I{} stat -f "%m %N" "{}" | sort -n | cut -d" " -f2- | cut -d"/" -f 1-3)
+  # This line returns a list of user homes ordered by last login
+  done < <(sf_ListUserLastLoginFiles | xargs -I{} stat -f "%m %N" "{}" | sort -n | cut -d" " -f2- | cut -d"/" -f 1-3)
 
+  iv_FreeMegs=$(df -hm / | awk 'NR==2 {print $4}')
+  if [ ${iv_FreeMegs} -lt ${iv_MinDiskSpaceMegs} ]
+  then
+    GLB_nf_logmessage ${GLB_iv_MsgLevelWarn} "Failed to provide the required disk space. Low disk space (${iv_FreeMegs} megs)"
+  fi
   ;;
 
 Sys-PolicyInstall|Sys-PolicyUninstall)

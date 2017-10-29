@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>60636BFB-2909-4973-8DCE-F214CFD2410C</key>
+			<key>A9558195-4633-4E3A-83DD-E1883A3DCFBB</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -30,6 +30,8 @@
 						<string>/Library/Safari/History.db</string>
 						<string>/Library/Safari/TopSites.plist</string>
 					</array>
+					<key>SafeFlag</key>
+					<true/>
 				</dict>
 				<key>Name</key>
 				<string>Usr-SyncLocalHomeToNetwork</string>
@@ -42,11 +44,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>60636BFB-2909-4973-8DCE-F214CFD2410C</string>
+			<string>A9558195-4633-4E3A-83DD-E1883A3DCFBB</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>60636BFB-2909-4973-8DCE-F214CFD2410C</string>
+			<string>A9558195-4633-4E3A-83DD-E1883A3DCFBB</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -56,7 +58,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Usr-SyncLocalHomeToNetwork</string>
 	<key>PayloadIdentifier</key>
-	<string>B6BE7A25-D82B-4732-A2B2-4D3326EF2C9D</string>
+	<string>321A766D-F7B7-460D-A31B-0A9391A82605</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -66,7 +68,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>B6BE7A25-D82B-4732-A2B2-4D3326EF2C9D</string>
+	<string>321A766D-F7B7-460D-A31B-0A9391A82605</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

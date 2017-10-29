@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - verify that a .mobileconfig payload is installed OK
 # Author:   Mark J Swift
-# Version:  2.0.19
-# Modified: 22-Oct-2017
+# Version:  2.0.20
+# Modified: 27-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-verify <somefile.mobileconfig> [user]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.19"
+sv_CodeVersion="2.0.20"
 
 # ---
 
@@ -52,6 +52,8 @@ fi
 mkdir -p "${sv_ConfigDirPath}"
 
 # ---
+# Get the mobileconfig display name
+sv_PayloadDisplayName="$(GLB_sf_GetPlistProperty "${sv_PayloadFilePath}" ":PayloadDisplayName")"
 
 # Verify the mobileconfig
 sv_PayloadUUID=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print ':PayloadUUID'" "${sv_PayloadFilePath}")
@@ -59,20 +61,20 @@ if test -n "${sv_GPOuser}"
 then
   if test -n "$(/usr/bin/profiles -U "${sv_GPOuser}" -Lv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is installed OK"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Verified "$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}'"
 
   else
-    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed" ${GLB_iv_MsgLevelWarn}
+    GLB_nf_QuickExit ""$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}' not currently installed" ${GLB_iv_MsgLevelWarn}
     
   fi  
   
 else
   if test -n "$(/usr/bin/profiles -Pv | grep -E "profileUUID: ${sv_PayloadUUID}$")"
   then
-    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "MobileConfig "$(basename ${sv_PayloadFilePath})" is already installed"
+    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Verified "$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}'"
     
   else
-    GLB_nf_QuickExit "MobileConfig "$(basename ${sv_PayloadFilePath})" is not installed" ${GLB_iv_MsgLevelWarn}
+    GLB_nf_QuickExit ""$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}' not currently installed" ${GLB_iv_MsgLevelWarn}
     
   fi  
 fi

@@ -2,8 +2,8 @@
 #
 # Short:    Payload Handler Script - uninstall a .mobileconfig payload
 # Author:   Mark J Swift
-# Version:  2.0.19
-# Modified: 22-Oct-2017
+# Version:  2.0.20
+# Modified: 27-Oct-2017
 #
 # Called as follows:    
 #   mobileconfig-uninstall <somefile.mobileconfig> [user]
@@ -13,7 +13,7 @@
 
 # ---
 
-sv_CodeVersion="2.0.19"
+sv_CodeVersion="2.0.20"
 
 # ---
 
@@ -58,17 +58,19 @@ then
 fi
 
 # ---
+# Get the mobileconfig display name
+sv_PayloadDisplayName="$(GLB_sf_GetPlistProperty "${sv_PayloadFilePath}" ":PayloadDisplayName")"
 
 # Uninstall the mobileconfig
 if test -n "${sv_GPOuser}"
 then
-  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Uninstalling config "$(basename ${sv_PayloadFilePath})
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Uninstalling "$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}'"
   sv_Cmd="/usr/bin/profiles -R -F '${sv_PayloadFilePath}' -U '${sv_GPOuser}'"
   sv_Err=$(/usr/bin/profiles 2>&1 -R -F "${sv_PayloadFilePath}" -U "${sv_GPOuser}")
   iv_Err=$?
     
 else
-  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Uninstalling config "$(basename ${sv_PayloadFilePath})
+  GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Uninstalling "$(basename ${sv_PayloadFilePath})" '${sv_PayloadDisplayName}'"
   sv_Cmd="/usr/bin/profiles -R -F '${sv_PayloadFilePath}'"
   sv_Err=$(/usr/bin/profiles 2>&1 -R -F "${sv_PayloadFilePath}")
   iv_Err=$?

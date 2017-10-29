@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  2.0.19
-# Modified: 22-Oct-2017
+# Version:  2.0.20
+# Modified: 27-Oct-2017
 #
 # Called as follows:    
 #   Trigger <event> <LoggedInUser> [<optionalparam>]
@@ -34,16 +34,6 @@
 #   Sys-Logout                       (as root)
 #   Usr-Login                        (as user)
 #   Usr-Logout                       (as user)
-
-# ---
-
-sv_CodeVersion="2.0.19"
-
-if [ $# -eq 0 ]
-then
-  echo "${sv_CodeVersion}"
-  exit 0
-fi
 
 # ---
 
@@ -100,6 +90,19 @@ fi
 if test -z "${GLB_sv_ProjectSignature}"
 then
   . /usr/local/LabWarden/inc/Common.sh
+fi
+
+# ---
+
+# The code version on the Trigger routine always matches the project version
+sv_CodeVersion="${GLB_sv_ProjectVersion}"
+
+# ---
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
 fi
 
 # ---

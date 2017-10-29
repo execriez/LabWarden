@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>9C3BB578-01F7-4E73-A19C-595064D9DA50</key>
+			<key>7DB12D22-2F19-4BCF-B968-37C8FCD0BC44</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -17,7 +17,7 @@
 							<key>URI</key>
 							<string>https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg</string>
 							<key>VersionString</key>
-							<string>2.0.17</string>
+							<string>2.0.20</string>
 						</dict>
 					</array>
 				</dict>
@@ -25,18 +25,18 @@
 				<string>Sys-UpdatePackage</string>
 				<key>TriggeredBy</key>
 				<array>
-					<string>Sys-Poll</string>
+					<string>Sys-Idle</string>
 					<string>Sys-ManualTrigger</string>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>9C3BB578-01F7-4E73-A19C-595064D9DA50</string>
+			<string>7DB12D22-2F19-4BCF-B968-37C8FCD0BC44</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>9C3BB578-01F7-4E73-A19C-595064D9DA50</string>
+			<string>7DB12D22-2F19-4BCF-B968-37C8FCD0BC44</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -46,7 +46,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-UpdatePackage</string>
 	<key>PayloadIdentifier</key>
-	<string>03964763-B7F8-453C-9D41-DFB05278A5ED</string>
+	<string>5FE05ADD-75EB-4A2D-B4F6-DE2079D0CD48</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -56,7 +56,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>03964763-B7F8-453C-9D41-DFB05278A5ED</string>
+	<string>5FE05ADD-75EB-4A2D-B4F6-DE2079D0CD48</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

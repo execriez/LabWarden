@@ -2,14 +2,14 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  2.0.19
-# Modified: 25-Oct-2017
+# Version:  2.0.20
+# Modified: 29-Oct-2017
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc/Common.sh
 #
 # Take a look at the example policy scripts before getting bogged down with detail.
-#  (AppExamplePolicy, SystemExamplePolicy and UserExamplePolicy)
+#  (App-ExamplePolicy, Sys-ExamplePolicy and Usr-ExamplePolicy)
 #
 # Enter with the following globals already defined
 #  GLB_sv_LoggedInUserName                  - The name of the logged-in user. 
@@ -168,35 +168,35 @@ then
     iv_LogLevel=${1}
     
     case ${iv_LogLevel} in
-    0)
+    ${GLB_iv_MsgLevelEmerg})
       sv_LogLevel="Emergency"
       ;;
       
-    1)
+    ${GLB_iv_MsgLevelAlert})
       sv_LogLevel="Alert"
       ;;
       
-    2)
+    ${GLB_iv_MsgLevelCrit})
       sv_LogLevel="Critical"
       ;;
       
-    3)
+    ${GLB_iv_MsgLevelErr})
       sv_LogLevel="Error"
       ;;
       
-    4)
+    ${GLB_iv_MsgLevelWarn})
       sv_LogLevel="Warning"
       ;;
       
-    5)
+    ${GLB_iv_MsgLevelNotice})
       sv_LogLevel="Notice"
       ;;
       
-    6)
+    ${GLB_iv_MsgLevelInfo})
       sv_LogLevel="Information"
       ;;
       
-    7)
+    ${GLB_iv_MsgLevelDebug})
       sv_LogLevel="Debug"
       ;;
       
@@ -210,7 +210,7 @@ then
   }
   
   # Save a message to the log file
-  GLB_nf_logmessage()   # loglevel messagetxt
+  GLB_nf_logmessage()   # intloglevel strmessage
   {  
     local iv_HalfLen
     local iv_LogLevel
@@ -253,33 +253,40 @@ then
           then
             if [ $(stat -f "%z" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log") -gt ${GLB_iv_MaxLogSizeBytes} ]
             then
-              for (( iv_LoopCount=0; iv_LoopCount<=8; iv_LoopCount++ ))
-              do
-                if [ ! -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz" ]
+              if [ "$(GLB_bf_GrabNamedLock "BackupLog" 0 "true")" = "true" ]
+              then
+                if [ $(stat -f "%z" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log") -gt ${GLB_iv_MaxLogSizeBytes} ]
                 then
-                  break
+                  for (( iv_LoopCount=0; iv_LoopCount<=8; iv_LoopCount++ ))
+                  do
+                    if [ ! -e "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz" ]
+                    then
+                      break
+                    fi
+                  done
+    
+                  iv_EmptyBackupIndex=${iv_LoopCount}
+    
+                  for (( iv_LoopCount=${iv_EmptyBackupIndex}; iv_LoopCount>0; iv_LoopCount-- ))
+                  do
+                    mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.$((${iv_LoopCount}-1)).tgz" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz"
+                  done
+    
+                  sv_WorkingDirPath="$(pwd)"
+                  cd "${GLB_sv_ThisUserLogDirPath}"
+                  tar -czf "${GLB_sv_ProjectSignature}.log.0.tgz" "${GLB_sv_ProjectSignature}.log"
+                  cd "${sv_WorkingDirPath}"
+                  rm -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
                 fi
-              done
-    
-              iv_EmptyBackupIndex=${iv_LoopCount}
-    
-              for (( iv_LoopCount=${iv_EmptyBackupIndex}; iv_LoopCount>0; iv_LoopCount-- ))
-              do
-                mv -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.$((${iv_LoopCount}-1)).tgz" "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log.${iv_LoopCount}.tgz"
-              done
-    
-              sv_WorkingDirPath="$(pwd)"
-              cd "${GLB_sv_ThisUserLogDirPath}"
-              tar -czf "${GLB_sv_ProjectSignature}.log.0.tgz" "${GLB_sv_ProjectSignature}.log"
-              cd "${sv_WorkingDirPath}"
-              rm -f "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+              fi
+              GLB_nf_ReleaseNamedLock "BackupLog" "true"
             fi
           fi
   
           # Make the log entry
           sv_LogLevel="$(GLB_sf_LogLevel ${iv_LogLevel})"
-          echo "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
-          echo >&2 "$(date '+%d %b %Y %H:%M:%S') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"
+          echo "$(date '+%d %b %Y %H:%M:%S %Z') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_sv_ThisUserLogDirPath}/${GLB_sv_ProjectSignature}.log"
+          echo >&2 "$(date '+%d %b %Y %H:%M:%S %Z') ${GLB_sv_ThisScriptFileName}[${GLB_iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_Message}"
 
         fi
       fi
@@ -287,52 +294,68 @@ then
     fi
   }
   
-  GLB_bf_GrabNamedLock() # ; Flag MaxSecs ; 
-  # Flag can be anything - LabWarden root user uses Restart, Shutdown, gpupdate 
-  # Secs is the max number of secs to wait for lock
+  GLB_bf_GrabNamedLock() # ; LockName [MaxSecs] [SilentFlag]; 
+  # LockName can be anything - LabWarden root user uses gpupdate, configupdate
+  # MaxSecs is the max number of secs to wait for lock
+  # SilentFlag, if true then lock activity is not logged
   # Returns "true" or "false"
   {
-    local sv_Flag
+    local sv_LockName
     local sv_MaxSecs
     local sv_LockDirPath
     local iv_Count
     local sv_ActiveLockPID
     local bv_Result
+    local bv_SilentFlag
 
-    sv_Flag="${1}"
+    sv_LockName="${1}"
     sv_MaxSecs="${2}"
-    
     if test -z "${sv_MaxSecs}"
     then
       sv_MaxSecs=10
     fi
       
+    bv_SilentFlag="${3}"
+    if test -z "${bv_SilentFlag}"
+    then
+      bv_SilentFlag="false"
+    fi
+    
     sv_LockDirPath="${GLB_sv_ThisUserTempDirPath}/Locks"
     mkdir -p "${sv_LockDirPath}"
  
     bv_Result="false"
     while [ "${bv_Result}" = "false" ]
     do
-      if ! test -s "${sv_LockDirPath}/${sv_Flag}"
+      if ! test -s "${sv_LockDirPath}/${sv_LockName}"
       then
-        echo "${GLB_iv_ThisScriptPID}" > "${sv_LockDirPath}/${sv_Flag}"
+        echo "${GLB_iv_ThisScriptPID}" > "${sv_LockDirPath}/${sv_LockName}"
       fi
-      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
+      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_LockName}" | head -n1)"
       if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Grabbed lock '${sv_Flag}'"
+        if [ "${bv_SilentFlag}" = "false" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Grabbed lock '${sv_LockName}'"
+        fi
         bv_Result="true"
         break
       fi
       
-      iv_LockEpoch=$(stat -f "%m" "${sv_LockDirPath}/${sv_Flag}")
-      if [ $(($(date -u "+%s")-${iv_LockEpoch})) -gt ${sv_MaxSecs} ]
+      iv_LockEpoch=$(stat -f "%m" "${sv_LockDirPath}/${sv_LockName}")
+      if [ $(($(date -u "+%s")-${iv_LockEpoch})) -ge ${sv_MaxSecs} ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Grab lock failed, another task is being greedy '${sv_Flag}'"
+        if [ "${bv_SilentFlag}" = "false" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelNotice} "Grab lock failed, another task is being greedy '${sv_LockName}'"
+        fi
         break
       fi 
            
-      GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Waiting for lock '${sv_Flag}'"
+      if [ "${bv_SilentFlag}" = "false" ]
+      then
+        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Waiting for lock '${sv_LockName}'"
+      fi
       sleep 1
     done
     
@@ -341,56 +364,67 @@ then
 
   GLB_nf_ReleaseNamedLock() # ; Flag
   {
-    local sv_Flag
+    local sv_LockName
     local sv_LockDirPath
     local sv_ActiveLockPID
+    local bv_SilentFlag
 
-    sv_Flag="${1}"
+    sv_LockName="${1}"
+
+    bv_SilentFlag="${3}"
+    if test -z "${bv_SilentFlag}"
+    then
+      bv_SilentFlag="false"
+    fi
     
     sv_LockDirPath="${GLB_sv_ThisUserTempDirPath}/Locks"
 
-    if test -s "${sv_LockDirPath}/${sv_Flag}"
+    if test -s "${sv_LockDirPath}/${sv_LockName}"
     then
-      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_Flag}")"
+      sv_ActiveLockPID="$(cat "${sv_LockDirPath}/${sv_LockName}")"
       if [ "${sv_ActiveLockPID}" = "${GLB_iv_ThisScriptPID}" ]
       then
-        GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Releasing lock '${sv_Flag}'"
-        rm -f "${sv_LockDirPath}/${sv_Flag}"
+        if [ "${bv_SilentFlag}" = "false" ]
+        then
+          GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Releasing lock '${sv_LockName}'"
+        fi
+        rm -f "${sv_LockDirPath}/${sv_LockName}"
       fi
     fi
   }  
 
-  GLB_nf_CreateNamedFlag()
+  GLB_nf_CreateNamedFlag() # ; FlagName
+  # FlagName can be anything - LabWarden root user uses Restart, Shutdown
   {
-    local sv_Flag
+    local sv_FlagName
     local sv_FlagDirPath
 
-    sv_Flag="${1}"
+    sv_FlagName="${1}"
     
     sv_FlagDirPath="${GLB_sv_ThisUserTempDirPath}/Flags"
     mkdir -p "${sv_FlagDirPath}"
     
-    touch "${sv_FlagDirPath}/${sv_Flag}"
-    chown "$(whoami)" "${sv_FlagDirPath}/${sv_Flag}"
-#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Creating flag '${sv_FlagDirPath}/${sv_Flag}'"
+    touch "${sv_FlagDirPath}/${sv_FlagName}"
+    chown "$(whoami)" "${sv_FlagDirPath}/${sv_FlagName}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Creating flag '${sv_FlagDirPath}/${sv_FlagName}'"
   }
 
   GLB_nf_TestNamedFlag()
   {
-    local sv_Flag
+    local sv_FlagName
     local sv_FlagDirPath
     local sv_Result
     local sv_FlagOwner
 
-    sv_Flag="${1}"
+    sv_FlagName="${1}"
     
     sv_FlagDirPath="${GLB_sv_ThisUserTempDirPath}/Flags"
     
-#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Testing flag '${sv_FlagDirPath}/${sv_Flag}'"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Testing flag '${sv_FlagDirPath}/${sv_FlagName}'"
     sv_Result="false"
-    if test -e "${sv_FlagDirPath}/${sv_Flag}"
+    if test -e "${sv_FlagDirPath}/${sv_FlagName}"
     then
-      sv_FlagOwner=$(stat -f '%Su' "${sv_FlagDirPath}/${sv_Flag}")
+      sv_FlagOwner=$(stat -f '%Su' "${sv_FlagDirPath}/${sv_FlagName}")
       if [ "${sv_FlagOwner}" = "$(whoami)" ]
       then
         sv_Result="true"
@@ -402,14 +436,14 @@ then
 
   GLB_nf_DeleteNamedFlag()
   {
-    local sv_Flag
+    local sv_FlagName
     local sv_FlagDirPath
 
-    sv_Flag="${1}"
+    sv_FlagName="${1}"
     
     sv_FlagDirPath="${GLB_sv_TempRoot}/Flags"
-    rm -f "${sv_FlagDirPath}/${sv_Flag}"
-#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Deleting flag '${sv_FlagDirPath}/${sv_Flag}'"
+    rm -f "${sv_FlagDirPath}/${sv_FlagName}"
+#    GLB_nf_logmessage ${GLB_iv_MsgLevelInfo} "Deleting flag '${sv_FlagDirPath}/${sv_FlagName}'"
   }
 
   GLB_nf_QuickExit()   # Quickly exit the script 
@@ -680,7 +714,7 @@ then
       fi
     fi
   
-    printf %s "${sv_EntryValue}" | sed "s|%COMPUTERNAME%|${GLB_sv_Hostname}|g;s|%USERNAME%|${GLB_sv_LoggedInUserName}|g;s|%HOMEPATH%|${GLB_sv_LoggedInUserHomeDirPath}|g;s|%HOMESHARE%|${GLB_sv_LoggedInUserHomeNetworkDirPath}|g;s|%HOMELOCAL%|${GLB_sv_LoggedInUserLocalHomeDirPath}|g;s|%DOMAIN%|${GLB_sv_ADDomainNameFlat}|g;"
+    printf %s "${sv_EntryValue}" | sed "s|%COMPUTERNAME%|${GLB_sv_Hostname}|g;s|%USERNAME%|${GLB_sv_LoggedInUserName}|g;s|%HOMEPATH%|${GLB_sv_LoggedInUserHomeDirPath}|g;s|%HOMESHARE%|${GLB_sv_LoggedInUserHomeNetworkDirPath}|g;s|%HOMELOCAL%|${GLB_sv_LoggedInUserLocalHomeDirPath}|g;s|%DOMAIN%|${GLB_sv_ADDomainNameFlat}|g;s|%FQADDOMAIN%|${GLB_sv_ADDomainNameDNS}|g;"
   }
   
   # Get a property value from a plist file
@@ -993,14 +1027,10 @@ then
       *)
         # assume that we were passed a path rather than a uri
         sv_SrcFilePath="${sv_FileURI}"
-        if test -e "${sv_SrcFilePath}"
+        sv_DstFilePath="$(GLB_sf_OriginalFilePath "${sv_SrcFilePath}")"
+        if test -z "${sv_DstFilePath}"
         then
-          if test -d "${sv_SrcFilePath}"
-          then
-            sv_DstFilePath="${sv_SrcFilePath}"
-          else
-            ln -fh "${sv_SrcFilePath}" "${sv_DstFilePath}"
-          fi
+          sv_DstFilePath="${sv_SrcFilePath}"
         fi
         ;;
   

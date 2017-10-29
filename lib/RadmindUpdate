@@ -2,19 +2,27 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  2.0.9
-# Modified: 03-Jun-2017
+# Version:  2.0.20
+# Modified: 29-Oct-2017
 #
 # Called as follows:    
-#   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>] [<SuccessURI>] [<FailURI>]
+#   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>]
 # eg: RadmindUpdate "172.18.1.24,sha1,0,-I,15000"
 #
 # The optional NotifyURI is a server web URI that notifies the deployment server that an update is
 # about to happen. The server should do what it needs to in order to prep the future update.
 #
-# The optional SuccessURI is a server web URI that notifies the server that the update was a success.
-#
-# The optional FailURI is a server web URI that notifies the server that the update failed.
+# During a notification, NotifyURI is passed the following info: 'os', 'loglevelstr', 'logtextstr'.
+
+# ---
+
+sv_CodeVersion="2.0.20"
+
+if [ $# -eq 0 ]
+then
+  echo "${sv_CodeVersion}"
+  exit 0
+fi
 
 # ---
 
@@ -48,8 +56,8 @@ fi
 
 # ---
 
-# If we are not running from a remote shell, and iHook is available - then use it
-if test -z "$(who am i | grep -E ".*\([^(]*\)$")"
+# If no-one is logged in (even remotely), and iHook is available - then use it
+if test -z "$(who -q | grep '# users = 0')"
 then
   if test -e "/usr/local/${GLB_sv_ProjectName}/bin/iHook.app/Contents/MacOS/iHook"
   then
@@ -90,8 +98,6 @@ then
 fi
 
 sv_NotifyURI="${2}"
-sv_SuccessURI="${3}"
-sv_FailURI="${4}"
 
 # ---
 
@@ -129,39 +135,95 @@ sf_urlencode() {
     done
 }
 
-# Save a message to the log file
-nf_showmessage()   # messagetxt
-{
-  echo "$(date '+%d %b %Y %H:%M:%S') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]: ${1}"
-  sleep 2
+# Convert log level integer into log level text
+sf_LogLevel()   # loglevel
+{  
+  local iv_LogLevel
+  local sv_LogLevel
+
+  iv_LogLevel=${1}
+
+  case ${iv_LogLevel} in
+  ${GLB_iv_MsgLevelEmerg})
+    sv_LogLevel="Emergency"
+    ;;
+
+  ${GLB_iv_MsgLevelAlert})
+    sv_LogLevel="Alert"
+    ;;
+
+  ${GLB_iv_MsgLevelCrit})
+    sv_LogLevel="Critical"
+    ;;
+
+  ${GLB_iv_MsgLevelErr})
+    sv_LogLevel="Error"
+    ;;
+  
+  ${GLB_iv_MsgLevelWarn})
+    sv_LogLevel="Warning"
+    ;;
+
+  ${GLB_iv_MsgLevelNotice})
+    sv_LogLevel="Notice"
+    ;;
+
+  ${GLB_iv_MsgLevelInfo})
+    sv_LogLevel="Information"
+    ;;
+
+  ${GLB_iv_MsgLevelDebug})
+    sv_LogLevel="Debug"
+    ;;
+
+  *)
+    sv_LogLevel="Unknown"
+    ;;
+
+  esac
+  
+  echo ${sv_LogLevel}
 }
-
-nf_showerror()   # messagetxt
+  
+# Save a message to the log file
+nf_showmessage()   # intloglevel strmessage 
 {
-  nf_showmessage "${1}"
-
-  if test -n "${sv_FailURI}"
+  local iv_LogLevel
+  local sv_Message
+  local sv_LogLevel
+  
+  iv_LogLevel=${1}
+  sv_LogText="${2}"
+  
+  if [ -n "${sv_LogText}" ]
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(sf_urlencode "${1}") "${sv_FailURI}"
-    if [ $? != "0" ]
-    then
-      # Some kind of error occurred
-      nf_showmessage "NOTE, cannot connect to ${sv_FailURI}"
-    fi
+    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
+
+    echo "$(date '+%d %b %Y %H:%M:%S %Z') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]${sv_CodeVersion}: ${sv_LogLevel}: ${sv_LogText}"
+    sleep 2
   fi
 }
 
-nf_showsuccess()   # messagetxt
+nf_notifyserver()   # intloglevel strmessage
 {
-  nf_showmessage "${1}"
+  local iv_LogLevel
+  local sv_Message
+  local sv_LogLevel
+  
+  iv_LogLevel=${1}
+  sv_LogText="${2}"
 
-  if test -n "${sv_SuccessURI}"
+  nf_showmessage "${iv_LogLevel}" "${sv_LogText}"
+
+  if test -n "${sv_NotifyURI}"
   then
-    CURL --max-time 120 --connect-timeout 10 -s -S -d msg=$(sf_urlencode "") "${sv_SuccessURI}"
+    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
+    
+    CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") -d loglevelstr=$(sf_urlencode "${sv_LogLevel}") -d logtextstr=$(sf_urlencode "${sv_LogText}") "${sv_NotifyURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      nf_showmessage "NOTE, cannot connect to ${sv_SuccessURI}"
+      nf_showmessage ${GLB_iv_MsgLevelErr} "Cannot connect to '${sv_NotifyURI}'"
     fi
   fi
 }
@@ -172,25 +234,12 @@ sv_SystemVersionStampAsString="$(sw_vers -productVersion)"
 
 # ---
 
-if test -n "${sv_NotifyURI}"
-then
-  CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") "${sv_NotifyURI}"
-  if [ $? != "0" ]
-  then
-    # Some kind of error occurred
-    nf_showerror "ERROR, cannot connect to ${sv_NotifyURI}"
-    exit 0
-  fi
-fi
-
-# ---
-
 # RADMIND UPDATE HERE - ktcheck/fsdiff/lapply
 
 sv_fsdiffCompareSysPath="/"
 sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
 
-nf_showmessage "NOTE, checking server $sv_RadServer for transcript changes"
+nf_notifyserver ${GLB_iv_MsgLevelInfo} "Checking server ${sv_RadServer} for transcript changes"
 
 /usr/local/bin/ktcheck 2>&1 -i -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer}
 iv_ErrCode="$?"
@@ -198,19 +247,19 @@ iv_ErrCode="$?"
 # Check exit status of ktcheck. If > 1, an error occurred.
 case "${iv_ErrCode}" in
 0)
-  nf_showmessage "NOTE, no transcript changes found - no need to update"
+  nf_showmessage ${GLB_iv_MsgLevelInfo} "No transcript changes found - no need to update"
   exit 0
   ;;
 1)
-  nf_showmessage "NOTE, Transcript changes found"
+  nf_showmessage ${GLB_iv_MsgLevelNotice} "Transcript changes found"
   ;;
 *)
-  nf_showerror "ERROR, update aborted - ktcheck failed (${iv_ErrCode})"
+  nf_notifyserver ${GLB_iv_MsgLevelErr} "Update aborted - ktcheck failed (${iv_ErrCode})"
   exit 0
   ;;
 esac
 
-nf_showmessage "NOTE, Examining the filesystem for differences..."
+nf_showmessage ${GLB_iv_MsgLevelInfo} "Examining the filesystem for differences..."
 
 # run fsdiff, redirecting output to a file.
 rm -f ${sv_fsdiffOutputFilePath}
@@ -239,7 +288,7 @@ case "${iv_ErrCode}" in
     ;;
   *)
     rm -f ${sv_fsdiffOutputFilePath}
-    nf_showerror "ERROR, update aborted - fsdiff failed (${iv_ErrCode})"
+    nf_notifyserver ${GLB_iv_MsgLevelErr} "Update aborted - fsdiff failed (${iv_ErrCode})"
     exit 0
     ;;
   esac
@@ -247,7 +296,7 @@ case "${iv_ErrCode}" in
 esac
 
 # Fix for SIP on 10.11
-nf_showmessage "NOTE, Removing SIP protected entries from transcript"
+nf_showmessage ${GLB_iv_MsgLevelNotice} "Removing SIP protected entries from transcript"
 /usr/local/${GLB_sv_ProjectName}/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
 
 # Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
@@ -261,7 +310,7 @@ then
     if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
     then
       rm -f ${sv_fsdiffOutputFilePath}
-      nf_showerror "ERROR, update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
+      nf_notifyserver ${GLB_iv_MsgLevelErr} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
       exit 0
     fi
   fi
@@ -270,7 +319,7 @@ fi
 # Apply the changes
 launchctl stop org.cups.cupsd
 
-nf_showmessage "NOTE, Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+nf_showmessage ${GLB_iv_MsgLevelNotice} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
 /usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
 iv_ErrCode="$?"
 
@@ -281,17 +330,17 @@ launchctl start org.cups.cupsd
 case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  nf_showsuccess "ATTENTION, apply successful - we should restart."
+  nf_notifyserver ${GLB_iv_MsgLevelNotice} "Apply successful - we should restart."
   exit 0
   ;;
 1)
-  nf_showerror "ERROR, apply failed - no changes made"
+  nf_notifyserver ${GLB_iv_MsgLevelErr} "Apply failed - no changes made"
   rm -f /private/var/radmind/client/error.T
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0
   ;;
 2)
-  nf_showerror "ERROR, apply failed - changes made"
+  nf_notifyserver ${GLB_iv_MsgLevelErr} "Apply failed - changes made"
   rm -f /private/var/radmind/client/error.T
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 0
