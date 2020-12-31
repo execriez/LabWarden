@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>7FA10BE6-0720-4E48-A1B3-C9CC9560BDD7</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>RememberRecentNetworks</key>
+					<false/>
+					<key>RequireAdminIBSS</key>
+					<true/>
+					<key>RequireAdminNetworkChange</key>
+					<true/>
+					<key>RequireAdminPowerToggle</key>
+					<true/>
+					<key>WirelessState</key>
+					<string>on</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-WiFiControl</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Boot</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>7FA10BE6-0720-4E48-A1B3-C9CC9560BDD7</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>7FA10BE6-0720-4E48-A1B3-C9CC9560BDD7</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-WiFiControl (LockedOn)</string>
+	<key>PayloadIdentifier</key>
+	<string>FF8222D6-8B70-4E34-A27F-C78529E130A3</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>FF8222D6-8B70-4E34-A27F-C78529E130A3</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

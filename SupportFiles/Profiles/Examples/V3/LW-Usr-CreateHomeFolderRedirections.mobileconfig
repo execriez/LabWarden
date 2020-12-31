@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>10ED59E3-9444-4C56-9FCD-3C630B3E0164</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/Desktop/</string>
+						<string>/Documents/</string>
+						<string>/Downloads/</string>
+						<string>/Movies/</string>
+						<string>/Music/</string>
+						<string>/Pictures/</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Usr-CreateHomeFolderRedirections</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Usr-AtDesktop</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>10ED59E3-9444-4C56-9FCD-3C630B3E0164</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>10ED59E3-9444-4C56-9FCD-3C630B3E0164</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-CreateHomeFolderRedirections</string>
+	<key>PayloadIdentifier</key>
+	<string>64952D1E-1F40-4DE7-8E49-B20330B130C4</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>64952D1E-1F40-4DE7-8E49-B20330B130C4</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

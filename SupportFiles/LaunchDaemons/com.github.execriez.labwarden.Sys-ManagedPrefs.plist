@@ -6,7 +6,7 @@
 	<string>com.github.execriez.labwarden.Sys-ManagedPrefs</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/ManagedPrefs</string>
+		<string>/usr/local/LabWarden/bin/ManagedPrefs</string>
 	</array>
 	<key>WatchPaths</key>
 	<array>

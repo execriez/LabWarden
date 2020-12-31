@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>D1EBC44F-60C1-4818-91AF-3CABA0767038</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Path</key>
+					<array>
+						<string>/Desktop/</string>
+						<string>/Documents/</string>
+						<string>/Downloads/</string>
+						<string>/Movies/</string>
+						<string>/Music/</string>
+						<string>/Pictures/</string>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Usr-CreateHomeFolderAliases</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Usr-AtDesktop</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>D1EBC44F-60C1-4818-91AF-3CABA0767038</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>D1EBC44F-60C1-4818-91AF-3CABA0767038</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-CreateHomeFolderAliases</string>
+	<key>PayloadIdentifier</key>
+	<string>86769B7A-9237-4111-A061-B8F26EF16ACD</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>86769B7A-9237-4111-A061-B8F26EF16ACD</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

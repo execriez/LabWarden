@@ -1,0 +1,134 @@
+#!/bin/bash
+#
+# Short:    Uninstall Project (command-line)
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+#
+# Called as follows:    
+#   sudo Uninstall [<root_dirpath>]
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+GLB_SV_CODEVERSION="3.2.5"
+
+# ---
+
+# Include the Core Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+
+  # Exit if something went wrong unexpectedly
+  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  then
+    echo >&2 "Something unexpected happened"
+    exit 90
+  fi
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'inc/Common.sh' for a complete list.
+
+# ---
+
+# Exit if not the root user
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Unable to run, try: sudo ${GLB_SV_THISSCRIPTNAME}"
+  exit 91
+fi
+
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
+
+if [ "${sv_RootDirPath}" = "/" ]
+then
+  sv_RootDirPath=""
+fi
+
+# ---
+
+if test -z "${sv_RootDirPath}"
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Uninstalling ${GLB_SC_PROJECTNAME}."
+
+  # Remove all running LaunchAgent services
+  sv_UserName=$(stat -f '%Su' /dev/console)
+  if [ "${sv_UserName}" != "root" ]
+  then
+    while read sv_LaunchServiceName
+    do
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LaunchAgent service ${sv_LaunchServiceName} for user ${sv_UserName}"
+      sudo -u ${sv_UserName} launchctl remove "${sv_LaunchServiceName}"
+    done < <(sudo -u ${sv_UserName} launchctl list | grep -i "${GLB_SC_PROJECTSIGNATURE}" | tr "\t" " " | cut -d" " -f3)
+  fi
+
+  # Remove all running LaunchDaemon services
+  while read sv_LaunchServiceName
+  do
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LaunchDaemon service ${sv_LaunchServiceName}"
+    launchctl remove "${sv_LaunchServiceName}"
+  done < <(launchctl list | grep -i "${GLB_SC_PROJECTSIGNATURE}" | tr "\t" " " | cut -d" " -f3)
+
+  # Remove LoginHook
+  sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
+  if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep -i "/${GLB_SC_PROJECTNAME}/")"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
+    defaults write com.apple.loginwindow LoginHook ""
+  fi
+  
+  # Remove LogoutHook
+  sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
+  if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep -i "/${GLB_SC_PROJECTNAME}/")"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"
+    defaults write com.apple.loginwindow LogoutHook ""
+  fi
+
+fi
+
+# Delete old LaunchAgent plists
+while read sv_LaunchServiceFileName
+do
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting LaunchAgent file ${sv_LaunchServiceFileName}"
+  rm -f "${sv_RootDirPath}"/Library/LaunchAgents/${sv_LaunchServiceFileName}
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchAgents | grep -i "${GLB_SC_PROJECTSIGNATURE}")
+
+# Delete old LaunchDaemon plists
+while read sv_LaunchServiceFileName
+do
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting LaunchDaemon file ${sv_LaunchServiceFileName}"
+  rm -f "${sv_RootDirPath}"/Library/LaunchDaemons/${sv_LaunchServiceFileName}
+done < <(ls -1 "${sv_RootDirPath}"/Library/LaunchDaemons | grep -i "${GLB_SC_PROJECTSIGNATURE}")
+
+# remove old install - unless the code is running from somewhere other than /usr/local
+if test -d "${sv_RootDirPath}"/usr/local/${GLB_SC_PROJECTNAME}
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting project dir ${sv_RootDirPath}/usr/local/${GLB_SC_PROJECTNAME}"
+  rm -fR "${sv_RootDirPath}"/usr/local/${GLB_SC_PROJECTNAME}
+fi
+  
+if test -z "${sv_RootDirPath}"
+then
+  pkgutil 2>/dev/null --forget "${GLB_SC_PROJECTSIGNATURE}"
+  
+else
+  pkgutil 2>/dev/null --forget "${GLB_SC_PROJECTSIGNATURE}" --volume "${sv_RootDirPath}"
+  
+fi
+
+# Remove temporary files
+cd "${GLB_SV_PROJECTDIRPATH}"
+rm -fR "${GLB_SV_THISSCRIPTTEMPDIRPATH}"
+
+exit 0

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>AA75D4D7-5417-4965-BDE8-4D25932615A4</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>DesktopWallpaperURI</key>
+					<string>smb://YOURSERVER/YOURSHARE/YOURFOLDER/desktop.bmp</string>
+				</dict>
+				<key>Name</key>
+				<string>Usr-DesktopWallpaperURI</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Usr-AtDesktop</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>AA75D4D7-5417-4965-BDE8-4D25932615A4</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>AA75D4D7-5417-4965-BDE8-4D25932615A4</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-DesktopWallpaperURI</string>
+	<key>PayloadIdentifier</key>
+	<string>394DDCB4-1559-4D31-92EB-DA0BDE35DB34</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>394DDCB4-1559-4D31-92EB-DA0BDE35DB34</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

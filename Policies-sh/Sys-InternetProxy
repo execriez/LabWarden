@@ -1,0 +1,412 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets the system network proxy
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-NetworkUp (as root)
+#
+# Called as follows:    
+#   Sys-InternetProxy <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  ;;
+  
+Sys-NetworkUp) 
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+
+  if [ -n "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" ]
+  then
+    
+    # Get the config settings
+    
+    bv_ProxyAutoDiscoveryEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ProxyAutoDiscoveryEnable")"
+    if [ "${bv_ProxyAutoDiscoveryEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_ProxyAutoDiscoveryEnable=${GLB_BC_FALSE}
+    fi
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "bv_ProxyAutoDiscoveryEnable '${bv_ProxyAutoDiscoveryEnable}'"
+
+    bv_ProxyAutoConfigEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ProxyAutoConfigEnable")"
+    if [ "${bv_ProxyAutoConfigEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_ProxyAutoConfigEnable=${GLB_BC_FALSE}
+    else
+      sv_ProxyAutoConfigURLString="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ProxyAutoConfigURLString")"
+      if [ -z "${sv_ProxyAutoConfigURLString}" ]
+      then
+        bv_ProxyAutoConfigEnable=${GLB_BC_FALSE}
+      fi
+    fi
+
+    bv_HTTPEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPEnable")"
+    if [ "${bv_HTTPEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_HTTPEnable=${GLB_BC_FALSE}
+    else
+      sv_HTTPProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPProxy")"
+      if [ -z "${sv_HTTPProxy}" ]
+      then
+        bv_HTTPEnable=${GLB_BC_FALSE}
+      else
+        iv_HTTPPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPPort")"
+        if [ -z "${iv_HTTPPort}" ]
+        then
+          bv_HTTPEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+
+    bv_HTTPSEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPSEnable")"
+    if [ "${bv_HTTPSEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_HTTPSEnable=${GLB_BC_FALSE}
+    else
+      sv_HTTPSProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPSProxy")"
+      if [ -z "${sv_HTTPSProxy}" ]
+      then
+        bv_HTTPSEnable=${GLB_BC_FALSE}
+      else
+        iv_HTTPSPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:HTTPSPort")"
+        if [ -z "${iv_HTTPSPort}" ]
+        then
+          bv_HTTPSEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+
+    bv_RTSPEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RTSPEnable")"
+    if [ "${bv_RTSPEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_RTSPEnable=${GLB_BC_FALSE}
+    else
+      sv_RTSPProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RTSPProxy")"
+      if [ -z "${sv_RTSPProxy}" ]
+      then
+        bv_RTSPEnable=${GLB_BC_FALSE}
+      else
+        iv_RTSPPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RTSPPort")"
+        if test -z "${iv_RTSPPort}"
+        then
+          bv_RTSPEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+
+    bv_FTPEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:FTPEnable")"
+    if [ "${bv_FTPEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_FTPEnable=${GLB_BC_FALSE}
+    else
+      sv_FTPProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:FTPProxy")"
+      if [ -z "${sv_FTPProxy}" ]
+      then
+        bv_FTPEnable=${GLB_BC_FALSE}
+      else
+        iv_FTPPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:FTPPort")"
+        if [ -z "${iv_FTPPort}" ]
+        then
+          bv_FTPEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+  
+    bv_SOCKSEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SOCKSEnable")"
+    if [ "${bv_SOCKSEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_SOCKSEnable=${GLB_BC_FALSE}
+    else
+      sv_SOCKSProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SOCKSProxy")"
+      if [ -z "${sv_SOCKSProxy}" ]
+      then
+        bv_SOCKSEnable=${GLB_BC_FALSE}
+      else
+        iv_SOCKSPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SOCKSPort")"
+        if [ -z "${iv_SOCKSPort}" ]
+        then
+          bv_SOCKSEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+
+    bv_GopherEnable="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:GopherEnable")"
+    if [ "${bv_GopherEnable}" != ${GLB_BC_TRUE} ]
+    then
+      bv_GopherEnable=${GLB_BC_FALSE}
+    else
+      sv_GopherProxy="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:GopherProxy")"
+      if [ -z "${sv_GopherProxy}" ]
+      then
+        bv_GopherEnable=${GLB_BC_FALSE}
+      else
+        iv_GopherPort="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:GopherPort")"
+        if [ -z "${iv_GopherPort}" ]
+        then
+          bv_GopherEnable=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+
+    sv_ExceptionsList="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExceptionsList" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | tr "\n" " " | sed "s|^[ ]*||;s|[ ]*$||")"
+    if [ -z "${sv_ExceptionsList}" ]
+    then
+      sv_ExceptionsList="*.local 169.254/16 127.0.0.1 localhost"
+    fi
+
+    if [ "${bv_ProxyAutoDiscoveryEnable}:${bv_ProxyAutoConfigEnable}:${bv_HTTPEnable}:${bv_HTTPSEnable}:${bv_RTSPEnable}:${bv_FTPEnable}:${bv_SOCKSEnable}:${bv_SOCKSEnable}" = "${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}:${GLB_BC_FALSE}" ]
+    then
+      sv_ExceptionsList=""
+    fi
+    
+    # Set the live options  
+  
+    sv_ActiveProxyAutoDiscovery=$(networksetup -getproxyautodiscovery ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | cut -d":" -f 2- | sed "s|^ ||")
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "sv_ActiveProxyAutoDiscovery '${sv_ActiveProxyAutoDiscovery}'"
+    if [ "${bv_ProxyAutoDiscoveryEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveProxyAutoDiscovery}" = "Off" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Switching on 'Auto Proxy Discovery' for '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setproxyautodiscovery "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      fi
+    else
+      if [ "${sv_ActiveProxyAutoDiscovery}" = "On" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Switching off 'Auto Proxy Discovery' for '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setproxyautodiscovery "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveAutoProxyState=$(networksetup -getautoproxyurl ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_ProxyAutoConfigEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveAutoProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Automatic Proxy Configuration' to '${sv_ProxyAutoConfigURLString}' for '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setautoproxyurl "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_ProxyAutoConfigURLString}"
+        /usr/sbin/networksetup -setautoproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveAutoProxyURL=$(networksetup -getautoproxyurl ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "URL:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveAutoProxyURL}" != "${sv_ProxyAutoConfigURLString}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Automatic Proxy Configuration' to '${sv_ProxyAutoConfigURLString}' for '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setautoproxyurl "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_ProxyAutoConfigURLString}"
+        fi
+      fi
+    else
+      if [ "${sv_ActiveAutoProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Switching off 'Automatic Proxy Configuration' for '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setautoproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveWebProxyState=$(networksetup -getwebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_HTTPEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveWebProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Web Proxy' to '${sv_HTTPProxy}:${iv_HTTPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setwebproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_HTTPProxy}" "${iv_HTTPPort}" off
+        /usr/sbin/networksetup -setwebproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveWebProxyServer=$(networksetup -getwebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveWebProxyPort=$(networksetup -getwebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveWebProxyServer}:${sv_ActiveWebProxyPort}" != "${sv_HTTPProxy}:${iv_HTTPPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Web Proxy' to '${sv_HTTPProxy}:${iv_HTTPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setwebproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_HTTPProxy}" "${iv_HTTPPort}" off
+        fi
+      fi
+    else
+      if [ "${sv_ActiveWebProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'Web Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setwebproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveSecureWebProxyState=$(networksetup -getsecurewebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_HTTPSEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveSecureWebProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Secure Web Proxy' to '${sv_HTTPSProxy}:${iv_HTTPSPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setsecurewebproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_HTTPSProxy}" "${iv_HTTPSPort}" off
+        /usr/sbin/networksetup -setsecurewebproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveSecureWebProxyServer=$(networksetup -getsecurewebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveSecureWebProxyPort=$(networksetup -getsecurewebproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveSecureWebProxyServer}:${sv_ActiveSecureWebProxyPort}" != "${sv_HTTPSProxy}:${iv_HTTPSPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Secure Web Proxy' to '${sv_HTTPSProxy}:${iv_HTTPSPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setsecurewebproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_HTTPSProxy}" "${iv_HTTPSPort}" off
+        fi
+      fi
+    else
+      if [ "${sv_ActiveSecureWebProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'Secure Web Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setsecurewebproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveStreamingProxyState=$(networksetup -getstreamingproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_RTSPEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveStreamingProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Secure Streaming Proxy' to '${sv_RTSPProxy}:${iv_RTSPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setstreamingproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_RTSPProxy}" "${iv_RTSPPort}" off
+        /usr/sbin/networksetup -setstreamingproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveStreamingProxyServer=$(networksetup -getstreamingproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveStreamingProxyPort=$(networksetup -getstreamingproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveStreamingProxyServer}:${sv_ActiveStreamingProxyPort}" != "${sv_RTSPProxy}:${iv_RTSPPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Secure Streaming Proxy' to '${sv_RTSPProxy}:${iv_RTSPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setstreamingproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_RTSPProxy}" "${iv_RTSPPort}" off
+        fi
+      fi
+    else
+      if [ "${sv_ActiveStreamingProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'Secure Streaming Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setstreamingproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveFTPProxyState=$(networksetup -getftpproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_FTPEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveFTPProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'FTP Proxy' to '${sv_FTPProxy}:${iv_FTPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setftpproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_FTPProxy}" "${iv_FTPPort}" off
+        /usr/sbin/networksetup -setftpproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveFTPProxyServer=$(networksetup -getftpproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveFTPProxyPort=$(networksetup -getftpproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveFTPProxyServer}:${sv_ActiveFTPProxyPort}" != "${sv_FTPProxy}:${iv_FTPPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'FTP Proxy' to '${sv_FTPProxy}:${iv_FTPPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setftpproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_FTPProxy}" "${iv_FTPPort}" off
+        fi
+      fi
+    else
+      if [ "${sv_ActiveFTPProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'FTP Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setftpproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveSocksFirewallProxyState=$(networksetup -getsocksfirewallproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_SOCKSEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveSocksFirewallProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'SOCKS Proxy' to '${sv_SOCKSProxy}:${iv_SOCKSPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setsocksfirewallproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_SOCKSProxy}" "${iv_SOCKSPort}" off
+        /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveSocksFirewallProxyServer=$(networksetup -getsocksfirewallproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveSocksFirewallProxyPort=$(networksetup -getsocksfirewallproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveSocksFirewallProxyServer}:${sv_ActiveSocksFirewallProxyPort}" != "${sv_SOCKSProxy}:${iv_SOCKSPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'SOCKS Proxy' to '${sv_SOCKSProxy}:${iv_SOCKSPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setsocksfirewallproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_SOCKSProxy}" "${iv_SOCKSPort}" off
+          /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+        fi
+      fi
+    else
+      if [ "${sv_ActiveSocksFirewallProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'SOCKS Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setsocksfirewallproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+
+    sv_ActiveGopherProxyState=$(networksetup -getgopherproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Enabled:" | cut -d":" -f 2- | sed "s|^ ||")
+    if [ "${bv_SOCKSEnable}" = ${GLB_BC_TRUE} ]
+    then
+      if [ "${sv_ActiveGopherProxyState}" = "No" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Gopher Proxy' to '${sv_GopherProxy}:${iv_GopherPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setgopherproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_GopherProxy}" "${iv_GopherPort}" off
+        /usr/sbin/networksetup -setgopherproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+      else
+        sv_ActiveGopherProxyServer=$(networksetup -getgopherproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Server:" | cut -d":" -f 2- | sed "s|^ ||")
+        sv_ActiveGopherProxyPort=$(networksetup -getgopherproxy ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | grep "Port:" | cut -d":" -f 2- | sed "s|^ ||")
+        if [ "${sv_ActiveGopherProxyServer}:${sv_ActiveGopherProxyPort}" != "${sv_GopherProxy}:${iv_GopherPort}" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Gopher Proxy' to '${sv_GopherProxy}:${iv_GopherPort}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+          /usr/sbin/networksetup -setgopherproxy "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" "${sv_GopherProxy}" "${iv_GopherPort}" off
+          /usr/sbin/networksetup -setgopherproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" on
+        fi
+      fi
+    else
+      if [ "${sv_ActiveGopherProxyState}" = "Yes" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Clearing 'Gopher Proxy' settings on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+        /usr/sbin/networksetup -setgopherproxystate "${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}" off
+      fi
+    fi
+      
+    sv_ActiveExceptionsList=$(networksetup -getproxybypassdomains ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} | tr "\n" " " | sed "s|^[ ]*||;s|[ ]*$||")
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "sv_ActiveExceptionsList '${sv_ActiveExceptionsList}'"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "sv_ExceptionsList '${sv_ExceptionsList}'"
+
+    if [ "${sv_ActiveExceptionsList}" != "${sv_ExceptionsList}" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting 'Bypass proxy domains' to '${sv_ExceptionsList}' on '${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME}'"
+      networksetup -setproxybypassdomains ${GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME} "${sv_ExceptionsList}"
+    fi
+
+  fi
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

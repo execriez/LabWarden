@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# Short:    Do something when a user logs out
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Called by ConsoleUserWarden as follows:    
+#   ConsoleUserWarden-UserLoggedIn <PreviousConsoleUser>
+#
+
+# Executes the following Trigger
+#   Sys-ConsoleUserLoggedOut "root" "<user>" (as root)
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- passes the user logging in as first parameter --
+
+# Get user name
+GLB_SV_CONSOLEUSERNAME="${1}"
+
+# -- The following is executed as root --
+
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Sys-ConsoleUserLoggedOut" "${GLB_SV_CONSOLEUSERNAME}" &
+
+# -- The following is executed as the user who is logging out --
+
+# HEREDOC is not quoted, so variables are expanded before entry.
+# This means that new variables cannot be created inside.
+ 
+/usr/bin/su ${GLB_SV_CONSOLEUSERNAME} <<HEREDOC
+
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-ConsoleUserLoggedOut" "${GLB_SV_CONSOLEUSERNAME}" &
+
+HEREDOC
+
+# -- We are back as the root user.
+
+# ---
+
+# We dont want to quit until all sub tasks are finished
+while [ -n "$(jobs -r)" ]
+do
+  # We don't want to hog the CPU - so lets sleep a while
+  sleep 1
+done

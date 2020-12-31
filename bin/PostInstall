@@ -1,0 +1,112 @@
+#!/bin/bash
+#
+# Short:    Perform post-install checks
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+#
+# Called as follows (by Install as root):    
+#   PostInstall
+
+# need to pass volume
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+GLB_SV_CODEVERSION="3.2.5"
+
+# ---
+
+# Include the Core Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+
+  # Exit if something went wrong unexpectedly
+  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  then
+    echo >&2 "Something unexpected happened"
+    exit 90
+  fi
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'inc/Common.sh' for a complete list.
+
+# ---
+
+# Exit if not the root user
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Unable to run, try: sudo ${GLB_SV_THISSCRIPTNAME}"
+  exit 91
+fi
+
+# ---
+
+# Where we should install
+sv_RootDirPath="${1}"
+
+if [ "${sv_RootDirPath}" = "/" ]
+then
+  sv_RootDirPath=""
+fi
+
+# ---
+
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Performing post-install checks"
+
+if test -z "${sv_RootDirPath}"
+then
+  sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
+  if [ ! -e "${sv_ManagedPrefsFilePath}" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating empty '${sv_ManagedPrefsFilePath}'"
+    /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
+    chown root:wheel "${sv_ManagedPrefsFilePath}"
+    chmod 644 "${sv_ManagedPrefsFilePath}"
+  fi
+
+  # Load LaunchDaemon plists
+  while read sv_LaunchServiceFileName
+  do
+    sv_LaunchServiceName="$(echo ${sv_LaunchServiceFileName} | sed 's|.plist$||')"
+    if test -z "$(launchctl list | grep -i "${sv_LaunchServiceName}")"
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Loading LaunchDaemon ${sv_LaunchServiceName}"
+      launchctl load /Library/LaunchDaemons/${sv_LaunchServiceFileName}
+    fi
+  done < <(ls -1 /Library/LaunchDaemons | grep "${GLB_SC_PROJECTSIGNATURE}")
+
+  sv_UserName=$(stat -f '%Su' /dev/console)
+  if [ "${sv_UserName}" != "root" ]
+  then
+    # Load LaunchAgent plists
+    while read sv_LaunchServiceFileName
+    do
+      sv_LaunchServiceName="$(echo ${sv_LaunchServiceFileName} | sed 's|.plist$||')"
+      if test -z "$(sudo -u ${sv_UserName} launchctl list | grep -i "${sv_LaunchServiceName}")"
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Loading LaunchAgent ${sv_LaunchServiceName} for user ${sv_UserName}"
+        sudo -u ${sv_UserName} launchctl load /Library/LaunchAgents/${sv_LaunchServiceFileName}
+      fi
+    done < <(ls -1 /Library/LaunchAgents | grep "${GLB_SC_PROJECTSIGNATURE}")
+  fi
+
+fi
+
+# ---
+
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "${GLB_SC_PROJECTNAME} installed OK."
+
+# Remove temporary files
+cd "${GLB_SV_PROJECTDIRPATH}"
+rm -fR "${GLB_SV_THISSCRIPTTEMPDIRPATH}"
+
+exit 0
+

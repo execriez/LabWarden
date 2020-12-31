@@ -1,0 +1,151 @@
+#!/bin/bash
+#
+# Short:    Policy script - Turns wireless on or off, and defines whether non-admins can change the wireless state
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-Boot (as root)
+#
+# Called as follows:    
+#   Sys-WiFiControl <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+if [ -z "${GLB_SV_WIFIINTERFACEDEVICE}" ]
+then
+  # Exit if there is no wi-fi hardware
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - There is no Wi-Fi hardware (thats odd)"
+else
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-Boot|Sys-PolicyInstall)
+  sv_WirelessState="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:WirelessState")"
+
+  if test -n "${sv_WirelessState}"
+  then
+    # Turn Wi-Fi port on or off
+    networksetup -setairportpower ${GLB_SV_WIFIINTERFACEDEVICE} ${sv_WirelessState}
+
+    bv_RememberRecentNetworks="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RememberRecentNetworks")"
+    if [ "${bv_RememberRecentNetworks}" = ${GLB_BC_TRUE} ]
+    then
+      sv_YesNoRecentNetworks="YES"
+    else
+      sv_YesNoRecentNetworks="NO"
+    fi
+      
+    bv_RequireAdminIBSS="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RequireAdminIBSS")"
+    if [ "${bv_RequireAdminIBSS}" = ${GLB_BC_TRUE} ]
+    then
+      sv_YesNoAdminIBSS="YES"
+    else
+      sv_YesNoAdminIBSS="NO"
+    fi
+      
+    bv_RequireAdminNetworkChange="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RequireAdminNetworkChange")"
+    if [ "${bv_RequireAdminNetworkChange}" = ${GLB_BC_TRUE} ]
+    then
+      sv_YesNoAdminNetworkChange="YES"
+    else
+      sv_YesNoAdminNetworkChange="NO"
+    fi
+      
+    bv_RequireAdminPowerToggle="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RequireAdminPowerToggle")"
+    if [ "${bv_RequireAdminPowerToggle}" = ${GLB_BC_TRUE} ]
+    then
+      sv_YesNoAdminPowerToggle="YES"
+    else
+      sv_YesNoAdminPowerToggle="NO"
+    fi
+      
+    # Set the Wi-Fi options
+    /usr/libexec/airportd prefs JoinMode=Preferred RememberRecentNetworks="${sv_YesNoRecentNetworks}" RequireAdminIBSS="${sv_YesNoAdminIBSS}" RequireAdminNetworkChange="${sv_YesNoAdminNetworkChange}" RequireAdminPowerToggle="${sv_YesNoAdminPowerToggle}"
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting Wi-Fi options to JoinMode=Preferred RememberRecentNetworks=${sv_YesNoRecentNetworks} RequireAdminIBSS=${sv_YesNoAdminIBSS} RequireAdminNetworkChange=${sv_YesNoAdminNetworkChange} RequireAdminPowerToggle=${sv_YesNoAdminPowerToggle}"
+  fi
+
+  # Remove any SSID that is not in the Allow list
+  while read sv_SSIDAllowEntry
+  do
+    # Check the known list of SSIDs
+    if test -z "$(/usr/libexec/PlistBuddy 2>&1 -c "Print ':${GLB_SV_CONFIGUUID}:Config:SSIDAllowList'" "${GLB_SV_CONFIGFILEPATH}" | grep -v "{" | grep -v "}" | sed "s|^[ ]*||;s|[ ]*$||" | grep -E "^${sv_SSIDAllowEntry}$")"
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing SSID '${sv_SSIDAllowEntry}' and password from preferred networks on ${GLB_SV_WIFIINTERFACEDEVICE}"
+
+      # The SSID is not in the list, so we need to remove it  
+      networksetup -removepreferredwirelessnetwork "${GLB_SV_WIFIINTERFACEDEVICE}" "${sv_SSIDAllowEntry}"
+
+      # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
+      security delete-generic-password -D "AirPort network password" -l "${sv_SSIDAllowEntry}" /Library/Keychains/System.keychain
+    fi 
+  done < <(networksetup -listpreferredwirelessnetworks "${GLB_SV_WIFIINTERFACEDEVICE}" | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks")
+
+  # Remove any SSID that is in the Remove list
+  iv_SSIDRemoveCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SSIDRemoveList")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_SSIDRemoveCount}; iv_LoopCount++ ))
+  do
+    sv_SSIDRemoveEntry="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SSIDRemoveList:${iv_LoopCount}")"
+    if test -n "${sv_SSIDRemoveEntry}"
+    then
+      if test -n "$(networksetup -listpreferredwirelessnetworks ${GLB_SV_WIFIINTERFACEDEVICE} | tr -d "\t" | grep -v "^Preferred networks on" | grep -v "No preferred networks" | grep "^${sv_SSIDRemoveEntry}$")"
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing '${sv_SSIDRemoveEntry}' from preferred networks on ${GLB_SV_WIFIINTERFACEDEVICE}"
+        networksetup -removepreferredwirelessnetwork "${GLB_SV_WIFIINTERFACEDEVICE}" "${sv_SSIDRemoveEntry}"
+      fi
+      # Note to self - at the moment, deleting an entry is still possible when a keychain is locked
+      security delete-generic-password -D "AirPort network password" -l "${sv_SSIDRemoveEntry}" /Library/Keychains/System.keychain
+    fi
+  done
+
+  ;;
+
+Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

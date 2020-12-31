@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Deletes files from the boot volume
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-Boot (as root)
+#
+# Called as follows:    
+#   Sys-BootVolumeFilePurge <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-Boot)
+  sv_RootDevice=$(stat -f '%Sd' '/')
+  bv_FilesHaveBeenDeleted=${GLB_BC_FALSE}
+  iv_PathCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_PathCount}; iv_LoopCount++ ))
+  do
+    sv_DelPath="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path:${iv_LoopCount}")"
+
+    # Sanitise the file/folder Path
+    sv_DelPath=$(echo "${sv_DelPath}" | sed "s|^|/|;s|^/[/]*|/|;s|[/]*$||")
+
+    if test -n "${sv_DelPath}"
+    then
+      if test -e "${sv_DelPath}"
+      then
+        sv_DelDevice=$(stat -f '%Sd' "${sv_DelPath}")
+        if [ "${sv_DelDevice}" = "${sv_RootDevice}" ]
+        then
+          if test -d "${sv_DelPath}"
+          then
+            # Delete folder
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting folder '${sv_DelPath}' "
+            rm -fR "${sv_DelPath}"
+            if [ $? -eq 0 ]
+            then
+              bv_FilesHaveBeenDeleted=${GLB_BC_TRUE}
+            fi
+          else
+            # Delete file
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting file '${sv_DelPath}' "
+            rm -f "${sv_DelPath}"
+            if [ $? -eq 0 ]
+            then
+              bv_FilesHaveBeenDeleted=${GLB_BC_TRUE}
+            fi
+          fi
+        fi
+      fi
+    fi
+
+  done
+  
+  if [ "${bv_FilesHaveBeenDeleted}" = ${GLB_BC_FALSE} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "There are no system files to delete."
+    
+  else
+    # Restart if there are any system files removed
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "System files have been removed - we need to restart."
+    GLB_NF_NAMEDFLAGCREATE "Restart"
+    
+  fi
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

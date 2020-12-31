@@ -1,0 +1,306 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Schedules a power on
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-ManualTrigger   (as root)
+#   Sys-NetworkUp       (as root)
+#   Sys-Poll            (as root)
+#   Sys-LoginWindowIdle (as root)
+#
+# Called as follows:    
+#   Sys-SchedulePowerOn <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+# Return the next epoch that matches with the given unit value
+if_NextUnitValueEpoch()   # ReferenceEpoch, Unit (i.e. S, M, H, d, m or Y), Value
+{
+  local iv_ReferenceEpoch
+  local sv_Unit
+  local iv_Value
+  local sv_NewDateString
+  local iv_NewEpoch
+  local sv_NextUnit
+  
+  iv_ReferenceEpoch=${1}
+  sv_Unit=${2}
+  iv_Value=${3}
+  
+  sv_NewDateString=$(echo "%S:%M:%H:%d:%m:%Y" | sed "s|%"${sv_Unit}"|"${iv_Value}"|")
+  iv_NewEpoch=$(date -j -f "%S:%M:%H:%d:%m:%Y" $(date -r ${iv_ReferenceEpoch} "+"${sv_NewDateString}) "+%s")
+  
+  if [ ${iv_NewEpoch} -ge ${iv_ReferenceEpoch} ]
+  then
+    iv_ReferenceEpoch=${iv_NewEpoch}
+  else
+    sv_NextUnit=$(echo "SMHdmy" | tr "${sv_Unit}" "\n" | tail -n1 | cut -c1)
+    if [ -n "${sv_NextUnit}" ]
+    then
+      iv_ReferenceEpoch=$(date -j -r ${iv_NewEpoch} -v +1${sv_NextUnit} +%s)
+    fi
+  fi
+
+  echo "${iv_ReferenceEpoch}"
+}
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-PolicyUninstall)
+  GLB_NF_SCHEDULECANCEL "${GLB_SV_CONFIGUUID}" "poweron"
+  GLB_SF_DELETEPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:ScheduledEpoch"
+  ;;
+  
+Sys-PolicyInstall|Sys-Poll)
+  iv_ReferenceEpoch=$(date -u "+%s")
+
+  iv_ScheduledEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:ScheduledEpoch")
+  if test -z "${iv_ScheduledEpoch}"
+  then
+    iv_ScheduledEpoch=0
+  fi
+
+  if [ ${iv_ScheduledEpoch} -lt ${iv_ReferenceEpoch} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ReferenceEpoch $(date -r ${iv_ReferenceEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    bv_UseDefaultValue=${GLB_BC_TRUE}
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Second")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "S" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Minute")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "M" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Hour")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "H" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Day")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Month")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Year")"
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
+    fi
+
+    iv_StartEpoch=${iv_ReferenceEpoch}
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "StartEpoch $(date -r ${iv_StartEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    bv_UseDefaultValue=${GLB_BC_TRUE}
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Second")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "S" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Minute")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "M" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Hour")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=0
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "H" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Day")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Month")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Year")"
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
+    fi
+
+    iv_EndEpoch=${iv_ReferenceEpoch}
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "EndEpoch $(date -r ${iv_EndEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    iv_ScheduledEpoch=$(jot -r 1 ${iv_StartEpoch} ${iv_EndEpoch})
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ScheduledEpoch $(date -r ${iv_ScheduledEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:ScheduledEpoch" "${iv_ScheduledEpoch}"
+    GLB_NF_SCHEDULE4EPOCH "${GLB_SV_CONFIGUUID}" "poweron" ${iv_ScheduledEpoch}
+  fi
+
+  ;;
+    
+Sys-LoginWindowIdle)
+  iv_ShutdownOnIdleSecs=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ShutdownOnIdleSecs" | grep -E "^[0-9]*$")
+  if test -n "${iv_ShutdownOnIdleSecs}"
+  then
+    iv_IdleSecs=$(GLB_IF_SYSTEMIDLESECS)
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Workstation Idle for ${iv_IdleSecs} secs"
+    
+    if [ ${iv_IdleSecs} -gt ${iv_ShutdownOnIdleSecs} ]
+    then
+      # Shutdown if the workstation is noticeably idle
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Workstation has been idle too long - we should shutdown"
+      GLB_NF_NAMEDFLAGCREATE "Shutdown"
+    fi
+  fi
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

@@ -1,0 +1,133 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Add entries to the /etc/hosts file
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-Boot (as root)
+#
+# Called as follows:    
+#   Sys-HostsFile <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+# Remove version 2 entries
+if test -n "$(cat /etc/hosts | grep -i "Sys-AddEntriesToHostsFile")"
+then
+  cat /etc/hosts | sed -e "/Sys-AddEntriesToHostsFile.*-BEGIN/,/Sys-AddEntriesToHostsFile.*-END/d" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+  cp "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts" /etc/hosts
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Legacy V2 entries removed from hosts file."
+fi
+
+# Remove version 1 entries
+if test -n "$(cat /etc/hosts | grep -i "SystemAddToHosts")"
+then
+  cat /etc/hosts | sed -e "/SystemAddToHosts-BEGIN/,/SystemAddToHosts-END/d" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+  cp "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts" /etc/hosts
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Legacy V1 entries removed from hosts file."
+fi
+  
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-PolicyUninstall)
+  if test -n "$(cat /etc/hosts | grep -i "${GLB_SV_CONFIGUUID}")"
+  then
+    cat /etc/hosts | sed -e "/${GLB_SV_POLICYNAME}-${GLB_SV_CONFIGUUID}-BEGIN/,/${GLB_SV_POLICYNAME}-${GLB_SV_CONFIGUUID}-END/d" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+    cp "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts" /etc/hosts
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Old entries removed from hosts file."
+  fi
+  ;;
+
+Sys-Boot|Sys-PolicyInstall)
+  if test -z "$(cat /etc/hosts | grep -i "${GLB_SV_CONFIGUUID}")"
+  then
+    echo "# ${GLB_SV_POLICYNAME}-${GLB_SV_CONFIGUUID}-BEGIN" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+  
+    # Build a file of entries to add to /etc/hosts
+    iv_EntryCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Entry")"
+    
+    for (( iv_LoopCount1=0; iv_LoopCount1<${iv_EntryCount}; iv_LoopCount1++ ))
+    do
+      sv_EntryIP4="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Entry:${iv_LoopCount1}:IP4")"
+      if test -n "${sv_EntryIP4}"
+      then
+        sv_HostList=""
+      
+        sv_HostCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Entry:${iv_LoopCount1}:Host")"
+        for (( iv_LoopCount2=0; iv_LoopCount2<${sv_HostCount}; iv_LoopCount2++ ))
+        do
+          sv_Host="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Entry:${iv_LoopCount1}:Host:${iv_LoopCount2}")"
+          if test -n "${sv_Host}"
+          then
+            if test -n "${sv_HostList}"
+            then
+              sv_HostList="${sv_HostList} "
+            fi
+            sv_HostList="${sv_HostList}${sv_Host}"
+          fi
+        done
+
+        if test -n "${sv_HostList}"
+        then
+          printf "${sv_EntryIP4}\t${sv_HostList}\n" >> "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+        fi
+      
+      fi
+    done
+
+    echo "# ${GLB_SV_POLICYNAME}-${GLB_SV_CONFIGUUID}-END" >> "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts"
+
+    if [ ${iv_EntryCount} -gt 0 ]
+    then
+      cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/hosts" >> /etc/hosts
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Entries added to hosts file."
+  
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Config empty"
+    
+    fi
+  fi
+  ;;
+
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

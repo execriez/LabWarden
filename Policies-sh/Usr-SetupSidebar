@@ -1,0 +1,494 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Sets the user sidebar contents (makes use of mysides)
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Reference: see https://GitHub.com/mosen - mysides, set the sidebar content 
+#
+# Triggered by the following events:
+#   Usr-ManualTrigger (as user)
+#   Usr-AtDesktop     (as user)
+#
+# Called (as user) as follows:    
+#   Usr-SetupSidebar <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+if_RawTestCall() # ObjectName - Delete object with the given name without checks
+{
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    "${GLB_SV_PROJECTDIRPATH}"/bin/mysides >/dev/null 2>&1 list
+  fi
+  echo $?
+}
+
+nf_RawReloadList() # Reload the list without checks
+{
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Sidebar altered"
+  fi
+}
+
+nf_RawRemoveEntry() # ObjectName - Delete object with the given name without checks
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  
+  # Get object to delete
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing '${sv_ObjectName}' from side bar."
+    "${GLB_SV_PROJECTDIRPATH}"/bin/mysides >/dev/null 2>&1 remove "${sv_ObjectName}"
+  fi
+}
+
+nf_RawAddEntry() # ObjectFileURI ObjectName - Add object with the given uri/name without checks
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  
+  # Get object to delete
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Adding '${sv_ObjectName}' '${sv_ObjectFileURI}' to side bar."
+    "${GLB_SV_PROJECTDIRPATH}"/bin/mysides >/dev/null 2>&1 add "${sv_ObjectName}" "${sv_ObjectFileURI}"
+  fi
+}
+
+sf_RawGetURI() # ObjectName - Get URI for the object with the given name without checks
+{
+  local sv_ObjectName
+  
+  # Get object to delete
+  sv_ObjectName="${1}"
+
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    GLB_SF_URLDECODE "$("${GLB_SV_PROJECTDIRPATH}"/bin/mysides 2>/dev/null list | grep -E "^${sv_ObjectName} -> " | cut -d '>' -f2 | sed 's|^[ ]*||' | head -n1)"
+  fi
+}
+
+# If parameter 1 is a path instead of a URI - turn it into a URI by prepending 'file://'.
+# If the URI is a filepath that points to a directory, make sure it has a trailing /
+# If parameter 2 is null or true then..
+#   Make HOMEDIR substitutions to the given URI.
+#   If the URI is a file URI that points to a link - get the originating filepath.
+sf_SanitiseURI() # URI [deref]
+{
+  local sv_FileURI
+  local sv_OriginalFileURI
+
+  # Get URI
+  sv_FileURI="${1}"
+
+  # Get dereference flag
+  bv_Deref="${2}"
+  if [ -z "${bv_Deref}" ]
+  then
+    bv_Deref=${GLB_BC_TRUE}
+  fi
+
+  # if it's a file URI - strip it back
+  if [ -n "$(echo "${sv_FileURI}" | grep -E 'file://')" ]
+  then
+    sv_FileURI="$(echo "${sv_FileURI}" | sed 's|^file://||')"
+  fi
+
+  if [ -n "${sv_FileURI}" ]
+  then
+    # if at this point it's not a URI - its a file path so remove any trailing / (we will add one later if necessary)
+    if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
+    then
+      sv_FileURI="$(echo "${sv_FileURI}" | sed 's|[/]*$||')"  
+    fi
+    
+# ----------
+# BEGIN LEGACY CONFIG SUPPORT (PRE 3.X)
+
+    if [ "${bv_Deref}" = ${GLB_BC_TRUE} ]
+    then
+      # make HOMEDIR, LOCALHOME and NETWORKHOME substitutions to the given URI
+      sv_FileURI="$(echo "${sv_FileURI}" | sed "s|HOMEDIR|"${GLB_SV_CONSOLEUSERHOMEDIRPATH}"|;s|LOCALHOME|"${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}"|;s|NETWORKHOME|"${GLB_SV_CONSOLEUSERSHAREDIRPATH}"|")"
+
+      # make ALTHOME substitutions to the given URI
+      if [ "${GLB_BV_CONSOLEUSERHOMEISLOCAL}" = ${GLB_BC_TRUE} ]
+      then
+        # The user home is local, so the alternative home is the network home
+        sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_SV_CONSOLEUSERSHAREDIRPATH}"|")"
+
+      else
+        # The user home is on the network, so the alternative home is the local home
+        sv_FileURI="$(echo "${sv_FileURI}" | sed "s|ALTHOME|"${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}"|")"
+ 
+      fi
+    fi
+  
+# END LEGACY CONFIG SUPPORT (PRE 3.X) 
+# ----------
+  
+    # if at this point it's not a URI - its a file path
+    if [ -z "$(echo "${sv_FileURI}" | grep -E '\w*://')" ]
+    then
+      if test -z "${sv_FileURI}"
+      then
+        # If the filepath is null we must be referencing the root of the drive
+        sv_FileURI="/"
+      else
+        if test -e "${sv_FileURI}"
+        then
+          if [ "${bv_Deref}" = ${GLB_BC_TRUE} ]
+          then
+            if test -L "${sv_FileURI}"
+            then
+              # If the filepath references a link, get the originating filepath
+              sv_OriginalFileURI="$(stat -f %Y "${sv_FileURI}")"
+              if test -e "${sv_OriginalFileURI}"
+              then
+                sv_FileURI="${sv_OriginalFileURI}"
+              fi
+            fi
+          fi
+          if ! test -L "${sv_FileURI}"
+          then
+            if test -d "${sv_FileURI}"
+            then
+              # If the filepath references a directory, add a trailing /
+              sv_FileURI="${sv_FileURI}/"
+            fi
+          fi
+        fi
+      fi
+      
+      # Add the URI reference
+      sv_FileURI="file://${sv_FileURI}"
+    fi
+  fi
+  
+  echo "${sv_FileURI}"
+}
+
+nf_RemoveEntry() # ObjectFileURI ObjectName - Delete all objects with the given uri/name from the sidebar
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  local bv_ListModified
+  local iv_Count
+  local sv_ExistingURI
+  
+  # Get object to delete
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+  
+  bv_ListModified=${GLB_BC_FALSE}
+  
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
+  
+  if [ -n "${sv_ObjectFileURI}" ]
+  then
+    # If the URI is a file path, the Label should match the file object
+    if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+    then
+      sv_ObjectName=""
+    fi
+  fi
+
+  # If there is no object name (label), create one
+  if [ -z "${sv_ObjectName}" ]
+  then
+    sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
+  fi
+    
+  if [ -n "${sv_ObjectName}" ]
+  then
+    # Remove all existing entries with the given name (up to a maximum of 10)
+    for (( iv_Count = 0; iv_Count < 10; iv_Count++ )); do
+      sv_ExistingURI="$(sf_RawGetURI "${sv_ObjectName}")"
+      if [ -z "${sv_ExistingURI}" ]
+      then
+        break
+      else
+        nf_RawRemoveEntry "${sv_ObjectFileURI}" "${sv_ObjectName}"
+        bv_ListModified=${GLB_BC_TRUE}
+      fi
+    done
+    
+    if [ "${bv_ListModified}" = ${GLB_BC_FALSE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Remove ignored - as ${sv_ObjectName} is not present."
+    fi
+  
+  fi
+  
+  echo "${bv_ListModified}"
+}
+
+nf_AddEntry() # sv_ObjectFileURI sv_ObjectName bv_ReplaceEntry - Add object with the given uri/name to the dock
+{
+  local sv_ObjectFileURI
+  local sv_ObjectName
+  local bv_ReplaceEntry
+  local bv_ListModified
+  local bv_AddEntry
+  local sv_ExistingURI
+  
+  # Get object to add
+  sv_ObjectFileURI="${1}"
+  sv_ObjectName="${2}"
+  bv_ReplaceEntry="${3}"
+  
+  if [ -z "${bv_ReplaceEntry}" ]
+  then
+    bv_ReplaceEntry=${GLB_BC_FALSE}
+  fi
+  
+  bv_ListModified=${GLB_BC_FALSE}
+
+  bv_AddEntry=${GLB_BC_FALSE}
+
+  sv_ObjectFileURI="$(sf_SanitiseURI "${sv_ObjectFileURI}")"
+  
+  if [ -n "${sv_ObjectFileURI}" ]
+  then
+    # If the URI is a file path, the Label should match the file object
+    if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+    then
+      sv_ObjectName=""
+    fi
+
+    # If there is no object name (label), create one
+    if [ -z "${sv_ObjectName}" ]
+    then
+      sv_ObjectName="$(basename "${sv_ObjectFileURI}" | sed "s|.app$||")"
+    fi
+
+    if [ -n "${sv_ObjectName}" ]
+    then
+      sv_ExistingURI="$(sf_RawGetURI "${sv_ObjectName}")"
+      
+      if [ -z "${sv_ExistingURI}" ]
+      then
+        # Entry doesn't yet exist for this object
+        bv_AddEntry=${GLB_BC_TRUE}
+      
+      else
+        # Entry already exists for this object
+        sv_ExistingURI="$(sf_SanitiseURI "${sv_ExistingURI}" ${GLB_BC_FALSE})"
+        
+        # Check if the entry is different than what we are adding
+        if [ "${sv_ObjectFileURI}" != "${sv_ExistingURI}" ]
+        then
+          if [ "${bv_ReplaceEntry}" = ${GLB_BC_FALSE} ]
+          then
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Update '${sv_ObjectName}' ignored; replace option is '${bv_ReplaceEntry}'."
+            
+          else
+            # We are replacing an existing entry
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Replacing '${sv_ObjectName}' '${sv_ExistingURI}' with '${sv_ObjectFileURI}'."
+            bv_ListModified="$(nf_RemoveEntry "" "${sv_ObjectName}")"
+            bv_ListModified=${GLB_BC_TRUE}
+            bv_AddEntry=${GLB_BC_TRUE}
+          fi
+          
+        else
+      
+          # Entry isn't any different to what we want, so if its a file object, check that it still exists
+          if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+          then
+            if [ ! -e "$(echo "${sv_ObjectFileURI}" | sed 's|^file://||')" ]
+            then
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Entry '${sv_ObjectName}' exists; file object '${sv_ObjectFileURI}' doesn't exist."
+              bv_ListModified="$(nf_RemoveEntry "" "${sv_ObjectName}")"
+              bv_ListModified=${GLB_BC_TRUE}
+            
+            else
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Add '${sv_ObjectName}' ignored; '${sv_ObjectFileURI}' is already present."
+              
+            fi
+            
+          else
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Add '${sv_ObjectName}' ignored; '${sv_ObjectFileURI}' is already present."
+          
+          fi
+
+        fi
+      fi
+      
+    fi
+
+    if [ "${bv_AddEntry}" = ${GLB_BC_TRUE} ]
+    then
+      # If its a file object, check that it exists
+      if [ -n "$(echo "${sv_ObjectFileURI}" | grep -E 'file://')" ]
+      then
+        if [ ! -e "$(echo "${sv_ObjectFileURI}" | sed 's|^file://||')" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Add '${sv_ObjectName}' ignored; file object '${sv_ObjectFileURI}' doesn't exist."
+          bv_AddEntry=${GLB_BC_FALSE}
+        fi
+      fi
+    fi
+    
+    if [ "${bv_AddEntry}" = ${GLB_BC_TRUE} ]
+    then
+      nf_RawAddEntry "${sv_ObjectFileURI}" "${sv_ObjectName}"
+      bv_ListModified=${GLB_BC_TRUE}
+    fi
+        
+  fi
+
+  echo "${bv_ListModified}"
+}
+
+nf_ProcessEntriesInConfig()
+{
+  local bv_ListModified
+  local bv_ReplaceEntries
+  local bv_Result
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ReqdObjectFileURI
+  local sv_ReqdObjectLabel
+  
+  bv_ListModified=${GLB_BC_FALSE}
+
+  # Remove Entries
+  iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Remove")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdObjectFileURI="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Remove:${iv_LoopCount}:URI")"
+    sv_ReqdObjectLabel="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Remove:${iv_LoopCount}:Label")"
+    if [ "$(nf_RemoveEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}")" = ${GLB_BC_TRUE} ]
+    then
+      bv_ListModified=${GLB_BC_TRUE}
+    fi
+  done
+
+  # Check if we are replacing 
+  bv_ReplaceEntries="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Replace")"
+  if [ -z "${bv_ReplaceEntries}" ]
+  then
+    bv_ReplaceEntries=${GLB_BC_FALSE}
+  fi
+
+  # Add Entries
+  iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Add")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdObjectFileURI="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Add:${iv_LoopCount}:URI")"
+    sv_ReqdObjectLabel="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Add:${iv_LoopCount}:Label")"
+    bv_Result="$(nf_AddEntry "${sv_ReqdObjectFileURI}" "${sv_ReqdObjectLabel}" "${bv_ReplaceEntries}")"
+    if [ "${bv_Result}" = ${GLB_BC_TRUE} ]
+    then
+      bv_ListModified=${GLB_BC_TRUE}
+    fi
+  done
+  
+  if [ "${bv_ListModified}" = ${GLB_BC_TRUE} ]
+  then
+    nf_RawReloadList
+  fi
+}
+
+# ---
+
+if ! test -e "${GLB_SV_PROJECTDIRPATH}"/bin/mysides
+then
+  # Exit if mysides (see https://GitHub.com/mosen) is not installed
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Policy aborted - mysides (see https://GitHub.com/mosen) is not installed."
+else
+  # Exit if the user home folder doesn't exist
+  if [ ! -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - home folder doesn't exist."
+  else
+    if [ $(if_RawTestCall) -ne 0 ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Policy aborted - something went wrong unexpectedly."
+    else
+      # Grab  lock
+      if [ $(GLB_BF_NAMEDLOCKGRAB "Sidebar") = ${GLB_BC_FALSE} ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted. Cannot grab lock."
+      else
+    
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Usr-AtDesktop)
+  iv_LastUpdateEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastUpdateEpoch")
+  if test -z "${iv_LastUpdateEpoch}"
+  then
+    # Normally, we only run once
+    nf_ProcessEntriesInConfig
+    GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastUpdateEpoch" "${GLB_IV_THISSCRIPTSTARTEPOCH}"
+  fi
+  ;;
+
+Usr-ManualTrigger|Usr-PolicyInstall)
+  nf_ProcessEntriesInConfig
+  GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastUpdateEpoch" "${GLB_IV_THISSCRIPTSTARTEPOCH}"
+  ;;
+
+Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+
+        # Release lock
+        GLB_NF_NAMEDLOCKRELEASE "Sidebar"
+
+      fi
+    fi
+  fi
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>EA2818BA-BDCC-46B5-943A-728C0A4F9E27</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>LogIsActive</key>
+					<true/>
+					<key>LogLevelTrap</key>
+					<integer>6</integer>
+					<key>MaxLogSizeBytes</key>
+					<integer>655360</integer>
+					<key>NotifyLevelTrap</key>
+					<integer>6</integer>
+				</dict>
+				<key>Name</key>
+				<string>Sys-Defaults</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Boot</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>EA2818BA-BDCC-46B5-943A-728C0A4F9E27</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>EA2818BA-BDCC-46B5-943A-728C0A4F9E27</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-Defaults (Info)</string>
+	<key>PayloadIdentifier</key>
+	<string>6C1FEF27-0C14-4B97-947A-48B926759954</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>6C1FEF27-0C14-4B97-947A-48B926759954</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

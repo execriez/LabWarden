@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>A1B3B6A5-6F34-49BF-8790-1722A0584D60</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Entry</key>
+					<array>
+						<dict>
+							<key>Host</key>
+							<array>
+								<string>captive.apple.com</string>
+							</array>
+							<key>IP4</key>
+							<string>127.0.0.1</string>
+						</dict>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Sys-HostsFile</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Boot</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>A1B3B6A5-6F34-49BF-8790-1722A0584D60</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>A1B3B6A5-6F34-49BF-8790-1722A0584D60</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-HostsFile (CaptivePortal)</string>
+	<key>PayloadIdentifier</key>
+	<string>9EE045D9-ECFD-43ED-AC3F-B7A13F2F91EA</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>9EE045D9-ECFD-43ED-AC3F-B7A13F2F91EA</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

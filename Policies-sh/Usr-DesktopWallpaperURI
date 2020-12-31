@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Sets the user Desktop Wallpaper
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Usr-AtDesktop (as user)
+#
+# Called as follows:
+#   Usr-DesktopWallpaperURI <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+# Exit if the user home folder doesn't exist
+if [ ! -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - home folder doesn't exist."
+else
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Usr-AtDesktop|Usr-PolicyInstall)
+  sv_DesktopWallpaperURI="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:DesktopWallpaperURI")"
+  if test -z "${sv_DesktopWallpaperURI}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Possible config error - DesktopWallpaperURI is not defined."
+
+  else
+    sv_DesktopWallpaperFilePath=$(GLB_SF_RESOLVEFILEURITOPATH "${sv_DesktopWallpaperURI}")
+    if test -z "${sv_DesktopWallpaperFilePath}"
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Possible config error - DesktopWallpaperURI '${sv_DesktopWallpaperURI}' is not resolvable."
+
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting Desktop Wallpaper"
+      osascript -e "tell application \"System Events\" to set picture of every desktop to \"${sv_DesktopWallpaperFilePath}\""
+    fi
+  fi
+  ;;
+
+Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# Short:    App Policy Script - Deletes application data when an application quits
+# Author:   Mark J Swift
+# Version:  3.2.0
+# Modified: 12-Nov-2020
+#
+# Triggered by the following events:
+#   App-DidTerminate (as user)
+#
+# Called as follows:    
+#   App-DeleteDataOnQuit <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.0"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-AppDataDeleteOnQuit"
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+if [ -z "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - user home is not defined"
+  # Exit if the user home is undefined
+else
+  if [ ! -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+  then
+    # Exit if the user home does not exist
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - user home '${GLB_SV_CONSOLEUSERHOMEDIRPATH}' does not exist"
+  else
+  
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+App-DidTerminate)
+  iv_AppDataCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AppData")"
+  for (( iv_LoopCount1=0; iv_LoopCount1<${iv_AppDataCount}; iv_LoopCount1++ ))
+  do
+    # Get app id
+    sv_ListedAppBundleIdentifier="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AppData:${iv_LoopCount1}:ApplicationBundleIdentifier")"
+    if test -n "${sv_ListedAppBundleIdentifier}"
+    then
+      if [ "${sv_ListedAppBundleIdentifier}" = "${GLB_SV_LAUNCHEDAPPBUNDLEIDENTIFIER}" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Deleting App Data for '${GLB_SV_LAUNCHEDAPPBUNDLEIDENTIFIER}'"
+        iv_PathCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AppData:${iv_LoopCount1}:Path")"
+        for (( iv_LoopCount2=0; iv_LoopCount2<${iv_PathCount}; iv_LoopCount2++ ))
+        do
+         sv_DelPath="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AppData:${iv_LoopCount1}:Path:${iv_LoopCount2}")"
+
+          # Sanitise the file/folder Path
+          sv_DelPath=$(echo "${sv_DelPath}" | sed "s|^|/|;s|^/[/]*|/|;s|[/]*$||")
+
+          if test -n "${sv_DelPath}"
+          then
+            if test -d "${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_DelPath}"
+            then
+              # Delete folder
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting folder '${sv_DelPath}' "
+              rm -fR "${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_DelPath}"
+            else
+              if test -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_DelPath}"
+              then
+                # Delete file
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting file '${sv_DelPath}' "
+                rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_DelPath}"
+              fi
+            fi
+          fi
+
+        done
+      fi
+    fi
+    
+  done
+  ;;
+
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+  fi
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

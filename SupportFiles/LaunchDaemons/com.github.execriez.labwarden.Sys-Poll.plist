@@ -6,8 +6,7 @@
 	<string>com.github.execriez.labwarden.Sys-Poll</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Poll</string>
-		<string>Sys-</string>
+		<string>/usr/local/LabWarden/bin/Poll</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>241</integer>

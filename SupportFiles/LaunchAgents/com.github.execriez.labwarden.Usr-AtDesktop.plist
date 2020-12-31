@@ -6,7 +6,7 @@
 	<string>com.github.execriez.labwarden.Usr-AtDesktop</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Trigger</string>
+		<string>/usr/local/LabWarden/bin/Trigger</string>
 		<string>Usr-AtDesktop</string>
 	</array>
 	<key>RunAtLoad</key>

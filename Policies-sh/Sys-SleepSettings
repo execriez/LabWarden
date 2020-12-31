@@ -1,0 +1,124 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets system sleep options
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-LoginWindow          (as root)
+#   Sys-ConsoleUserLoggedIn  (as root)
+#
+# Called as follows:    
+#   Sys-SleepSettings <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+nf_SetSystemSleepSettings() # Trigger
+{
+  local sv_Trigger
+  local iv_PowerSystemSleepSecs
+  local iv_PowerDisplaySleepSecs
+  local iv_PowerDiskSleepSecs
+  local iv_BatterySystemSleepSecs
+  local iv_BatteryDisplaySleepSecs
+  local iv_BatteryDiskSleepSecs
+  
+  sv_Trigger="${1}"
+
+  iv_PowerSystemSleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Power:SystemSleep")"
+  if test -n "${iv_PowerSystemSleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting sleep=${iv_PowerSystemSleepSecs} (on power)"
+    /usr/bin/pmset -a sleep "${iv_PowerSystemSleepSecs}"
+  fi
+  
+  iv_PowerDisplaySleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Power:DisplaySleep")"
+  if test -n "${iv_PowerDisplaySleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting displaysleep=${iv_PowerDisplaySleepSecs} (on power)"
+    /usr/bin/pmset -a displaysleep "${iv_PowerDisplaySleepSecs}"
+  fi
+  
+  iv_PowerDiskSleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Power:DiskSleep")"
+  if test -n "${iv_PowerDiskSleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting disksleep=${iv_PowerDiskSleepSecs} (on power)"
+    /usr/bin/pmset -a disksleep "${iv_PowerDiskSleepSecs}"
+  fi
+  
+  iv_BatterySystemSleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Battery:SystemSleep")"
+  if test -n "${iv_BatterySystemSleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting sleep=${iv_BatterySystemSleepSecs} (on battery)"
+    /usr/bin/pmset -b sleep "${iv_BatterySystemSleepSecs}"
+  fi
+  
+  iv_BatteryDisplaySleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Battery:DisplaySleep")"
+  if test -n "${iv_BatteryDisplaySleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting displaysleep=${iv_BatteryDisplaySleepSecs} (on battery)"
+    /usr/bin/pmset -b displaysleep "${iv_BatteryDisplaySleepSecs}"
+  fi
+  
+  iv_BatteryDiskSleepSecs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_Trigger}:Battery:DiskSleep")"
+  if test -n "${iv_BatteryDiskSleepSecs}"
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting disksleep=${iv_BatteryDiskSleepSecs} (on battery)"
+    /usr/bin/pmset -b disksleep "${iv_BatteryDiskSleepSecs}"
+  fi
+  
+  /usr/bin/pmset -a autorestart 1 womp 1
+
+}
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-LoginWindow|Sys-ConsoleUserLoggedIn)
+  nf_SetSystemSleepSettings "${GLB_SV_EVENTNAME}"
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

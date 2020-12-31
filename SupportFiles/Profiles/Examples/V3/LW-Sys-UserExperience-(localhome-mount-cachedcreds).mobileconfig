@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>A2E9C680-FFF4-49E6-81B5-1D28AC1D146B</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>alldomains</key>
+					<false/>
+					<key>localhome</key>
+					<true/>
+					<key>mobile</key>
+					<true/>
+					<key>mobileconfirm</key>
+					<false/>
+					<key>preferredserver</key>
+					<string></string>
+					<key>protocol</key>
+					<string>smb</string>
+					<key>sharepoint</key>
+					<true/>
+					<key>useuncpath</key>
+					<true/>
+				</dict>
+				<key>Name</key>
+				<string>Sys-UserExperience</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-ActiveDirectoryUp</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>A2E9C680-FFF4-49E6-81B5-1D28AC1D146B</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>A2E9C680-FFF4-49E6-81B5-1D28AC1D146B</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-UserExperience (localhome-mount-cachedcreds)</string>
+	<key>PayloadIdentifier</key>
+	<string>782588E0-7FF7-4B7B-A4FB-75E1E84A35CF</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>782588E0-7FF7-4B7B-A4FB-75E1E84A35CF</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

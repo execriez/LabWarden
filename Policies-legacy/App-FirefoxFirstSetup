@@ -1,0 +1,148 @@
+#!/bin/bash
+#
+# Short:    App Policy Script - Creates a blank Firefox profile at first launch.
+# Author:   Mark J Swift
+# Version:  3.2.0
+# Modified: 12-Nov-2020
+#
+# Triggered by the following events:
+#   App-WillLaunch (as user)
+#
+# Called as follows:    
+#   App-FirefoxFirstSetup <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.0"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-AppFirefoxFirstSetup"
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+if [ -z "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - user home is not defined"
+  # Exit if the user home is undefined
+else
+  if [ ! -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+  then
+    # Exit if the user home does not exist
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - user home '${GLB_SV_CONSOLEUSERHOMEDIRPATH}' does not exist"
+  else
+  
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+App-WillLaunch)  
+  # Create Firefox folder if necessary
+  sv_FfoxConfigDirPath="${GLB_SV_CONSOLEUSERHOMEDIRPATH}/Library/Application Support/Firefox"
+  mkdir -p "${sv_FfoxConfigDirPath}"
+
+  # Get the current profile folder (if any)
+  sv_FfoxProfile=""
+  if test -f "${sv_FfoxConfigDirPath}/profiles.ini"
+  then
+    sv_FfoxProfile=$(cat "${sv_FfoxConfigDirPath}/profiles.ini" | grep "Path=" | cut -d"=" -f2)
+  fi
+
+  # If profile doesnt exist, kill the app, set up a new profile, then relaunch the app
+  # This stops you from being asked to create a profile.
+  if [ -n "${sv_FfoxProfile}" ] && [ -f "${sv_FfoxConfigDirPath}/${sv_FfoxProfile}/prefs.js" ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Firefox has already been set up."
+    
+    if [ "${sv_FfoxProfile}" != "Profiles/mozilla.default" ]
+    then
+      if test -e "${sv_FfoxConfigDirPath}/Profiles/mozilla.default"
+      then
+        # Back up any existing mozilla.default profile
+        mv "${sv_FfoxConfigDirPath}/Profiles/mozilla.default" "${sv_FfoxConfigDirPath}/Profiles/mozilla-"$(date -r ${GLB_IV_THISSCRIPTSTARTEPOCH} '+%Y-%m-%d_%H-%M-%S')".default"
+      fi
+      # Quit Firefox
+      kill ${GLB_IV_LAUNCHEDAPPPROCESSID}
+      
+      # Rename the active profile
+      mv "${sv_FfoxConfigDirPath}/${sv_FfoxProfile}" "${sv_FfoxConfigDirPath}/Profiles/mozilla.default"
+
+      sv_FfoxProfile="Profiles/mozilla.default"
+      mkdir -p "${sv_FfoxConfigDirPath}/${sv_FfoxProfile}"
+
+      cat << ENDFFOXPFL > "${sv_FfoxConfigDirPath}/profiles.ini"
+[General]
+StartWithLastProfile=1
+
+[Profile0]
+Name=default
+IsRelative=1
+Path=${sv_FfoxProfile}
+ENDFFOXPFL
+
+      # Re-launch Firefox
+      /usr/bin/open -b "org.mozilla.firefox"
+
+    fi
+
+  else
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting up Firefox for the first time."
+
+    # Quit Firefox
+    kill ${GLB_IV_LAUNCHEDAPPPROCESSID}
+
+    sv_FfoxProfile="Profiles/mozilla.default"
+    mkdir -p "${sv_FfoxConfigDirPath}/${sv_FfoxProfile}"
+
+    cat << ENDFFOXPFL > "${sv_FfoxConfigDirPath}/profiles.ini"
+[General]
+StartWithLastProfile=1
+
+[Profile0]
+Name=default
+IsRelative=1
+Path=${sv_FfoxProfile}
+ENDFFOXPFL
+
+    cat << ENDFFOXPRF > "${sv_FfoxConfigDirPath}/${sv_FfoxProfile}/prefs.js"
+# Mozilla User Preferences
+user_pref("browser.shell.checkDefaultBrowser", false);
+ENDFFOXPRF
+
+    # Re-launch Firefox
+    /usr/bin/open -b "org.mozilla.firefox"
+  fi
+  ;;
+
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+  
+  fi
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

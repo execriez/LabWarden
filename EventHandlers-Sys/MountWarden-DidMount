@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+# Short:    Do something when a volume is mounted
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Called by MountWarden as user like this:
+#   MountWarden-DidMount "DidMount:Epoch:VolumePath"
+# i.e.
+#   MountWarden-DidMount "DidMount:1538163950:/Volumes/MYFATDISK"
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Check we have the correct number of parameters
+if [ $# -lt 1 ]
+then
+  exit 0
+fi
+
+# -- Trigger the VolDidMount policy (and pass it the volume path) --
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+# Get volume path
+GLB_SV_MOUNTEDVOLUMEDIRPATH="$(echo ${1} | cut -d":" -f3)"
+
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Sys-VolDidMount" "${GLB_SV_MOUNTEDVOLUMEDIRPATH}" &
+
+sv_MountedVolumeOwnerUserName="$(stat -f "%Su" "${GLB_SV_MOUNTEDVOLUMEDIRPATH}")"
+if [ -z "${sv_MountedVolumeOwnerUserName}" ]
+then
+  sv_MountedVolumeOwnerUserName="_unknown"
+fi
+
+if [ "${sv_MountedVolumeOwnerUserName}" != "_unknown" ]
+then
+  # -- The following is executed as the volume owner --
+
+# HEREDOC is not quoted, so variables are expanded before entry.
+# This means that new variables cannot be created inside.
+ 
+/usr/bin/su ${sv_MountedVolumeOwnerUserName} <<HEREDOC
+
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-VolDidMount" "${GLB_SV_MOUNTEDVOLUMEDIRPATH}" &
+
+HEREDOC
+
+  # -- We are back as the root user.
+
+else
+  # Call Usr-VolDidMount for all users who are logged in
+  who -q | grep -Ev "^#" | tr " " "\n" | sort -u | grep -Ev "^$" | grep -Ev "^root$" | while read sv_UserName
+  do
+
+# HEREDOC is not quoted, so variables are expanded before entry.
+# This means that new variables cannot be created inside.
+ 
+/usr/bin/su ${sv_UserName} <<HEREDOC
+
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-VolDidMount" "${GLB_SV_MOUNTEDVOLUMEDIRPATH}" &
+
+HEREDOC
+
+    # -- We are back as the root user.
+
+  done
+
+fi
+
+# ---
+
+# We dont want to quit until all sub tasks are finished
+while [ -n "$(jobs -r)" ]
+do
+  # We don't want to hog the CPU - so lets sleep a while
+  sleep 1
+done

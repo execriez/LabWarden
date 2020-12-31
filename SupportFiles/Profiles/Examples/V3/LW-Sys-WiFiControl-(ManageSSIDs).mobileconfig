@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>8BF33CF4-9460-4D93-AA99-2323F90FF7A4</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>RememberRecentNetworks</key>
+					<false/>
+					<key>RequireAdminIBSS</key>
+					<true/>
+					<key>RequireAdminNetworkChange</key>
+					<true/>
+					<key>RequireAdminPowerToggle</key>
+					<true/>
+					<key>SSIDAllowList</key>
+					<array>
+						<string>YourGoodSSID1</string>
+						<string>YourGoodSSID2</string>
+					</array>
+					<key>SSIDRemoveList</key>
+					<array>
+						<string>YourBadSSID1</string>
+						<string>YourBadSSID1</string>
+					</array>
+					<key>WirelessState</key>
+					<string>on</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-WiFiControl</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Boot</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>8BF33CF4-9460-4D93-AA99-2323F90FF7A4</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>8BF33CF4-9460-4D93-AA99-2323F90FF7A4</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-WiFiControl (ManageSSIDs)</string>
+	<key>PayloadIdentifier</key>
+	<string>EBA4230D-931A-4DA4-A978-1F0F7475B070</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>EBA4230D-931A-4DA4-A978-1F0F7475B070</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

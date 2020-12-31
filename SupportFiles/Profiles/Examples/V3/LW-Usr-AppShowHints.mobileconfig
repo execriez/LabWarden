@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>C22D32CA-5191-42A6-82A1-A5AFF6C15F84</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>AppHints</key>
+					<array>
+						<string>Set Media Cache location via Premiere&gt;Preferences&gt;Media Cache</string>
+						<string>Hide clips in your project panel to remove clutter</string>
+					</array>
+					<key>ApplicationBundleIdentifier</key>
+					<string>com.adobe.PremierePro.CC12</string>
+				</dict>
+				<key>Name</key>
+				<string>Usr-AppShowHints</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Usr-AppDidLaunch</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>C22D32CA-5191-42A6-82A1-A5AFF6C15F84</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>C22D32CA-5191-42A6-82A1-A5AFF6C15F84</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-AppShowHints</string>
+	<key>PayloadIdentifier</key>
+	<string>F7741CB6-CF34-46DC-B65B-1FFCA47A7067</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>F7741CB6-CF34-46DC-B65B-1FFCA47A7067</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

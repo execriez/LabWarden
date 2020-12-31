@@ -1,0 +1,181 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Home folder redirection
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-NetworkUp   (as root)
+#   Usr-AtDesktop   (as user)
+#
+# Called as follows:    
+#   Usr-CreateHomeFolderRedirections <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+nf_UndoFolderRedirections() # Undo settings from Global Prefs
+{
+  local sv_ActiveConfig
+  local sv_ConfigOptionPath
+  local iv_ObjectCount
+  local iv_LoopCount
+  local sv_ReqdLinkEntry
+  local sv_ReqdLinkFilePath
+
+  sv_ActiveConfig="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Shared:ActiveConfig")"
+
+  # Only continue if we hold the active config
+  if [ "${sv_ActiveConfig}" = "${GLB_SV_CONFIGUUID}" ]
+  then
+    # Get the options
+    sv_ConfigOptionPath="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Shared:ConfigOptionPath")"
+    if [ -n "${sv_ConfigOptionPath}" ]
+    then
+
+      if [ "${sv_ConfigOptionPath}" != "CLEAR" ]
+      then
+        # config options
+
+        iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path")"
+        for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+        do
+          sv_ReqdLinkEntry="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path:${iv_LoopCount}")"
+          sv_ReqdLinkEntry=$(echo "/${sv_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+          sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
+          if test -n "${sv_ReqdLinkFilePath}"
+          then
+            umount "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+          fi
+        done
+      
+      fi
+    
+    fi
+  
+  fi 
+}
+
+nf_ReloadFinder() # Reload the Finder
+{
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Reloading the Finder" 
+  pkill -U ${GLB_SV_RUNUSERNAME} Finder
+}
+
+# ---
+
+# Exit if user is a local account
+if [ "${GLB_BV_CONSOLEUSERISLOCAL}" = ${GLB_BC_TRUE} ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO}  "Policy aborted - User account is local."
+else
+  if [ "${GLB_BV_CONSOLEUSERHOMEISLOCAL}" = ${GLB_BC_FALSE} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - User home is on network."
+  else
+  
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  ;;
+  
+Usr-AtDesktop)
+  # If the network home is not mounted - mount it
+  if [ -z "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
+  then
+    if [ -n "${GLB_SV_CONSOLEUSERSHAREURI}" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Mounting the user network home"
+
+      sv_ConsoleUserShareDirPath="${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES/USERHOME"
+      mkdir -p "${sv_ConsoleUserShareDirPath}"
+      if [ "$(GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}/" "${sv_ConsoleUserShareDirPath}")" = ${GLB_BC_TRUE} ]
+      then
+        GLB_SV_CONSOLEUSERSHAREDIRPATH="${sv_ConsoleUserShareDirPath}"
+      fi
+  
+    fi
+  fi
+  
+  if [ -n "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
+  then
+    # Mount the home sub-folders
+    iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path")"
+    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+    do
+      sv_ReqdLinkEntry="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path:${iv_LoopCount}")"
+      sv_ReqdLinkEntry=$(echo "/${sv_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+      sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
+      if test -n "${sv_ReqdLinkFilePath}"
+      then
+        # If the local directory is a link - delete it
+        if [ -L "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ]
+        then
+          rm -f "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+        fi
+
+        # Make sure the local directory exists
+        mkdir -p "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+
+        # Make sure the remote directory exists
+        mkdir -p "${GLB_SV_CONSOLEUSERSHAREDIRPATH}${sv_ReqdLinkFilePath}"
+      
+        # Mount network folder at path and remount if already mounted somewhere else
+        GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}${sv_ReqdLinkFilePath}/" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ${GLB_BC_TRUE}
+      fi
+  
+    done
+
+  fi
+
+  # Existing shortcuts in the dock & siebar may have changed. Finder may need reloading too if the desktop has been redirected.
+  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupDock &
+  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupSidebar &
+  nf_ReloadFinder  
+  ;;
+
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+  
+  fi
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

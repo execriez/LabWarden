@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>0EF97CD5-75FD-4378-9F77-7EC77191C5FD</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>AppData</key>
+					<array>
+						<dict>
+							<key>ApplicationBundleIdentifier</key>
+							<string>com.adobe.AdobePremierePro</string>
+							<key>Path</key>
+							<array>
+								<string>/Library/Application Support/Adobe/Common/Media Cache Files/</string>
+								<string>/Library/Application Support/Adobe/Common/Media Cache/</string>
+							</array>
+						</dict>
+						<dict>
+							<key>ApplicationBundleIdentifier</key>
+							<string>org.chromium.Chromium</string>
+							<key>Path</key>
+							<array>
+								<string>/Library/Application Support/Chromium/Default/Pepper Data/</string>
+							</array>
+						</dict>
+						<dict>
+							<key>ApplicationBundleIdentifier</key>
+							<string>com.google.Chrome</string>
+							<key>Path</key>
+							<array>
+								<string>/Library/Application Support/Google/Chrome/Default/Pepper Data/</string>
+							</array>
+						</dict>
+					</array>
+				</dict>
+				<key>Name</key>
+				<string>Usr-AppDataDeleteOnQuit</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Usr-AppDidTerminate</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>0EF97CD5-75FD-4378-9F77-7EC77191C5FD</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>0EF97CD5-75FD-4378-9F77-7EC77191C5FD</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Usr-AppDataDeleteOnQuit</string>
+	<key>PayloadIdentifier</key>
+	<string>C0CE09E0-9B74-4359-98BC-AC50E0DBEB55</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>C0CE09E0-9B74-4359-98BC-AC50E0DBEB55</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

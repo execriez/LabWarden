@@ -6,7 +6,7 @@
 	<string>com.github.execriez.labwarden.Sys-LoginWindow</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Trigger</string>
+		<string>/usr/local/LabWarden/bin/Trigger</string>
 		<string>Sys-LoginWindow</string>
 	</array>
 	<key>RunAtLoad</key>

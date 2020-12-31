@@ -1,0 +1,105 @@
+#!/bin/bash
+#
+# Short:    Sys Policy Script - Update loginwindow text and RemoteDesktop Info Fields with workstation info
+# Author:   Mark J Swift
+# Version:  3.2.0
+# Modified: 12-Nov-2020
+#
+# Triggered by the following events:
+#   Sys-Boot                 (as root)
+#   Sys-ActiveDirectoryUp    (as root)
+#
+#   ... see associated config 'Sys-WorkstationInfo.mobileconfig'
+#
+# Called as follows:    
+#   Sys-WorkstationInfo <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.0"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-LoginwindowInfo"
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+
+Sys-Boot|Sys-PolicyInstall)
+  # (as root) - Do this at boot time
+
+  bv_ShowHostnameAtLoginwindow="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ShowHostnameAtLoginwindow")"
+  if [ "${bv_ShowHostnameAtLoginwindow}" =  ${GLB_BC_TRUE} ]
+  then
+    GLB_NF_SETLOGINWINDOWLINE 1 "${GLB_SV_HOSTNAME}"
+  fi
+
+  bv_ShowADpathAtLoginwindow="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ShowADpathAtLoginwindow")"
+  if [ "${bv_ShowADpathAtLoginwindow}" = ${GLB_BC_TRUE} ]
+  then
+    # If we are not bound to AD, clear anything that might contain old AD bind info
+    if test -z "${GLB_SV_ADDNSDOMAINNAME}"
+    then
+      GLB_NF_SETLOGINWINDOWLINE 2 ""
+    fi
+  fi
+  ;;
+
+Sys-ActiveDirectoryUp)
+  # (as root) - Do this when Active Directory becomes available
+  
+  bv_ShowADpathAtLoginwindow="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ShowADpathAtLoginwindow")"
+  if [ "${bv_ShowADpathAtLoginwindow}" = ${GLB_BC_TRUE} ]
+  then
+    # Get the distinguishedName from AD 
+    sv_Value=$(GLB_SF_GETDIRECTORYOBJECTATTRVALUE "/Search/Computers" "${GLB_SV_ADTRUSTACCOUNTNAME}" "distinguishedName")
+    if [ "${sv_Value}" != "ERROR" ]
+    then
+      sv_ADpath=$(echo "${sv_Value}" | sed 's|[^,]*=||g;s|,|\.|g;s|\.'${GLB_SV_ADDNSDOMAINNAME}'||g;s|\.|,|g' | cut -d',' -f2-)
+    fi
+
+    if test -n "${sv_ADpath}"
+    then
+      sv_PathText="$(echo ${sv_ADpath} | sed "s|,| - |g")"
+      GLB_NF_SETLOGINWINDOWLINE 2 "${sv_PathText}"
+    fi
+  fi
+  ;;
+
+Sys-PolicyUninstall)
+  # Clear info fields
+  GLB_NF_SETLOGINWINDOWLINE 1 ""
+  GLB_NF_SETLOGINWINDOWLINE 2 ""
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

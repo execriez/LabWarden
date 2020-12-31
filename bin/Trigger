@@ -1,0 +1,626 @@
+#!/bin/bash
+#
+# Short:    Trigger an event
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Called as follows:    
+#   Trigger <event> [<optionalparam>]
+#
+# Handles LabWarden events:
+
+# ---
+
+# The code version on the Trigger routine always matches the project version
+GLB_SV_CODEVERSION="${GLB_SC_PROJECTVERSION}"
+
+# ---
+
+if [ $# -eq 0 ]
+then
+  echo "${GLB_SV_CODEVERSION}"
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+# ---
+
+# Get policy
+GLB_SV_EVENTNAME="${1}"
+
+# If there is a colon (an old option), use the bit after the colon
+GLB_SV_EVENTNAME=$(echo ${GLB_SV_EVENTNAME} | sed "s|.*:||")
+
+# Check if a target policy has been passed in the event name
+# (i.e. /usr/local/LabWarden/bin/Trigger "Sys-AddPrinter.Sys-Poll")
+
+GLB_SV_TARGETPOLICYNAME=""
+if test -n "$(echo ${GLB_SV_EVENTNAME} | grep -E '\.')"
+then
+  # If there is a target policy, separate event name from target policy
+  GLB_SV_TARGETPOLICYNAME=$(echo "${GLB_SV_EVENTNAME}" | sed "s|\..*$||")
+  GLB_SV_EVENTNAME=$(echo ${GLB_SV_EVENTNAME} | sed "s|.*\.||")
+fi
+
+# Get optional parameter
+GLB_SV_OPTIONALPARAM="${2}"
+
+# ---
+
+if test -z "${GLB_SV_EVENTNAME}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+# ---
+
+# Get event type - Sys, Usr or App
+sv_EventType=$(echo "${GLB_SV_EVENTNAME}" | sed "s|-.*||")
+
+case ${sv_EventType} in
+
+Usr|App)
+  if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+  then
+    exit 0
+  fi
+  GLB_SV_CONSOLEUSERNAME="${GLB_SV_RUNUSERNAME}"
+  ;;
+
+Sys)
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    exit 0
+  fi
+  ;;
+  
+esac
+
+# ---
+
+# Get info from optional parameter
+case ${GLB_SV_EVENTNAME} in
+
+Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+  GLB_SV_CONSOLEUSERNAME="${GLB_SV_OPTIONALPARAM}"
+  if [ -z "${GLB_SV_CONSOLEUSERNAME}" ]
+  then
+    exit 0
+  fi
+  ;;
+  
+esac
+
+# ---
+
+# Include the Core Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+
+  # Exit if something went wrong unexpectedly
+  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  then
+    echo >&2 "Something unexpected happened"
+    exit 90
+  fi
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at 'inc/Common.sh' for a complete list.
+
+# ---
+
+# List policies in config that are triggered by the event
+nf_ShowTriggeredList() # <ConfigPlist> <EventName>
+{
+  local sv_EventName
+  local sv_ConfigPlist
+  local iv_DoesTriggerCount
+  local iv_DoesTriggerIndex
+  local sv_PolicyConfigUUID
+    
+  sv_EventName="${1}"
+  sv_ConfigPlist="${2}"
+
+  if [ -e "${sv_ConfigPlist}" ]
+  then
+    iv_DoesTriggerCount="$(GLB_IF_GETPLISTARRAYSIZE "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger")"
+    for (( iv_DoesTriggerIndex=0; iv_DoesTriggerIndex<${iv_DoesTriggerCount}; iv_DoesTriggerIndex++ ))
+    do
+      sv_PolicyConfigUUID=$(GLB_SF_GETPLISTPROPERTY "${sv_ConfigPlist}" ":${sv_EventName}:DoesTrigger:${iv_DoesTriggerIndex}")
+      echo ${sv_PolicyConfigUUID}
+    done
+  fi
+}
+
+nf_TriggeredList() # <EventName>
+{  
+  local sv_EventName
+
+  sv_EventName="${1}"
+
+  case ${sv_EventName} in
+    
+  Sys-PolicyUninstall|Sys-PolicyInstall)
+    if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+    then
+      cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownPayloads.txt" | cut -d":" -f3-4 | grep "^Sys-" | cut -d":" -f2
+    fi
+    ;;
+    
+  Usr-PolicyUninstall|Usr-PolicyInstall)
+    if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+    then
+      cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownPayloads.txt" | cut -d":" -f3-4 | grep "^Usr-" | cut -d":" -f2
+    fi
+    ;;
+    
+  *)
+    nf_ShowTriggeredList "${sv_EventName}" "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownEvents.plist"
+    if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+    then
+      nf_ShowTriggeredList "${sv_EventName}" "${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/LabWarden-KnownEvents.plist"
+    fi
+    ;;
+    
+  esac
+
+}
+
+nf_LimitSpawns() # <ConfigPlist> <EventName>
+{
+  local sv_hwnCPU
+  local sv_maxSpawns
+  
+  sv_nCPU="$(sysctl -n hw.ncpu)"
+  
+  sv_maxSpawns=$((${sv_nCPU}*2))
+
+  # lets sleep a while 
+  #sleep 1
+
+  # We dont want to continue until all sub tasks are finished
+  while [ "$(jobs -r | wc -l)" -ge ${sv_maxSpawns} ]
+  do
+    # We don't want to hog the CPU - so lets sleep a while
+    sleep 1
+  done
+}
+
+# ---
+
+if test -z "${GLB_SV_TARGETPOLICYNAME}"
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' triggered"
+else
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Targeted event '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' triggered"
+fi
+
+# ---
+
+# Check policies against event
+
+# Wish I could let the user know when things are still happening at login
+#
+#case ${GLB_SV_EVENTNAME} in
+#
+#Usr-AtDesktop)
+#  GLB_NF_SHOWNOTIFICATION ${GLB_IC_MSGLEVELNOTICE} "Setting things up..."
+#  ;;
+#esac
+
+if [ $(GLB_BF_NAMEDLOCKGRAB "PolicyHousekeeping" 0 ${GLB_BC_TRUE}) = ${GLB_BC_TRUE} ]
+then
+
+    # Make sure the base folders exist
+    mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config"
+    mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs"
+    mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared"
+
+    mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Config"
+    mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Prefs"
+
+    # Make sure policies have been processed for event info
+    if [ ! -f "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownEvents.plist" ]
+    then
+      /usr/local/LabWarden/bin/ManagedPrefs
+    fi
+    
+    # ---
+    # Process prefs for missed Install and Uninstall events
+    
+    ls -1 "${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/" | grep -E ".*.plist$" | sed "s|.plist$||" | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/existing-prefs.txt"
+    /usr/local/LabWarden/bin/ManagedPrefs -list | cut -d":" -f4 | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/required-prefs.txt"
+    
+    # Install these
+    while read sv_PolicyConfigUUID
+    do
+      if [ -n "${sv_PolicyConfigUUID}" ]
+      then
+        # Local prefs are referenced by Policy UUID. These are deleted when the policy is updated or uninstalled.
+        sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/${sv_PolicyConfigUUID}.plist"
+
+        sv_PolicyConfigFilePath="${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        
+        if [ ! -e "${sv_PolicyConfigFilePath}" ]
+        then
+          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        fi
+        
+        sv_PolicyName=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Name")
+        if [ -n "${sv_PolicyName}" ]
+        then
+          # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
+          sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
+
+          sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+          if test -n "${sv_PolicyExeFilePath}"
+          then
+            # Run script in background, but wait if too many already running
+            nf_LimitSpawns
+
+            # Install policy
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyInstall' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyInstall" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+
+          fi
+        fi
+        
+      fi
+    done < <(echo "$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/existing-prefs.txt";echo;cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/existing-prefs.txt";echo;cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/required-prefs.txt";echo)" | sort | grep . | uniq -u)
+
+    # Uninstall these
+    while read sv_PolicyConfigUUID
+    do
+      if [ -n "${sv_PolicyConfigUUID}" ]
+      then
+        # Local prefs are referenced by Policy UUID. These are deleted when the policy is updated or uninstalled.
+        sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/${sv_PolicyConfigUUID}.plist"
+
+        # Archive the policy prefs
+        mv -f "${sv_PolicyPrefsFilePath}" "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Prefs/${sv_PolicyConfigUUID}.plist"
+        sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Prefs/${sv_PolicyConfigUUID}.plist"
+        
+        # By this time the config has probably been archived
+        sv_PolicyConfigFilePath="${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        
+        if [ ! -e "${sv_PolicyConfigFilePath}" ]
+        then
+          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Config/${sv_PolicyConfigUUID}.plist"
+        fi
+
+        if [ ! -e "${sv_PolicyConfigFilePath}" ]
+        then
+          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        fi
+        
+        if [ ! -e "${sv_PolicyConfigFilePath}" ]
+        then
+          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Config/${sv_PolicyConfigUUID}.plist"
+        fi
+
+        # Get the Name from the prefs (which probably exist) rather than the config (which probably doesnt)
+        sv_PolicyName=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyPrefsFilePath}" ":${sv_PolicyConfigUUID}:Name")
+        if [ -n "${sv_PolicyName}" ]
+        then
+        
+          # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
+          sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
+
+          sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+          if test -n "${sv_PolicyExeFilePath}"
+          then
+            # Run script in background, but wait if too many already running
+            nf_LimitSpawns
+
+            # Uninstall policy
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyUninstall' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyUninstall" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+            
+          fi
+        fi
+        
+        # rm -f "${sv_PolicyPrefsFilePath}"
+      fi
+    
+    done < <(echo "$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/required-prefs.txt";echo;cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/required-prefs.txt";echo;cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/existing-prefs.txt";echo)" | sort | grep . | uniq -u)
+
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/existing-prefs.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/required-prefs.txt"
+
+    # Release lock
+    GLB_NF_NAMEDLOCKRELEASE "PolicyHousekeeping"
+
+fi
+
+
+    bv_EventHasPolicies=${GLB_BC_FALSE}
+    
+    while read sv_PolicyConfigUUID
+    do
+      if [ -n "${sv_PolicyConfigUUID}" ]
+      then
+        # Local prefs are referenced by Policy UUID. These are deleted when the policy is updated or uninstalled.
+        sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/${sv_PolicyConfigUUID}.plist"
+
+        sv_PolicyConfigFilePath="${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        if [ ! -e "${sv_PolicyConfigFilePath}" ]
+        then
+          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
+        fi
+
+        sv_PolicyName=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Name")
+        if [ -n "${sv_PolicyName}" ]
+        then
+
+          # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
+          sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
+
+          # only run if the event isnt targeted, or if it is targeted and the policy name matches the target name
+          if [ -z "${GLB_SV_TARGETPOLICYNAME}" ] || [ "${sv_PolicyName}" = "${GLB_SV_TARGETPOLICYNAME}" ]
+          then
+
+
+          bv_ExecutePolicy=${GLB_BC_TRUE}
+
+
+#          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Debug --- PolicyName'${sv_PolicyName}' PolicyConfigUUID'${sv_PolicyConfigUUID}'"
+
+
+          # Check if we have conditions on the policy execution (via Match:Value,Pattern,Condition)
+
+          sv_MatchPattern=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Match:Pattern")
+          if [ -n "${sv_MatchPattern}" ]
+          then
+            sv_MatchValue=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Match:Value")
+            bv_MatchCondition=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Match:Condition")
+            if [ -z "${bv_MatchCondition}" ]
+            then
+              bv_MatchCondition=${GLB_BC_TRUE}
+            fi
+
+            if [ "${bv_MatchCondition}" = ${GLB_BC_FALSE} ]
+            then  
+              sv_MatchResult="$(echo "${sv_MatchValue}" | grep -Ev "^(${sv_MatchPattern})$")"
+              iv_Err=$?
+            
+            else
+              sv_MatchResult="$(echo "${sv_MatchValue}" | grep -E "^(${sv_MatchPattern})$")"
+              iv_Err=$?
+            
+            fi
+            
+            if [ ${iv_Err} -gt 1 ]
+            then  
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
+              bv_ExecutePolicy=${GLB_BC_FALSE}
+            
+            else
+              if [ ${iv_Err} -eq 1 ]
+              then  
+                bv_ExecutePolicy=${GLB_BC_FALSE}
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - conditions not met"
+              fi
+            fi
+                         
+#            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Debug Value'${sv_MatchValue}' Pattern'${sv_MatchPattern}' Condition'${bv_MatchCondition}' ExecutePolicy'${bv_ExecutePolicy}'"
+          fi
+          
+          
+          
+          if [ "${bv_ExecutePolicy}" = ${GLB_BC_TRUE} ]
+          then
+
+            # Check for embedded Trigger values
+            iv_TriggerCount="$(GLB_IF_GETPLISTARRAYSIZE "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger")"
+            for (( iv_TriggerIndex=0; iv_TriggerIndex<${iv_TriggerCount}; iv_TriggerIndex++ ))
+            do
+              sv_TriggerName=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger:${iv_TriggerIndex}:Name")
+
+#              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Debug sv_TriggerName'${sv_TriggerName}' GLB_SV_EVENTNAME'${GLB_SV_EVENTNAME}'"
+
+              if [ "${sv_TriggerName}" = "${GLB_SV_EVENTNAME}" ]
+              then
+            
+            
+            
+
+            
+            
+                # Check if we have conditions on the policy execution (via Match:Value,Pattern,Condition)
+                sv_MatchPattern=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger:${iv_TriggerIndex}:Match:Pattern")
+                if [ -n "${sv_MatchPattern}" ]
+                then
+                  sv_MatchValue=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger:${iv_TriggerIndex}:Match:Value")
+                  bv_MatchCondition=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger:${iv_TriggerIndex}:Match:Condition")
+                  if [ -z "${bv_MatchCondition}" ]
+                  then
+                    bv_MatchCondition=${GLB_BC_TRUE}
+                  fi
+
+
+                  if [ "${bv_MatchCondition}" = ${GLB_BC_FALSE} ]
+                  then  
+                    sv_MatchResult="$(echo "${sv_MatchValue}" | grep -Ev "^(${sv_MatchPattern})$")"
+                    iv_Err=$?
+            
+                  else
+                    sv_MatchResult="$(echo "${sv_MatchValue}" | grep -E "^(${sv_MatchPattern})$")"
+                    iv_Err=$?
+            
+                  fi
+            
+                  if [ ${iv_Err} -gt 1 ]
+                  then  
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - Index'${iv_TriggerIndex}' error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
+                    bv_ExecutePolicy=${GLB_BC_FALSE}
+            
+                  else
+                    if [ ${iv_Err} -eq 1 ]
+                    then  
+                      bv_ExecutePolicy=${GLB_BC_FALSE}
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - conditions not met"
+                    fi
+                  fi
+
+#                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Debug Index'${iv_TriggerIndex}' Value'${sv_MatchValue}' Pattern'${sv_MatchPattern}' Condition'${bv_MatchCondition}' ExecutePolicy'${bv_ExecutePolicy}'"
+                fi
+
+
+
+
+                if [ "${bv_ExecutePolicy}" = ${GLB_BC_TRUE} ]
+                then
+
+                  # Check interval count
+                  iv_Interval=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Trigger:${iv_TriggerIndex}:Interval")
+
+                  if [ -n "${iv_Interval}" ]
+                  then
+                    # Get the last run epoch
+                    iv_LastRunEpoch=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyPrefsFilePath}" ":${sv_PolicyConfigUUID}:Prefs:${GLB_SV_EVENTNAME}:LastRunEpoch")
+                    if [ -n "${iv_LastRunEpoch}" ]
+                    then
+                    
+                      # Calculate how long since the last run
+                      iv_NowEpoch=$(date -u "+%s")
+                      iv_LastRunSecs=$((${iv_NowEpoch}-${iv_LastRunEpoch}))
+                  
+                      if [ ${iv_LastRunSecs} -lt ${iv_Interval} ]
+                      then
+                        bv_ExecutePolicy=${GLB_BC_FALSE}
+                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - policy recently run"
+                      fi
+                      
+                    fi
+#                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Debug Index'${iv_TriggerIndex}' Interval'${iv_Interval}' iv_LastRunSecs'${iv_LastRunSecs}' LastRunEpoch'${iv_LastRunEpoch}' ExecutePolicy'${bv_ExecutePolicy}'"
+                  fi
+
+                fi
+
+              fi
+            done
+          
+          fi
+
+
+          if [ "${bv_ExecutePolicy}" = ${GLB_BC_FALSE} ]
+          then
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
+
+          else
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Executing policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
+
+            sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+            if test -n "${sv_PolicyExeFilePath}"
+            then
+              # Run script in background, but wait if too many already running
+              nf_LimitSpawns
+              
+
+# By the time we are here, these need to be defined
+# y sv_PolicyExeFilePath
+# y sv_PolicyName
+# y GLB_SV_EVENTNAME
+# y GLB_SV_OPTIONALPARAM
+# y GLB_SV_CONSOLEUSERINFO
+# y sv_PolicyConfigUUID
+# y sv_PolicyConfigFilePath 
+# y sv_PolicyPrefsFilePath
+# y sv_SharedPrefsFilePath
+# y GLB_SV_SYSDEFAULTSCONFIGFILEPATH
+# y GLB_SV_LOGINFO
+
+
+                # Run policy against event
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+                "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${GLB_SV_EVENTNAME}" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+
+                iv_NowEpoch=$(date -u "+%s")
+                GLB_NF_SETPLISTPROPERTY "${sv_PolicyPrefsFilePath}" ":${sv_PolicyConfigUUID}:Prefs:${GLB_SV_EVENTNAME}:LastRunEpoch" "${iv_NowEpoch}"
+
+                bv_EventHasPolicies=${GLB_BC_TRUE}
+              fi
+              
+            fi
+          fi
+        fi
+      fi
+    done < <(nf_TriggeredList "${GLB_SV_EVENTNAME}" | sort -u)
+    
+    if [ "${bv_EventHasPolicies}" = ${GLB_BC_FALSE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' ignored - no associated policy"
+    fi
+
+# ---
+
+# We dont want to continue until all sub tasks are finished
+while [ -n "$(jobs -r)" ]
+do
+  # We don't want to hog the CPU - so lets sleep a while
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Waiting for $(jobs -r | wc -l) policies triggered by '${GLB_SV_EVENTNAME}' to finish"
+  sleep 1
+done
+
+# If we are root we will always be root
+while [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+do
+  # Create a list of 'Trigger' process PIDs
+  ps -U root -xo "pid, user, command" | grep "${GLB_SV_THISSCRIPTFILEPATH}" | grep -v "grep" | sed "s|^[ ]*||;s| .*||" | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt"
+
+  # Get the PID of the 'Trigger' process with the highest PID
+  iv_HighestTriggerPID=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | tail -n1)
+  if [ ${GLB_IV_THISSCRIPTPID} != ${iv_HighestTriggerPID} ]
+  then
+    # All other 'Trigger' processes just quit
+    break
+  fi
+
+  # The 'Trigger' process with the highest PID processes all Shutdown and Restart requests
+  iv_TriggerCount=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
+  if [ ${iv_TriggerCount} -eq 1 ]
+  then
+    # We only Shutdown or Restart when this is the only 'Trigger' process running
+
+    if [ "$(GLB_NF_NAMEDFLAGTEST Restart)" = ${GLB_BC_TRUE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Restarting workstation"
+      shutdown -r now
+    fi
+  
+    if [ "$(GLB_NF_NAMEDFLAGTEST Shutdown)" = ${GLB_BC_TRUE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Shutting down workstation"
+      shutdown -h now
+    fi
+    
+    break
+  fi
+
+done
+
+# ---
+
+if test -z "${GLB_SV_TARGETPOLICYNAME}"
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' complete"
+else
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Targeted event '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' complete"
+fi
+
+# ---
+
+# Remove temporary files
+cd "${GLB_SV_PROJECTDIRPATH}"
+rm -fR "${GLB_SV_THISSCRIPTTEMPDIRPATH}"

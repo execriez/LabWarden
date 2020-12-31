@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+# Short:    Sys Policy script - Sets the system time (ntp) server
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Sys-NetworkUp (as root)
+#
+# Called as follows:    
+#   Sys-SetTimeServer <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  ;;
+  
+Sys-NetworkUp)
+
+  sv_ActiveNetworkTimeStatus=$(/usr/sbin/systemsetup -getusingnetworktime | cut -d":" -f 2- | sed "s|^ ||")
+
+  bv_UseNetworkTime="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:UseNetworkTime")"
+  if [ "${bv_UseNetworkTime}" = ${GLB_BC_FALSE} ]
+  then
+    if [ "${sv_ActiveNetworkTimeStatus}" = "On" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Disabling Network Time."
+      /usr/sbin/systemsetup -setusingnetworktime off
+    fi
+    
+  else
+    sv_TimeServer="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:TimeServer")"
+    if [ -n "${sv_TimeServer}" ]
+    then
+      if [ "${sv_ActiveNetworkTimeStatus}" = "Off" ]
+      then
+        sv_ActiveTimeServer=""
+        sv_ActiveTimeZone=""
+      else
+        sv_ActiveTimeServer="$(/usr/sbin/systemsetup getnetworktimeserver | cut -d":" -f 2- | sed "s|^ ||")"
+        sv_ActiveTimeZone="$(/usr/sbin/systemsetup -gettimezone | cut -d":" -f 2- | sed "s|^ ||")"
+      fi
+    
+      if [ "${sv_ActiveTimeServer}" != "${sv_TimeServer}" ]
+      then
+        if [ "${sv_ActiveNetworkTimeStatus}" = "On" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Temporarily disabling Network Time."
+          /usr/sbin/systemsetup -setusingnetworktime off
+          sv_ActiveNetworkTimeStatus="Off"
+        fi
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting time server to '${sv_TimeServer}'."
+        /usr/sbin/systemsetup -setnetworktimeserver "${sv_TimeServer}"
+      fi
+    
+      sv_TimeZone="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:TimeZone")"
+      if [ "${sv_ActiveTimeServer}" != "${sv_TimeServer}" ]
+      then
+        if [ "${sv_ActiveNetworkTimeStatus}" = "On" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Temporarily disabling Network Time."
+          /usr/sbin/systemsetup -setusingnetworktime off
+          sv_ActiveNetworkTimeStatus="Off"
+        fi
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting time zone to '${sv_TimeZone}'."
+        /usr/sbin/systemsetup -settimezone "${sv_TimeZone}"
+      fi
+  
+      if [ "${sv_ActiveNetworkTimeStatus}" = "Off" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Enabling Network Time."
+        /usr/sbin/systemsetup -setusingnetworktime on
+      fi
+      
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting Network Time."
+      ntpdate -u ${sv_TimeServer}
+    fi
+  fi
+
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

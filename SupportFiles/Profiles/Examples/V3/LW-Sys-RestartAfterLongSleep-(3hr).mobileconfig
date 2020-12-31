@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>DAE67D3E-1373-42A3-ADC4-CF61B49C2EFB</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>LongSleepMins</key>
+					<integer>180</integer>
+				</dict>
+				<key>Name</key>
+				<string>Sys-RestartAfterLongSleep</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-WillSleep</string>
+					</dict>
+					<dict>
+						<key>Name</key>
+						<string>Sys-WillWake</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>DAE67D3E-1373-42A3-ADC4-CF61B49C2EFB</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>DAE67D3E-1373-42A3-ADC4-CF61B49C2EFB</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-RestartAfterLongSleep (3hr)</string>
+	<key>PayloadIdentifier</key>
+	<string>F2FABAFB-CC02-403B-9B2D-7D0AA2F91D06</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>F2FABAFB-CC02-403B-9B2D-7D0AA2F91D06</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

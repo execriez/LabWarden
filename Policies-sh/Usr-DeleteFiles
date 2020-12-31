@@ -1,0 +1,238 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Deletes files and folder from the users home folder
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Triggered by the following events:
+#   Usr-Idle                (as user)
+#
+# Called as follows:    
+#   Usr-DeleteFiles <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+#
+# This policy can be potentially unsafe if misconfigured
+
+# ---
+
+if [ "$(whoami)" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+sf_BuildPattern() # Pattern PathList - PathList is a string of paths separated by commas
+{
+  local sv_Pattern
+  local sv_PathList
+  local sv_Path
+  local sv_PathShort
+  
+  sv_Pattern=${1}
+  sv_PathList=${2}
+  
+  while read sv_Path
+  do
+    # Sanitise the file/folder Path
+    sv_Path=$(echo "${sv_Path}" | sed "s|^|/|;s|^/[/]*|/|")
+
+    # file/folder Path without any trailing /
+    sv_PathShort=$(echo "${sv_Path}" | sed "s|[/]*$||")
+ 
+    if test -n "${sv_PathShort}"
+    then
+      if test -n "${sv_Pattern}"
+      then
+        sv_Pattern="${sv_Pattern}|"
+      fi
+      sv_Pattern="${sv_Pattern}${sv_PathShort}"
+      if [ "${sv_PathShort}" != "${sv_Path}" ]
+      then
+        # Must have declared a directory for exclusion
+        sv_Pattern="${sv_Pattern}|${sv_Path}.*"
+      fi
+    fi
+  done < <(echo ${sv_PathList}| tr "," "\n")
+  
+  echo "${sv_Pattern}"
+}
+
+# ---
+
+# Exit if the user home folder doesn't exist
+if [ ! -e "${GLB_SV_CONSOLEUSERHOMEDIRPATH}" ]
+then
+   GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - home folder doesn't exist."
+else
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Usr-Idle)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "This policy can be potentially unsafe if misconfigured"
+
+  bv_SafeFlag="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:SafeFlag")"
+  if [ "${bv_SafeFlag}" = ${GLB_BC_FALSE} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "User folder is not protected from deletion"
+  else
+    bv_SafeFlag=${GLB_BC_TRUE}
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "User folder deletes are restricted to the Library folder"
+  fi
+    
+  sv_IncludePattern=""
+
+  if test -n "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}"
+  then
+    if [ "${bv_SafeFlag}" = ${GLB_BC_TRUE} ]
+    then
+      sv_IncludePattern="$(sf_BuildPattern "${sv_IncludePattern}" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/Library/")"
+    else
+      sv_IncludePattern="$(sf_BuildPattern "${sv_IncludePattern}" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/")"
+    fi
+   fi
+   
+  if test -n "${GLB_SV_CONSOLEUSERSHAREDIRPATH}"
+  then
+    if [ "${bv_SafeFlag}" = ${GLB_BC_TRUE} ]
+    then
+      sv_IncludePattern="$(sf_BuildPattern "${sv_IncludePattern}" "${GLB_SV_CONSOLEUSERSHAREDIRPATH}/Library/")"
+    else
+      sv_IncludePattern="$(sf_BuildPattern "${sv_IncludePattern}" "${GLB_SV_CONSOLEUSERSHAREDIRPATH}/")"
+    fi
+  fi
+
+  iv_DelPathCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Delete")"
+  for (( iv_LoopCount1=0; iv_LoopCount1<${iv_DelPathCount}; iv_LoopCount1++ ))
+  do
+    sv_DelPath="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Delete:${iv_LoopCount1}:Path")"
+
+    # Sanitise the file/folder Path
+    sv_DelPath=$(echo "${sv_DelPath}" | sed "s|^|/|;s|^/[/]*|/|;s|[/]*$||")
+
+    if test -n "${sv_DelPath}"
+    then
+      sv_ProcessFilePath="${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_DelPath}"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Looking for files and folders to delete from '${sv_ProcessFilePath}' "
+      
+      if test -e "${sv_ProcessFilePath}"
+      then
+        # If the filepath references a link, get the originating filepath
+        sv_ProcessFilePath=$(GLB_SF_ORIGINALFILEPATH "${sv_ProcessFilePath}")
+        
+        if test -d "${sv_ProcessFilePath}"
+        then
+          iv_fcount=0
+          iv_dcount=0
+
+          sv_ExcludePattern="/"
+          
+          # Append exclude list to exclude pattern 
+          iv_ExcludeCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Delete:${iv_LoopCount1}:Exclude")"
+          sv_PathList=""
+          for (( iv_LoopCount2=0; iv_LoopCount2<${iv_ExcludeCount}; iv_LoopCount2++ ))
+          do
+            sv_Exclude="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Delete:${iv_LoopCount1}:Exclude:${iv_LoopCount2}")"
+            if test -n "${sv_Exclude}"
+            then
+              if test -n "${sv_PathList}"
+              then
+                sv_PathList="${sv_PathList},"
+              fi
+              sv_PathList="${sv_PathList}${sv_ProcessFilePath}${sv_Exclude}"              
+            fi
+          done
+          sv_ExcludePattern="$(sf_BuildPattern "${sv_ExcludePattern}" "${sv_PathList}")"
+
+          # Do the actual delete
+          while read sv_DelFilePath
+          do
+            if test -f "${sv_DelFilePath}"
+            then
+              rm -f "${sv_DelFilePath}"
+              if [ $? -ne 0 ]
+              then
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Could not delete file '${sv_DelFilePath}'"
+              else
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Deleted File '${sv_DelFilePath}'"
+                iv_fcount=$((${iv_fcount}+1))
+              fi
+            else
+              rm -d "${sv_DelFilePath}"
+              if [ $? -ne 0 ]
+              then
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Did not delete dir '${sv_DelFilePath}'"
+              else
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Deleted dir '${sv_DelFilePath}'"
+                iv_dcount=$((${iv_dcount}+1))
+              fi
+            fi
+            
+            # Limit the whole process to 30 secs as we don't want to hog the CPU
+            if [ $(( $(date -u "+%s")-${GLB_IV_THISSCRIPTSTARTEPOCH} )) -gt 30 ]
+            then
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Delete files postponed until later, as it was taking too long"
+              break
+            fi
+          done < <(find -d -E "${sv_ProcessFilePath}" -regex "(${sv_IncludePattern})" -and -not -regex "(${sv_ExcludePattern})")
+          
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleted ${iv_fcount} files and ${iv_dcount} folders from '${sv_ProcessFilePath}' "
+          
+        else
+          # Delete file
+          rm -f "${sv_ProcessFilePath}"
+          if [ $? -ne 0 ]
+          then
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Could not delete file '${sv_ProcessFilePath}'"
+          else
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleted File '${sv_ProcessFilePath}'"
+          fi
+          
+        fi
+      fi
+    fi
+
+  done
+  ;;
+
+Usr-PolicyInstall|Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+fi
+
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

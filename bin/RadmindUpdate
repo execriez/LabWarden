@@ -1,0 +1,382 @@
+#!/bin/bash
+#
+# Short:    Simple Radmind update script
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Called as follows:    
+#   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>]
+# eg: RadmindUpdate "172.18.1.24,sha1,0,-I,15000"
+#
+# The optional NotifyURI is a server web URI that notifies the deployment server that an update is
+# about to happen. The server should do what it needs to in order to prep the future update.
+#
+# During a notification, NotifyURI is passed the following info: 'os', 'loglevelstr', 'logtextstr'.
+
+# ---
+  
+# Assume that this code is run from a directory within the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+GLB_SV_CODEVERSION="3.2.5"
+
+# ---
+
+if [ $# -eq 0 ]
+then
+  echo "${GLB_SV_CODEVERSION}"
+  exit 0
+fi
+
+# ---
+
+# Get filename of this script
+sv_ThisScriptFileName="$(basename "${0}")"
+
+# Get dir of this script
+sv_ThisScriptDirPath="$(dirname "${0}")"
+
+# Get Process ID of this script
+iv_ThisScriptPID=$$
+
+# ---
+
+# Get user name
+sv_ThisUserName="$(whoami)"
+
+if [ "${sv_ThisUserName}" != "root" ]
+then
+  # we only like root
+  exit 0
+fi
+
+# ---
+
+# Include the constants library (if it is not already loaded)
+if [ -z "${GLB_BC_CONST_ISINCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Constants.sh
+
+  # Exit if something went wrong unexpectedly
+  if test -z "${GLB_BC_CONST_ISINCLUDED}"
+  then
+    echo >&2 "Something unexpected happened"
+    exit 90
+  fi
+fi
+
+# ---
+
+# Calculate SystemVersionStampAsNumber
+  
+sv_SystemVersionStampAsString="$(sw_vers -productVersion)"
+  
+iv_SystemVersionStampAsNumber=0
+for iv_Num in $(echo ${sv_SystemVersionStampAsString}".0.0.0.0" | cut -d"." -f1-4 | tr "." "\n")
+do
+  iv_SystemVersionStampAsNumber=$((${iv_SystemVersionStampAsNumber}*256+${iv_Num}))
+done
+
+# ---
+
+# Only use iHook if we are prior to 10.13 (RIP iHook)
+
+if [ ${iv_SystemVersionStampAsNumber} -lt 168624128 ]
+then
+
+  # If no-one is logged in (even remotely), and iHook is available - then use it
+  if test -n "$(who -q | grep '# users = 0')"
+  then
+    if test -e "${GLB_SV_PROJECTDIRPATH}"/bin/iHook.app/Contents/MacOS/iHook
+    then
+      iv_MyParentProcess="$(ps -o comm= $PPID | tr "/" "\n" | tail -n1)"
+      if [ "${iv_MyParentProcess}" != "iHook" ]
+      then
+        "${GLB_SV_PROJECTDIRPATH}"/bin/iHook.app/Contents/MacOS/iHook --no-titlebar --script="${0}" "${1}" "${2}" "${3}" "${4}"
+        exit 0
+      else
+        echo "%WINDOWSIZE 640 456"
+        echo "%TEXTCOLOR BLACK"
+        if test -f "${GLB_SV_PROJECTDIRPATH}"/images/${sv_ThisScriptFileName}.jpg
+        then
+          echo "%BACKGROUND ${GLB_SV_PROJECTDIRPATH}/images/${sv_ThisScriptFileName}.jpg"
+        else
+          if test -f "${GLB_SV_PROJECTDIRPATH}"/images/SplashScreenLight.jpg
+          then
+            echo "%BACKGROUND ${GLB_SV_PROJECTDIRPATH}/images/SplashScreenLight.jpg"
+          fi
+        fi
+        echo "%UIMODE AUTOCRATIC"
+        echo "%WINDOWZOOM DISABLE"
+        echo "%SHOWTIMER"
+        echo "%TITLE ${sv_ThisScriptFileName}"
+        echo "%LOG APPEND /Library/Logs/${GLB_SC_PROJECTSIGNATURE}.log"
+      fi
+    fi
+  fi
+fi
+
+# ---
+
+# Get parameter(s)
+sv_Param="${1}"
+if test -z "${sv_Param}"
+then
+  # We need something to work with
+  exit 0
+fi
+
+sv_NotifyURI="${2}"
+
+# ---
+
+# Parse the 1st parameter
+
+# Get Radmind server address
+sv_RadServer=$(echo "${sv_Param}" | cut -d"," -f1)
+
+# Checksum eg sha1
+sv_RadCksum=$(echo "${sv_Param}" | cut -d"," -f2)
+
+# TLS auth level. 0: None; 1: Verify Server; 2: Verify Server & Client
+iv_RadAuthLevel=$(echo "${sv_Param}" | cut -d"," -f3)
+
+# Get transcript case. -I means ignore case in filenames
+sv_CaseSwitch=$(echo "${sv_Param}" | cut -d"," -f4)
+
+# Get Maximum negative changes
+iv_MaxDeletes=$(echo "${sv_Param}" | cut -d"," -f5)
+
+# ---
+
+# urlencode/urldecode functions - thanks to https://gist.github.com/cdown/1163649
+sf_urlencode() {
+    # urlencode <string>
+
+    local length="${#1}"
+    for (( i = 0; i < length; i++ )); do
+        local c="${1:i:1}"
+        case $c in
+            [a-zA-Z0-9.~_-]) printf "$c" ;;
+            *) printf '%s' "$c" | xxd -p -c1 |
+                   while read c; do printf '%%%s' "$c"; done ;;
+        esac
+    done
+}
+
+# Convert log level integer into log level text
+sf_LogLevel()   # loglevel
+{  
+  local iv_LogLevel
+  local sv_LogLevel
+
+  iv_LogLevel=${1}
+
+  case ${iv_LogLevel} in
+  ${GLB_IC_MSGLEVELEMERG})
+    sv_LogLevel="Emergency"
+    ;;
+
+  ${GLB_IC_MSGLEVELALERT})
+    sv_LogLevel="Alert"
+    ;;
+
+  ${GLB_IC_MSGLEVELCRIT})
+    sv_LogLevel="Critical"
+    ;;
+
+  ${GLB_IC_MSGLEVELERR})
+    sv_LogLevel="Error"
+    ;;
+  
+  ${GLB_IC_MSGLEVELWARN})
+    sv_LogLevel="Warning"
+    ;;
+
+  ${GLB_IC_MSGLEVELNOTICE})
+    sv_LogLevel="Notice"
+    ;;
+
+  ${GLB_IC_MSGLEVELINFO})
+    sv_LogLevel="Information"
+    ;;
+
+  ${GLB_IC_MSGLEVELDEBUG})
+    sv_LogLevel="Debug"
+    ;;
+
+  *)
+    sv_LogLevel="Unknown"
+    ;;
+
+  esac
+  
+  echo ${sv_LogLevel}
+}
+  
+# Save a message to the log file
+nf_showmessage()   # intloglevel strmessage 
+{
+  local iv_LogLevel
+  local sv_Message
+  local sv_LogLevel
+  
+  iv_LogLevel=${1}
+  sv_LogText="${2}"
+  
+  if [ -n "${sv_LogText}" ]
+  then
+    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
+
+    echo "$(date '+%d %b %Y %H:%M:%S %Z') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]${GLB_SV_CODEVERSION}: ${sv_LogLevel}: ${sv_LogText}"
+    sleep 2
+  fi
+}
+
+nf_notifyserver()   # intloglevel strmessage
+{
+  local iv_LogLevel
+  local sv_Message
+  local sv_LogLevel
+  
+  iv_LogLevel=${1}
+  sv_LogText="${2}"
+
+  nf_showmessage "${iv_LogLevel}" "${sv_LogText}"
+
+  if test -n "${sv_NotifyURI}"
+  then
+    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
+    
+    CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") -d loglevelstr=$(sf_urlencode "${sv_LogLevel}") -d logtextstr=$(sf_urlencode "${sv_LogText}") "${sv_NotifyURI}"
+    if [ $? != "0" ]
+    then
+      # Some kind of error occurred
+      nf_showmessage ${GLB_IC_MSGLEVELERR} "Cannot connect to '${sv_NotifyURI}'"
+      sv_NotifyURI=""
+    fi
+  fi
+}
+
+# ---
+
+# RADMIND UPDATE HERE - ktcheck/fsdiff/lapply
+
+mkdir -p /private/var/radmind/client
+chmod 755 /private/var/radmind/client
+
+sv_fsdiffCompareSysPath="/"
+sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
+
+nf_notifyserver ${GLB_IC_MSGLEVELINFO} "Checking server ${sv_RadServer} for transcript changes"
+
+/usr/local/bin/ktcheck 2>&1 -i -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer}
+iv_ErrCode="$?"
+
+# Check exit status of ktcheck. If > 1, an error occurred.
+case "${iv_ErrCode}" in
+0)
+  nf_showmessage ${GLB_IC_MSGLEVELINFO} "No transcript changes found - no need to update"
+  exit 0
+  ;;
+1)
+  nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Transcript changes found"
+  ;;
+*)
+  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - ktcheck failed (${iv_ErrCode})"
+  exit 99
+  ;;
+esac
+
+nf_showmessage ${GLB_IC_MSGLEVELINFO} "Examining the filesystem for differences..."
+
+# run fsdiff, redirecting output to a file.
+rm -f ${sv_fsdiffOutputFilePath}
+/usr/local/bin/fsdiff ${sv_CaseSwitch} -A -o${sv_fsdiffOutputFilePath} -% ${sv_fsdiffCompareSysPath}
+iv_ErrCode="$?"
+
+case "${iv_ErrCode}" in
+0)
+  ;;
+*)
+  # try opposite case
+  if test -z "${sv_CaseSwitch}"
+  then
+    sv_CaseSwitch="-I"
+  else
+    sv_CaseSwitch=""
+  fi
+        
+  # run fsdiff, redirecting output to a file.
+  rm -f ${sv_fsdiffOutputFilePath}
+  /usr/local/bin/fsdiff ${sv_CaseSwitch} -A -o${sv_fsdiffOutputFilePath} -% ${sv_fsdiffCompareSysPath}
+  iv_ErrCode="$?"
+
+  case "$iv_ErrCode" in
+  0)
+    ;;
+  *)
+    rm -f ${sv_fsdiffOutputFilePath}
+    nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - fsdiff failed (${iv_ErrCode})"
+    exit 99
+    ;;
+  esac
+  ;;
+esac
+
+# Fix for SIP on 10.11
+nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Removing SIP protected entries from transcript"
+"${GLB_SV_PROJECTDIRPATH}"/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
+
+# Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
+if test -n "${iv_MaxDeletes}"
+then
+  iv_Additions=$(cat ${sv_fsdiffOutputFilePath} | grep "^+" | wc | tr -s " " | cut -d" " -f2)
+  iv_Removals=$(cat ${sv_fsdiffOutputFilePath} | grep "^-" | wc | tr -s " " | cut -d" " -f2)
+  iv_NegChanges=$((${iv_Removals} - ${iv_Additions}))
+  if [ ${iv_NegChanges} -gt 0 ]
+  then
+    if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
+    then
+      rm -f ${sv_fsdiffOutputFilePath}
+      nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
+      exit 99
+    fi
+  fi
+fi
+
+
+# Apply the changes
+launchctl stop org.cups.cupsd
+
+nf_notifyserver ${GLB_IC_MSGLEVELNOTICE} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+
+/usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
+iv_ErrCode="$?"
+
+launchctl stop org.cups.cupsd
+
+launchctl start org.cups.cupsd
+
+case "${iv_ErrCode}" in
+0)
+  # Restart after a successful update
+  nf_notifyserver ${GLB_IC_MSGLEVELNOTICE} "Apply successful - we should restart."
+  exit 0
+  ;;
+1)
+  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Apply failed - no changes made"
+  rm -f /private/var/radmind/client/error.T
+  mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
+  exit 99
+  ;;
+2)
+  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Apply failed - changes made"
+  rm -f /private/var/radmind/client/error.T
+  mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
+  exit 99
+  ;;
+esac

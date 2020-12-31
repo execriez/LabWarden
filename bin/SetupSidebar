@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# Short:    Setup the sidebar via any installed Usr-SetupSidebar profiles 
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Call from a shell as follows:    
+#   /usr/local/LabWarden/bin/SetupSidebar
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Target the Usr-SetupSidebar policy with a Usr-ManualTrigger event
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-SetupSidebar.Usr-ManualTrigger"

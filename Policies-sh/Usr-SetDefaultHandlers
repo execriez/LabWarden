@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# Short:    Usr Policy script - Sets the default handlers for specific file types
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Launch Services Reference: https://developer.apple.com/documentation/coreservices/launch_services?language=objc
+#
+# Triggered by the following events:
+#   Usr-AtDesktop (as user)
+#
+# Called as follows:    
+#   Usr-SetDefaultHandlers <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+
+if [ "$(whoami)" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.5"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Usr-AtDesktop|Usr-PolicyInstall)
+  # Set default handlers
+  iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler")"
+
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_BundleID="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler:${iv_LoopCount}:BundleID")"
+    if test -n "${sv_BundleID}"
+    then
+      sv_Method="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler:${iv_LoopCount}:Method")"
+      case ${sv_Method} in 
+      ContentType)
+        sv_ContentType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler:${iv_LoopCount}:ContentType")"
+        sv_Role="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler:${iv_LoopCount}:Role")"
+
+        # role is None, Viewer, Editor or All
+        sv_Role=$(echo $sv_Role | awk '{print toupper(substr($0,0,1))tolower(substr($0,2))}')
+
+        case ${sv_Role} in
+        None|Viewer|Editor|Shell|All)
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting '${sv_ContentType}' ContentType handler to '${sv_BundleID}' for role '${sv_Role}'"
+          sv_RoleConst="kLSRoles${sv_Role}"
+          # python code to set the handler for when you you double click a file
+          /usr/bin/python << EOF
+from LaunchServices import LSSetDefaultRoleHandlerForContentType 
+from LaunchServices import kLSRolesNone,kLSRolesViewer,kLSRolesEditor,kLSRolesShell,kLSRolesAll
+LSSetDefaultRoleHandlerForContentType("${sv_ContentType}", ${sv_RoleConst}, "${sv_BundleID}") 
+EOF
+          ;;
+
+        *)
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Unknown content type role '${sv_Role}'"
+          ;;
+        
+        esac
+        ;;
+        
+      URLScheme)
+        sv_URLScheme="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Handler:${iv_LoopCount}:URLScheme")"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting '${sv_URLScheme}' URLScheme handler to '${sv_BundleID}'"
+        # python code to set the handler for when you double-click a webloc file or click a link within another application
+        /usr/bin/python << EOF
+from LaunchServices import LSSetDefaultHandlerForURLScheme 
+LSSetDefaultHandlerForURLScheme("${sv_URLScheme}", "${sv_BundleID}") 
+EOF
+        ;;
+        
+      *)
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Unknown handler method '${sv_Method}'"
+        ;;
+        
+      esac
+    fi
+  done
+  ;;
+
+Usr-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

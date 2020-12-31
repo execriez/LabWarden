@@ -6,8 +6,7 @@
 	<string>com.github.execriez.labwarden.Usr-Poll</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Poll</string>
-		<string>Usr-</string>
+		<string>/usr/local/LabWarden/bin/Poll</string>
 	</array>
 	<key>LimitLoadToSessionType</key>
 	<string>Aqua</string>

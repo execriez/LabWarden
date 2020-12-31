@@ -1,0 +1,235 @@
+#!/bin/bash
+#
+# Short:    Sys Policy Script - Example System Policy script (A blank canvas)
+# Author:   Mark J Swift
+# Version:  3.0.2
+# Modified: 23-Jun-2019
+#
+# Triggered by the following events:
+#   Sys-Boot                 (as root)
+#   Sys-LoginWindow          (as root)
+#   Sys-LoginWindowPoll      (as root)
+#   Sys-LoginWindowIdle      (as root)
+#   Sys-InterfaceUp          (as root)
+#   Sys-InterfaceDown        (as root)
+#   Sys-NetworkUp            (as root)
+#   Sys-NetworkDown          (as root)
+#   Sys-ActiveDirectoryUp    (as root)
+#   Sys-ActiveDirectoryDown  (as root)
+#   Sys-ConsoleUserLoggedIn  (as root)
+#   Sys-ConsoleUserLoggedOut (as root)
+#   Sys-ConsoleUserSwitch    (as root)
+#   Sys-Poll                 (as root)
+#   Sys-Idle                 (as root)
+#   Sys-IdleSleep            (as root)
+#   Sys-WillSleep            (as root)
+#   Sys-WillWake             (as root)
+#   Sys-HasWoken             (as root)
+#
+#   ... see associated config 'Sys-ExamplePolicy.mobileconfig'
+#
+# Called as follows:    
+#   Sys-ExamplePolicy <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <LocalPrefsFilePath> <GlobalPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.0.2"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+# ------------------
+# BEGIN YOUR CODE HERE
+  
+# Read some values from the policy config
+bv_ExampleBool="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleBool")"
+iv_ExampleNum="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleNum")"
+sv_ExampleString="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleString")"
+sv_ExampleArray0="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleArray:0")"
+sv_ExampleArray1="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleArray:1")"
+sv_ExampleArray2="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ExampleArray:2")"
+
+# We could do something with the values now
+
+# Here we are just outputting the values to the log if the log level is Debug
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleBool:${bv_ExampleBool}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleNum:${iv_ExampleNum}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleString:${sv_ExampleString}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleArray[0]:${sv_ExampleArray0}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleArray[1]:${sv_ExampleArray1}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ExampleArray[2]:${sv_ExampleArray2}"
+
+# Lets handle the events
+
+# In this example we are just using the 'say' command to speak what is happening
+
+case ${GLB_SV_EVENTNAME} in
+
+Sys-Boot)
+  # (as root) - Do this at boot time
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-LoginWindow)
+  # (as root) - Do this at loginwindow
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-LoginWindowPoll)
+  # (as root) - Do this at loginwindow regularly
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-LoginWindowIdle)
+  # (as root) - Do this at loginwindow when idle
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-InterfaceUp)
+  # (as root) - Do this when a network interface comes up
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME} $(echo "${GLB_SV_IPV4PRIMARYSERVICEDEVICENAME}" | sed "s|\(.\)|\1 |g")." &
+  ;;
+
+Sys-InterfaceDown)
+  # (as root) - Do this when a network interface goes down
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-NetworkUp)
+  # (as root) - Do this when the primary network comes up or changes
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME} $(echo "${GLB_SV_IPV4PRIMARYSERVICEDEVICENAME}" | sed "s|\(.\)|\1 |g")." &
+  ;;
+
+Sys-NetworkDown)
+  # (as root) - Do this when there is no primary network
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-ActiveDirectoryUp)
+  # (as root) - Do this when Active Directory becomes available
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-ActiveDirectoryDown)
+  # (as root) - Do this when Active Directory becomes available
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-ConsoleUserLoggedIn)
+  # (as root) - Do this when a user logs in
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME} ${GLB_SV_CONSOLEUSERNAME}" &
+  ;;
+
+Sys-ConsoleUserLoggedOut)
+  # (as root) - Do this when a user logs out
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME} ${GLB_SV_CONSOLEUSERNAME}" &
+  ;;
+
+Sys-ConsoleUserSwitch)
+  # (as root) - Do this when a user switches to another user
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME} ${GLB_SV_CONSOLEUSERNAME}" &
+  ;;
+
+Sys-Poll)
+  # (as root) - Do this regularly in the background
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-Idle)
+  # (as root) - Do this regularly in the background
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-VolDidMount)
+  # (as user) - Do this when a volume is mounted
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME} ${GLB_SV_OPTIONALPARAM}" &
+  ;;
+
+Sys-VolWillUnmount)
+  # (as user) - Do this when a volume is about to unmount
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME} ${GLB_SV_OPTIONALPARAM}" &
+  ;;
+
+Sys-VolDidUnmount)
+  # (as user) - Do this when a volume has just unmounted
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME} ${GLB_SV_OPTIONALPARAM}" &
+  ;;
+
+Sys-IdleSleep)
+  # (as root) - Do this when the system is about to sleep due to idleness
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-WillSleep)
+  # (as root) - Do this when the system has started to sleep
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-WillWake)
+  # (as root) - Do this when the system has started the wake up process
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-HasWoken)
+  # (as root) - Do this when the system has finished waking up
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Policy is speaking."
+  sleep 2;say "${GLB_SV_EVENTNAME}" &
+  ;;
+
+Sys-PolicyInstall|Sys-PolicyUninstall)
+  # Do nothing
+  ;;
+  
+*)
+  GLB_NF_QUICKEXIT "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported by policy '${GLB_SV_POLICYNAME}'"
+  ;;
+
+esac
+
+# Write a value to the local policy vars (root user and normal users have different local policies)
+GLB_NF_SETPLISTPROPERTY "${GLB_SV_LOCALPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:LocalPrefs:LastRunEpoch" "${GLB_IV_THISSCRIPTSTARTEPOCH}"
+
+# END YOUR CODE HERE
+# ------------------
+    
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

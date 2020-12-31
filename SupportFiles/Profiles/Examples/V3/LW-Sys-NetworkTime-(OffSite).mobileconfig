@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>515B716C-C558-472E-B8B6-62BF756D0AFC</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>TimeServer</key>
+					<string>time.euro.apple.com</string>
+					<key>TimeZone</key>
+					<string>Europe/London</string>
+					<key>UseNetworkTime</key>
+					<true/>
+				</dict>
+				<key>Match</key>
+				<dict>
+					<key>Condition</key>
+					<false/>
+					<key>Pattern</key>
+					<string>yourdomain1|yourdomain2</string>
+					<key>Value</key>
+					<string>%SV_DHCPOPTION15%</string>
+				</dict>
+				<key>Name</key>
+				<string>Sys-NetworkTime</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-NetworkUp</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>515B716C-C558-472E-B8B6-62BF756D0AFC</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>515B716C-C558-472E-B8B6-62BF756D0AFC</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-NetworkTime (OffSite)</string>
+	<key>PayloadIdentifier</key>
+	<string>5B88E32C-14AE-40DF-A44C-8018330A67F5</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>5B88E32C-14AE-40DF-A44C-8018330A67F5</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

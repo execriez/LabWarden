@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Short:    Do something when an interface comes up
+# Author:   Mark J Swift
+# Version:  3.2.5
+# Modified: 30-Dec-2020
+#
+# Called by NetworkStatusWarden as follows:    
+#   NetworkStatusWarden-InterfaceUp <DeviceName>
+# i.e.
+#   NetworkStatusWarden-InterfaceUp "en0"
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Get interface name
+GLB_SV_MOUNTEDNETWORKDEVICENAME="${1}"
+
+# ---
+
+# Trigger the Sys-InterfaceUp policy
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Sys-InterfaceUp" "${GLB_SV_MOUNTEDNETWORKDEVICENAME}" &
+
+# ---
+
+# We dont want to quit until all sub tasks are finished
+while [ -n "$(jobs -r)" ]
+do
+  # We don't want to hog the CPU - so lets sleep a while
+  sleep 1
+done

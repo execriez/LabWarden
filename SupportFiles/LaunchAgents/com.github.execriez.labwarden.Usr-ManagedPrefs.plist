@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.github.execriez.labwarden.Usr-ManagedPrefs</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/LabWarden/bin/ManagedPrefs</string>
+	</array>
+	<key>WatchPaths</key>
+	<array>
+		<string>/Library/Managed Preferences/com.github.execriez.labwarden.plist</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+</dict>
+</plist>

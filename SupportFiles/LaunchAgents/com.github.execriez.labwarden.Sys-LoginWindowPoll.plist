@@ -6,8 +6,8 @@
 	<string>com.github.execriez.labwarden.Sys-LoginWindowPoll</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/LabWarden/lib/Poll</string>
-		<string>Sys-LoginWindow</string>
+		<string>/usr/local/LabWarden/bin/Poll</string>
+		<string>LoginWindow</string>
 	</array>
 	<key>LimitLoadToSessionType</key>
 	<string>LoginWindow</string>
