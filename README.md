@@ -29,7 +29,7 @@ See "Quick Demos 1-3" below to get a quick idea of the kind of things that LabWa
 This example shows how to manually deploy the ShutdownWhenLidShut policy to a workstation. This policy shuts down a laptop if the lid is closed for more that a pre-defined length of time.
 
 * Install LabWarden by running the package from the following link: [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg)
-* Download (do not install) the mobileconfig from the following link: [LW-Sys-ShutdownWhenLidShut-(15secs).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-ShutdownWhenLidShut.mobileconfig)
+* Download (do not install) the mobileconfig from the following link: [LW-Sys-ShutdownWhenLidShut-(15secs).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-ShutdownWhenLidShut-(15secs).mobileconfig)
 
 Take a look at the file in a text editor, and navigate to the config section. 
 
