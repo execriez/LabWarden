@@ -1,31 +1,29 @@
 INSTALLATION:
 
-Download the LoginHookWarden zip archive from <https://github.com/execriez/LabWarden>, then unzip the archive on a Mac workstation.
+Download the LabWarden zip archive from <https://github.com/execriez/LabWarden>, then unzip the archive on a Mac workstation. Locate, then double-click the "LabWarden.pkg" installer package which can be found in the "SupportFiles" directory.
 
-Ideally, to install - you should double-click the following installer package which can be found in the "SupportFiles" directory.
-
-  LabWarden.pkg
-
-If the installer package isn't available, you can run the command-line installer which can be found in the "util" directory:
-
-  sudo Install
+Alternatively, install by running the package from the following link: https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg
 
 The installer will install the following files and directories:
 
-  /Library/LaunchAgents/com.github.execriez.labwarden.AppWarden.plist
-  /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
-  /Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
-  /Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
-  /Library/LaunchAgents/com.github.execriez.labwarden.Usr-Poll.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.ADwarden.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.ConsoleUserWarden.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.NetworkStatusWarden.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.SleepWarden.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ManagedPrefs.plist
-  /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
-  /usr/LabWarden/
+/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindow.plist
+/Library/LaunchAgents/com.github.execriez.labwarden.Sys-LoginWindowPoll.plist
+/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AppWarden.plist
+/Library/LaunchAgents/com.github.execriez.labwarden.Usr-AtDesktop.plist
+/Library/LaunchAgents/com.github.execriez.labwarden.Usr-ManagedPrefs.plist
+/Library/LaunchAgents/com.github.execriez.labwarden.Usr-Poll.plist
 
-You should note that by default, LabWarden does not make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ADwarden.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Boot.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ConsoleUserWarden.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-ManagedPrefs.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-MountWarden.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-NetworkStatusWarden.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-SleepWarden.plist
+/Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
+
+/usr/LabWarden/
+
+You should note that LabWarden does not (by default) make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
 
 After installation, you should reboot.
