@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Update configs from installed mobileconfigs
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.6
+# Modified: 01-Jan-2021
 #
 # Called as follows:    
 #   ManagedPrefs [-list|-update]
@@ -40,7 +40,7 @@ esac
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.6"
 
 # ---
 
@@ -188,8 +188,32 @@ case ${sv_CommandOption} in
     # the location of the managed prefs file
     sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
 
+    if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+    then
+
+      # make sure the managed prefs directory exists
+      if ! test -e "/Library/Managed Preferences"
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating folder '/Library/Managed Preferences'"
+        mkdir -p "/Library/Managed Preferences"
+        chmod 755 "/Library/Managed Preferences"
+      fi
+      
+      # make sure the managed prefs files exists
+      if [ ! -e "${sv_ManagedPrefsFilePath}" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating empty '${sv_ManagedPrefsFilePath}'"
+        /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
+        chmod 644 "${sv_ManagedPrefsFilePath}"
+      fi
+         
+    fi
+
     # --- now strip the configs from the installed mobileconfigs
   
+    if [ -e "${sv_ManagedPrefsFilePath}" ]
+    then
+
     sv_ConfigTmpDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/${GLB_SV_HOSTNAME}-${GLB_SV_RUNUSERNAME}/Config"
     mkdir -p "${sv_ConfigTmpDirPath}"
 
@@ -201,13 +225,6 @@ case ${sv_CommandOption} in
   
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Exporting Managed prefs"
 
-      # make sure the managed prefs files exists
-      if [ ! -e "${sv_ManagedPrefsFilePath}" ]
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating empty '${sv_ManagedPrefsFilePath}'"
-        /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
-        chmod 644 "${sv_ManagedPrefsFilePath}"
-      fi
 
       # We will only exit when we are satisfied we have a stable export of the current managed prefs
       while [ 1 -eq 1 ]
@@ -602,6 +619,8 @@ case ${sv_CommandOption} in
       fi
     done
 
+    fi
+    
     # ---
 
     # Release lock

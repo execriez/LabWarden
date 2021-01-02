@@ -2504,6 +2504,10 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.2.6 - 01-Jan-2021
+
+* Fixed bug in /bin/ManagedPrefs that assumed "/Library/Managed Prefs" always exists. If a profile has never been installed, this directory doesn't exist.
+
 3.2.5 - 30-Dec-2020
 
 * There have been some significant internal changes since the last release - hence the major version change. 
