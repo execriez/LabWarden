@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.7
+# Modified: 30-May-2021
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>]
@@ -21,7 +21,7 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.7"
 
 # ---
 
@@ -251,7 +251,7 @@ nf_notifyserver()   # intloglevel strmessage
   then
     sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
     
-    CURL --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") -d loglevelstr=$(sf_urlencode "${sv_LogLevel}") -d logtextstr=$(sf_urlencode "${sv_LogText}") "${sv_NotifyURI}"
+    CURL --http1.1 --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") -d loglevelstr=$(sf_urlencode "${sv_LogLevel}") -d logtextstr=$(sf_urlencode "${sv_LogText}") "${sv_NotifyURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred

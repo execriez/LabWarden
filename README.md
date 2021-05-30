@@ -2504,6 +2504,12 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.2.7 - 30-May-2021
+
+* Fixed bug in Sys-dot1xWiFi. Added "--http1.1" to curl command to fix issue on Catalina (10.15) that resulted in the error "curl: (92) HTTP/2 stream 0 was not closed cleanly: HTTP_1_1_REQUIRED (err 13)"
+
+* Fixed bug in Sys-NetworkTime. On 10.14 and later, the ntpdate command is replaced by sntp.
+
 3.2.6 - 01-Jan-2021
 
 * Fixed bug in /bin/ManagedPrefs that assumed "/Library/Managed Prefs" always exists. If a profile has never been installed, this directory doesn't exist.
