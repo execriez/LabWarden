@@ -105,6 +105,284 @@ sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
 GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="LabWarden-netlogon"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "3600"  # How long to wait between triggered events (1 hour)
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "0"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "smb://%SV_ADFLATDOMAINNAME%/NETLOGON/MacOS/Packages/LabWarden.pkg"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "LabWarden.pkg"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Package"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Once"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Package:VersionString" "${GLB_SC_PROJECTVERSION}"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Package:ID" "${GLB_SC_PROJECTSIGNATURE}"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+
+# ---
+GLB_SV_POLICYNAME="Sys-PowerOnError"
+sv_Tag="Daily-0850"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Error"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Alert"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:2:Name" "Sys-Critical"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "8"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Minute" "50"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="Radmind"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "10.1[0-5]($|.[0-9])"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "0"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/usr/local/LabWarden/bin"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "RadmindUpdate"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "172.18.1.24,sha1,0,-I,9999999 http://172.18.1.24/LabWarden/RadmindNotify.php"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="10v13"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_MODEL%:%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(iMac1[0-8]|Mac(Book(([6-9]|10)|Air[3-7]|Pro([6-9]|1[0-4]))|mini[4-7]|Pro[5-6])),.*:10.1([0-2]($|.[0-9])|3($|.[0-5]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "0"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "smb://GUEST:@172.18.1.24/installs/10v13.dmg"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="10v15"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_MODEL%:%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(iMac(1[3-9]|Pro1)|Mac(Book(([8-9]|10)|Air[5-8]|Pro(9|1[0-5]))|mini[6-8]|Pro6)),.*:10.1([0-4]($|.[0-9])|5($|.[0-3]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "0"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "smb://GUEST:@172.18.1.24/installs/10v15.dmg"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+# ---
+exit 0
+# ---
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="Radmind"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "10.1[0-5]($|.[0-9])"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/usr/local/LabWarden/bin"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "RadmindUpdate"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "172.18.1.24,sha1,0,-I,9999999 http://172.18.1.24/LabWarden/RadmindNotify.php"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="MacOS10v13v6"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_MODEL%:%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(iMac1[0-8]|Mac(Book(([6-9]|10)|Air[3-7]|Pro([6-9]|1[0-4]))|mini[4-7]|Pro[5-6])),.*:10.1([0-2]($|.[0-9])|3($|.[0-5]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "smb://GUEST:@172.18.1.24/installs/MacOS-HighSierra-10v13v6.dmg"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="MacOS10v15v4"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_MODEL%:%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(iMac(1[3-9]|Pro1)|Mac(Book(([8-9]|10)|Air[5-8]|Pro(9|1[0-5]))|mini[6-8]|Pro6)),.*:10.1([0-4]($|.[0-9])|5($|.[0-3]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "smb://GUEST:@172.18.1.24/installs/MacOS-Catalina-10v15v4.dmg"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
 sv_Tag="web-MuseScore3"
 
 sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"

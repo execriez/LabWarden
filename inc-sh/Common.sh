@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.8
+# Modified: 24-Aug-2021
 #
 # This include defines some global variables and functions that could be used in any project script.
 #
@@ -250,7 +250,7 @@ then
     sv_WakeType=${2}
     iv_SchedEpoch=${3}
   
-    if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168558592]
+    if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168558592 ]
     then
       sv_Tag="pmset"
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting the 'owner' in a 'pmset sched' command does not appear to work on MacOS 10.12 and later"
@@ -476,6 +476,12 @@ then
           echo "$(date '+%d %b %Y %H:%M:%S %Z') ${GLB_SV_THISSCRIPTFILENAME}[${GLB_IV_THISSCRIPTPID}]${GLB_SV_CODEVERSION}: ${sv_LogLevel}: ${sv_Message}"  >> "${GLB_SV_LOGFILEPATH}"
           echo >&2 "$(date '+%d %b %Y %H:%M:%S %Z') ${GLB_SV_THISSCRIPTFILENAME}[${GLB_IV_THISSCRIPTPID}]${GLB_SV_CODEVERSION}: ${sv_LogLevel}: ${sv_Message}"
 
+          # Trigger Sys-Error, Sys-Alert, Sys-Critical event
+          if [ ${iv_LogLevel} -le ${GLB_IC_MSGLEVELERR} ]
+          then
+            "${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Sys-${sv_LogLevel}" &
+
+          fi
         fi
       fi
     fi    

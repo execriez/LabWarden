@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
 # Author:   Mark J Swift
-# Version:  3.2.7
-# Modified: 30-May-2021
+# Version:  3.2.8
+# Modified: 24-Aug-2021
 #
 # Required for 802.1X authentication
 #
@@ -26,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.7"
+GLB_SV_CODEVERSION="3.2.8"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -37,6 +37,14 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 
 # By the time we get here, quite a few global variables have been set up.
 # Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 184549376 ]
+then
+  # Exit if MacOS is version 11.0 or later
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy aborted - Installing mobileconfigs administratively is not supported in MacOS 11 and later"
+else
 
 # ---
 
@@ -258,10 +266,6 @@ HEREDOC
         # Insert the pkcs12 file into the mobileconfig
         /usr/libexec/PlistBuddy -c "Import PayloadContent:0:PayloadContent ${sv_CertPk12FilePath}" "${sv_MobileConfigFilePath}"
 
-        # Install the new mobileconfig
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing new certificate payload"
-        profiles -I -F "${sv_MobileConfigFilePath}"
-        
         if [ -n "${sv_PrevCertificateConfigPayloadUUID}" ]
         then
           # Remove any previous payload
@@ -269,6 +273,10 @@ HEREDOC
           profiles >/dev/null 2>&1 -R -p "${sv_PrevCertificateConfigPayloadUUID}"
         fi
 
+        # Install the new mobileconfig
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing new certificate payload"
+        profiles -I -F "${sv_MobileConfigFilePath}"
+        
         GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:CertificateConfigPayloadUUID" "${sv_ConfigPayloadUUID}"
       fi
     fi
@@ -296,6 +304,10 @@ Sys-PolicyInstall)
   ;;
 
 esac
+
+# ---
+
+fi
 
 # ---
 

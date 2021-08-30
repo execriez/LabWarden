@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Update the LabWarden installation to a later version
 # Author:   Mark J Swift
-# Version:  3.2.0
-# Modified: 12-Nov-2020
+# Version:  3.2.8
+# Modified: 29-Aug-2021
 #
 # Triggered by the following events:
 #   Sys-Poll            (as root)
@@ -106,9 +106,11 @@ Sys-Idle|Sys-ManualTrigger|Sys-PolicyInstall)
       fi
     done
 
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "${sv_PackageID} installed version ${sv_InstalledVersionString}, installer package version ${sv_PackageVersionString}; "
+
     if [ "${bv_UpdateHasLaterVersion}" = ${GLB_BC_FALSE} ]
     then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Nothing to do; ${sv_PackageID} installed version ${sv_InstalledVersionString} is as up-to-date as the package version ${sv_PackageVersionString}; "
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Nothing to do - installed version is as up-to-date as the installer package version"
     
     else
       sv_UpdatePackageFilePath=$(GLB_SF_RESOLVEFILEURITOPATH "${sv_PackageURI}")

@@ -2,8 +2,8 @@
 #
 # Short:    Setup the dock via any installed Usr-SetupDock profiles 
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.8
+# Modified: 27-Aug-2021
 #
 # Call from a shell as follows:    
 #   /usr/local/LabWarden/bin/SetupDock
@@ -25,21 +25,26 @@ fi
 
 # ---
 
-iv_PreTriggerDockPID=$(pgrep -U "${GLB_SV_RUNUSERNAME}" "Dock")
+# Target the Usr-SetupDock policy with a Usr-ManualTrigger event
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-SetupDock.Usr-ManualTrigger"
 
-if [ -n "${iv_PreTriggerDockPID}" ]
-then
-  # Target the Usr-SetupDock policy with a Usr-ManualTrigger event
-  "${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-SetupDock.Usr-ManualTrigger"
+# ---
+# Can't remember why I originally did this - so I've commented out
 
-  iv_PostTriggerDockPID=$(pgrep -U "${GLB_SV_RUNUSERNAME}" "Dock")
-
-  if [ -n "${iv_PostTriggerDockPID}" ]
-  then
-    if [ ${iv_PreTriggerDockPID} -eq ${iv_PostTriggerDockPID} ]
-    then
-      pkill -U "${GLB_SV_RUNUSERNAME}" "Dock"
-    fi
-  fi
-
-fi
+#iv_PreTriggerDockPID=$(pgrep -U "${GLB_SV_RUNUSERNAME}" "Dock")
+#
+#if [ -n "${iv_PreTriggerDockPID}" ]
+#then
+#  # Target the Usr-SetupDock policy with a Usr-ManualTrigger event
+#  "${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-SetupDock.Usr-ManualTrigger"
+#
+#  iv_PostTriggerDockPID=$(pgrep -U "${GLB_SV_RUNUSERNAME}" "Dock")
+#
+#  if [ -n "${iv_PostTriggerDockPID}" ]
+#  then
+#    if [ ${iv_PreTriggerDockPID} -eq ${iv_PostTriggerDockPID} ]
+#    then
+#      pkill -U "${GLB_SV_RUNUSERNAME}" "Dock"
+#    fi
+#  fi
+#fi

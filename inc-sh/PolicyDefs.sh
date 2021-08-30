@@ -330,8 +330,35 @@ then
         fi
         ;;
   
-      http|https|ftp)
+      http|ftp)
         curl --http1.1 --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
+        if ! test -s "${sv_DstFilePath}"
+        then
+          # if the file is empty, delete it
+          rm -f "${sv_DstFilePath}"
+        fi
+        ;;
+  
+      https)
+        # Use basic AUTH passing computer creds if the URL is local and the user is root
+        bv_UseAuth=${GLB_BC_FALSE}
+        if test -n "${echo "${sv_FileURI}" | grep -i "^https://[^/]*.${GLB_SV_ADDNSDOMAINNAME}/"}"
+        then
+          if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+          then
+            if test -n "${GLB_SV_ADTRUSTACCOUNTNAME}"
+            then
+              bv_UseAuth=${GLB_BC_TRUE}
+            fi
+          fi
+        fi 
+          
+        if [ "${bv_UseAuth}" = ${GLB_BC_FALSE} ]
+        then
+          curl --http1.1 --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
+        else
+          curl --http1.1 --max-time 120 --connect-timeout 10 -s -S --anyauth --user ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} "${sv_FileURI}" > "$sv_DstFilePath"
+        fi
         if ! test -s "${sv_DstFilePath}"
         then
           # if the file is empty, delete it

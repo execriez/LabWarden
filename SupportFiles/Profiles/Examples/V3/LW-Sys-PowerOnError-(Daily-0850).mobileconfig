@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>B2B91217-B1D8-4A5B-ACD1-AE68BC31015B</key>
+			<dict>
+				<key>Config</key>
+				<dict>
+					<key>Start</key>
+					<dict>
+						<key>Hour</key>
+						<integer>8</integer>
+						<key>Minute</key>
+						<integer>50</integer>
+					</dict>
+				</dict>
+				<key>Name</key>
+				<string>Sys-PowerOnError</string>
+				<key>Trigger</key>
+				<array>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Error</string>
+					</dict>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Alert</string>
+					</dict>
+					<dict>
+						<key>Name</key>
+						<string>Sys-Critical</string>
+					</dict>
+				</array>
+			</dict>
+			<key>PayloadEnabled</key>
+			<true/>
+			<key>PayloadIdentifier</key>
+			<string>B2B91217-B1D8-4A5B-ACD1-AE68BC31015B</string>
+			<key>PayloadType</key>
+			<string>com.github.execriez.labwarden</string>
+			<key>PayloadUUID</key>
+			<string>B2B91217-B1D8-4A5B-ACD1-AE68BC31015B</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string></string>
+	<key>PayloadDisplayName</key>
+	<string>LW Sys-PowerOnError (Daily-0850)</string>
+	<key>PayloadIdentifier</key>
+	<string>29B37FEC-9EBD-4086-9095-DD14F294F181</string>
+	<key>PayloadOrganization</key>
+	<string></string>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>29B37FEC-9EBD-4086-9095-DD14F294F181</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

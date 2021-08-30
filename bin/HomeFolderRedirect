@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# Short:    Setup home folder redirection 
+# Author:   Mark J Swift
+# Version:  3.2.8
+# Modified: 27-Aug-2021
+#
+# Call from a shell as follows:    
+#   /usr/local/LabWarden/bin/HomeFolderRedirect
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# ---
+
+# Get user name
+GLB_SV_RUNUSERNAME="$(whoami)"
+
+if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+then
+  exit 0
+fi
+
+# ---
+
+# Note, only one of these will actually run
+
+# Target the Usr-Usr-CreateHomeFolderAliases policy with a Usr-ManualTrigger event
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-CreateHomeFolderAliases.Usr-ManualTrigger"
+
+# Target the Usr-Usr-CreateHomeFolderAliases policy with a Usr-ManualTrigger event
+"${GLB_SV_PROJECTDIRPATH}"/bin/Trigger "Usr-CreateHomeFolderRedirections.Usr-ManualTrigger"
+

@@ -182,7 +182,7 @@ then
     # Find files that have a com.apple.rootless extended attribute (takes a while).
 
     # Work out which mounted directories to ignore when searching for restricted files
-    sv_PrunePathsMounts="$(mount | sed -E 's|(^.*) on (.*) (\(.*\))|\2|' | grep -v '^/$' | sed "s|^|-path '|;s|$|' -prune -o|" | tr "\n" " " | sed "s|$|-path '/*'|" )"
+    sv_PrunePathsMounts="-path '/Users' -prune -o $(mount | sed -E 's|(^.*) on (.*) (\(.*\))|\2|' | grep -v '^/$' | sed "s|^|-path '|;s|$|' -prune -o|" | tr "\n" " " | sed "s|$|-path '/*'|" )"
 
     # Full list of directories to ignore when searching for restricted files
     sv_PrunePaths="$(echo "${sv_PrunePathsMounts}" | sed "s|^|\\\( |;s|$| \\\) -and |")"

@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.8
+# Modified: 21-Aug-2021
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.8"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -348,10 +348,10 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemID '${sv_
         # We have a valid package ID, check to see if the item is already installed
         
         # Get the installed version string
-        sv_InstalledVersionString="$(pkgutil --pkg-info ${sv_ItemID} | grep -i "version:" | cut -d" " -f2)"
-        if test -z "${sv_InstalledVersionString}"
+        sv_InstalledVersion="$(pkgutil --pkg-info ${sv_ItemID} | grep -i "version:" | cut -d" " -f2)"
+        if test -z "${sv_InstalledVersion}"
         then
-          sv_InstalledVersionString="0"
+          sv_InstalledVersion="0"
           bv_ItemIsInstalled=${GLB_BC_FALSE}
         else
           bv_ItemIsInstalled=${GLB_BC_TRUE}
@@ -1294,24 +1294,9 @@ Sys-PolicyInstall)
   ;;
 
 Sys-Idle)
-  iv_IdleDelaySecs=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:IdleDelaySecs" | grep -E "^[0-9]*$")
-  if test -z "${iv_IdleDelaySecs}"
+  if [ "$(bf_RunIsAllowed)" = "${GLB_BC_TRUE}" ]
   then
-    iv_IdleDelaySecs=900
-  fi
-  
-  iv_IdleSecs=$(GLB_IF_SYSTEMIDLESECS)
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Workstation Idle for ${iv_IdleSecs} secs"
-    
-  if [ ${iv_IdleSecs} -gt ${iv_IdleDelaySecs} ]
-  then
-    # Perform action if the workstation is noticeably idle
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Workstation has been idle for more than ${iv_IdleDelaySecs} secs - checking run status..."
-
-    if [ "$(bf_RunIsAllowed)" = "${GLB_BC_TRUE}" ]
-    then
-      bf_RunAction "INSTALL"
-    fi
+    bf_RunAction "INSTALL"
   fi
   ;;
   

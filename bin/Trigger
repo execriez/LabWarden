@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.8
+# Modified: 28-Aug-2021
 #
 # Called as follows:    
 #   Trigger <event> [<optionalparam>]
@@ -151,17 +151,18 @@ nf_TriggeredList() # <EventName>
 
   case ${sv_EventName} in
     
-  Sys-PolicyUninstall|Sys-PolicyInstall)
+  Sys-PolicyUninstall|Sys-PolicyInstall|Sys-ManualTrigger)
     if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
     then
       cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownPayloads.txt" | cut -d":" -f3-4 | grep "^Sys-" | cut -d":" -f2
     fi
     ;;
     
-  Usr-PolicyUninstall|Usr-PolicyInstall)
+  Usr-PolicyUninstall|Usr-PolicyInstall|Usr-ManualTrigger)
     if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
     then
       cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownPayloads.txt" | cut -d":" -f3-4 | grep "^Usr-" | cut -d":" -f2
+      cat "${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/LabWarden-KnownPayloads.txt" | cut -d":" -f3-4 | grep "^Usr-" | cut -d":" -f2
     fi
     ;;
     
@@ -402,8 +403,8 @@ fi
             
             if [ ${iv_Err} -gt 1 ]
             then  
-              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
               bv_ExecutePolicy=${GLB_BC_FALSE}
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
             
             else
               if [ ${iv_Err} -eq 1 ]
@@ -462,8 +463,8 @@ fi
             
                   if [ ${iv_Err} -gt 1 ]
                   then  
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - Index'${iv_TriggerIndex}' error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
                     bv_ExecutePolicy=${GLB_BC_FALSE}
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - Index'${iv_TriggerIndex}' error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
             
                   else
                     if [ ${iv_Err} -eq 1 ]
@@ -514,16 +515,14 @@ fi
           fi
 
 
-          if [ "${bv_ExecutePolicy}" = ${GLB_BC_FALSE} ]
+          if [ "${bv_ExecutePolicy}" = ${GLB_BC_TRUE} ]
           then
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
-
-          else
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Executing policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
-
             sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
-            if test -n "${sv_PolicyExeFilePath}"
+            if test -z "${sv_PolicyExeFilePath}"
             then
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - named policy not found"
+              
+            else
               # Run script in background, but wait if too many already running
               nf_LimitSpawns
               

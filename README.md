@@ -971,6 +971,35 @@ There is one example profile:
 This should be edited and configured to your own needs.
 
 
+### Sys-PowerOnError
+
+This policy script schedules a power-on event if a LabWarden Error occurs. It is called as root and triggered by the **Sys-Error**, **Sys-Alert** and **Sys-Critical** events.
+
+				<key>Config</key>
+				<dict>
+					<key>Start</key>
+					<dict>
+						<key>Hour</key>
+						<integer>8</integer>
+						<key>Minute</key>
+						<integer>50</integer>
+					</dict>
+				</dict>
+
+				
+
+The config contains an array called **Start**. The policy will schedule a power-on randomly, between the start time and 10 minutes after the start time.
+
+The start array can contain the following keys **Minute**, **Hour**, **Day**, **Month** and **Year**.
+
+There is a single example profile:
+
+[LW-Sys-PowerOnError-(Daily-0850).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-PowerOnError-(Daily-0850).mobileconfig)
+
+
+These should be edited and configured to your own needs.
+
+
 ### Sys-PrinterManifest
 
 This policy adds a printer. The policy is called as root and triggered by the **Sys-Poll** event.
@@ -1153,7 +1182,7 @@ There is one example profile:
 
 This you should modify to your own needs.
 
-### LW-Sys-SchedulePowerOn
+### Sys-SchedulePowerOn
 
 This policy script schedules a power-on event. It is called as root and triggered by the **Sys-LoginWindowIdle** and **Sys-Poll** events.
 
@@ -2417,6 +2446,9 @@ Passed to a policy as an event when the policy is first installed
 ### Sys-PolicyUninstall
 Passed to a policy as an event when the policy is uninstalled
 
+### Sys-Error, Sys-Alert, Sys-Critical
+Trigered when a significant LabWarden error occurs
+
 ## User Events (user policy triggers)
 
 User events trigger policies that run as a normal logged-in user:
@@ -2503,6 +2535,27 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.8 - 29-Aug-2021
+
+* Changes made to policies Usr-CreateHomeFolderAliases and Usr-CreateHomeFolderRedirections so that the Finder is only reloaded when absolutely necessary.
+
+* IdleDelaySecs option removed from Sys-SoftwareManifest policy as it conflicted with the Trigger Interval option
+
+* Sys-dot1xWiFi has become legacy due to new MacOS restrictions. The Sys-dot1xWiFi policy constructs then installs a wifi profile (mobileconfig). Installing mobileconfigs administratively is not supported in MacOS 11 and later. 
+
+* The events Usr-ManualTrigger and Sys-ManualTrigger can now be called against a policy even if these events are not listed as a trigger in the policy config.
+
+* Major errors now trigger an event. These are the Sys-Error, Sys-Alert, or Sys-Critical events.
+
+* Added the Sys-PowerOnError policy. This schedules a power on if a LabWarden Error occurs. 
+
+* Fixed a typo in Sys-NetworkTime that was introduced in version 3.2.7
+
+* Fixed a typo in Sys-SoftwareManifest that would have interfered with package installations.
+
+* FIX4SIP updated to a more recent version
+
 
 3.2.7 - 30-May-2021
 
