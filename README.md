@@ -1310,11 +1310,19 @@ This policy installs and uninstalls software. The policy is called as root and t
 
 The **Action** key can be either **Install**, **Uninstall** or **Auto**. If **Action** is undefined, it will default to **Install**
 
-If **Action** is **Install** or **Uninstall** then the action will occur during a Sys-Idle event. The **IdleDelaySecs** key defines how many further seconds to wait (default 900) before actioning the policy.
+If **Action** is **Install** or **Uninstall** then the action will occur during a Sys-Idle event.
 
 If **Action** is set to be **Auto**, then the action will be determined dependent upon whether the policy profile itself is being installed or uninstalled. This happens during the **Sys-PolicyInstall** or **Sys-PolicyUninstall** events.
 
-The **ManifestURI** key defines the location of the install/uninstall media. Where a **.dmg** is defined, that disk image will be mounted.
+The **ManifestURI** key defines the location of the install/uninstall media.
+
+The ManifestURI protocol identifier can be one of **file://** , **ftp://** , **http://** , **https://** or **smb://** 
+
+Where the protocol identifier is **https://** a connection will be attempted without auth, and if that fails will then be attempted via basic auth using the computer account name and password. 
+
+Where the protocol identifier is **smb://** a connection will be made using the computer account name and password. You should note however that scripting smb: connections will likely fail on MacOS 10.15 and later.
+
+If a **.dmg** is defined, that disk image will be mounted.
 
 The **MinOS** key defines the minimum OS required for the policy to be actioned.
 
@@ -2535,6 +2543,12 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.9 - 31-Aug-2021
+
+* GLB\_SV\_DEPRECATEDBYPOLICYLIST has been updated in the legacy policy 'Usr-HomeMakePathRedirections'. Without this change, the legacy policy could have clashed with current versions of the Home folder redirect policies if deployed simultaneously.
+
+* Updated documentation for Sys-SoftwareManifest to mention https:// basic auth, and the fact that scripting smb:// connections will fail on MacOS 10.15 and later.
 
 3.2.8 - 29-Aug-2021
 
