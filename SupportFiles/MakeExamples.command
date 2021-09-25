@@ -104,6 +104,80 @@ sf_MakeConfigFile()   # PolicyName Tag - returns string "<ConfigFilePath>,<Prope
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
+GLB_SV_POLICYNAME="Sys-UsageStats"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Boot"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Poll"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:AuditTag" "Sep-2021"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:WorkingWeek:Hours" "37"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:WorkingWeek:Minutes" "0"
+
+# Monday 6 September 2021  Thursday 21 October 2021
+# Monday 1 November 2021   Friday 17 December 2021	
+# Tuesday 4 January 2022   Friday 11 February 2022	
+# Monday 21 February 2022  Friday 8 April 2022	
+# Monday 25 April 2022     Friday 27 May 2022	
+# Monday 6 June 2022       Friday 17 June 2022
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:Start:Day" "6"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:Start:Month" "9"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:Start:Year" "2021"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:End:Day" "21"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:End:Month" "10"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:0:End:Year" "2021"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:Start:Day" "1"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:Start:Month" "11"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:Start:Year" "2021"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:End:Day" "17"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:End:Month" "12"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:1:End:Year" "2021"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:Start:Day" "4"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:Start:Month" "2"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:Start:Year" "2022"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:End:Day" "11"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:End:Month" "2"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:2:End:Year" "2022"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:Start:Day" "21"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:Start:Month" "2"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:Start:Year" "2022"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:End:Day" "8"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:End:Month" "4"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:3:End:Year" "2022"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:Start:Day" "25"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:Start:Month" "4"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:Start:Year" "2022"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:End:Day" "27"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:End:Month" "5"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:4:End:Year" "2022"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:Start:Day" "6"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:Start:Month" "6"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:Start:Year" "2022"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:End:Day" "17"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:End:Month" "6"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Holidays:5:End:Year" "2022"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
 GLB_SV_POLICYNAME="Sys-SoftwareManifest"
 sv_Tag="LabWarden-netlogon"
 

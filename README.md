@@ -699,7 +699,9 @@ There are a number of example profiles:
 These should be edited and configured to your own needs.
 
 
-### Sys-dot1xWiFi
+### Sys-dot1xWiFi - Now unfortunately Legacy
+
+This policy has become legacy due to new MacOS restrictions that prevent the installation of mobileconfig files programatically.
 
 Crafting your own 802.1X Wifi mobileconfig is complex, this policy simplifies the process - by requiring a minimum setup.
 
@@ -1594,6 +1596,94 @@ There are a number of example profiles:
 [LW-Sys-UserExperience-(networkhome-cachedcreds).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-UserExperience-(networkhome-cachedcreds).mobileconfig)
 
 These should be edited and configured to your own needs.
+
+
+### Sys-Usagestats
+
+This policy collects usage stats. It is called as root and triggered by the **Sys-Boot** and **Sys-Poll** events.
+
+Usage is calculated at 100% for full working week. For example for a 37 hour working week, usage will be shown at 100% for 37 hours of computer use.
+
+The calculated usage is displayed on line #3 of the login window text and in RemoteDesktop Info Field #3. Usage is not displayed until stats have been collected for one week.
+
+![AD Group Members Tab, Members](images/AvgUse.jpg "Sys-UsageStats")
+
+The config contains a key called **AuditTag**. The displayed stats are reset to zero with each new audit tag. If the key is undefined, it defaults to ShortMonthName-Year, i.e. Sep-2021.  
+
+There are also two arrays called **WorkingWeek** and **Holidays**.
+
+The WorkingWeek array contains the keys **Hours** and **Minutes** that defines the expected working week. If the array is not defined the working week value defaults to 37 hours.
+
+The Holidays array contains the **Start** and **End**; **Day**, **Month** and **Year**; of days that are closed. These days are excluded from expected usage.  
+
+				<key>Config</key>
+				<dict>
+
+					<key>AuditTag</key>
+					<string>Sep-2021</string>
+
+					<key>WorkingWeek</key>
+					<dict>
+						<key>Hours</key>
+						<integer>37</integer>
+						<key>Minutes</key>
+						<integer>0</integer>
+					</dict>
+
+					<key>Holidays</key>
+					<array>
+						<dict>
+
+							<key>Start</key>
+							<dict>
+								<key>Day</key>
+								<integer>6</integer>
+								<key>Month</key>
+								<integer>9</integer>
+								<key>Year</key>
+								<integer>2021</integer>
+							</dict>
+							<key>End</key>
+							<dict>
+								<key>Day</key>
+								<integer>21</integer>
+								<key>Month</key>
+								<integer>10</integer>
+								<key>Year</key>
+								<integer>2021</integer>
+							</dict>
+
+						</dict>
+						<dict>
+
+							<key>Start</key>
+							<dict>
+								<key>Day</key>
+								<integer>1</integer>
+								<key>Month</key>
+								<integer>11</integer>
+								<key>Year</key>
+								<integer>2021</integer>
+							</dict>
+							<key>End</key>
+							<dict>
+								<key>Day</key>
+								<integer>17</integer>
+								<key>Month</key>
+								<integer>12</integer>
+								<key>Year</key>
+								<integer>2021</integer>
+							</dict>
+
+						</dict>
+					</array>
+				</dict>
+
+There is one example mobileconfig:
+
+[LW-Sys-UsageStats.mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-UsageStats.mobileconfig)
+
+This should be edited and configured to your own needs.
 
 
 ### Sys-WiFiControl
@@ -2543,6 +2633,10 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.10 - 22-Sep-2021
+
+* Added policy Sys-UsageStats 
 
 3.2.9 - 31-Aug-2021
 

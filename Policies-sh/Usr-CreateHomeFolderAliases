@@ -450,7 +450,10 @@ else
 case ${GLB_SV_EVENTNAME} in
     
 Usr-PolicyUninstall)
-  nf_UnmakePathRedirections
+  if [ $(GLB_BF_POLICYCONFIGISINSTALLED "Usr-CreateHomeFolderAliases,Usr-CreateHomeFolderRedirections") = ${GLB_BC_FALSE} ]
+  then
+    nf_UnmakePathRedirections
+  fi
   ;;
   
 Usr-PolicyInstall|Usr-ManualTrigger|Usr-AtDesktop)

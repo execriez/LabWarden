@@ -1,0 +1,433 @@
+#!/bin/bash
+#
+# Short:    Gen Policy script - Collects user usage stats based on opening hours
+# Author:   Mark J Swift
+# Version:  3.2.10
+# Modified: 25-Sep-2021
+#
+# Triggered by the following events:
+#   Sys-Boot        (as root)
+#   Sys-Poll        (as root)
+#
+# Called as follows:    
+#   Sys-UsageStats <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+# 
+
+# ---
+  
+# Assume that all code is run from a subdirectory of the main project directory
+GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
+
+# Define the policy code version
+GLB_SV_CODEVERSION="3.2.10"
+
+# Define a list of policies that replace this one
+GLB_SV_DEPRECATEDBYPOLICYLIST=""
+
+# ---
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
+
+# By the time we get here, quite a few global variables have been set up.
+# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+nf_UpdateRecord() #record amount
+{
+  local iv_ThisRecord
+  local iv_ThisAmount
+  local iv_Tot
+  
+  iv_ThisRecord=${1}
+  iv_ThisAmount=${2}
+
+  if [ -z "${iv_ThisAmount}" ]
+  then
+    iv_ThisAmount=${GLB_IC_SYSPOLLTRIGGERSECS}
+  fi
+
+  iv_Tot=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:${iv_ThisRecord}")
+  if [ -z "${iv_Tot}" ]
+  then
+    iv_Tot=0
+  fi
+
+  iv_Tot=$((${iv_Tot}+${iv_ThisAmount}))
+  GLB_NF_SETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:${iv_ThisRecord}" ${iv_Tot}
+
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "${iv_ThisRecord} ${iv_Tot}"
+}
+
+# Return the next epoch that matches with the given unit value
+if_NextUnitValueEpoch()   # ReferenceEpoch, Unit (i.e. S, M, H, d, m or Y), Value
+{
+  local iv_ReferenceEpoch
+  local sv_Unit
+  local iv_Value
+  local sv_NewDateString
+  local iv_NewEpoch
+  local sv_NextUnit
+  
+  iv_ReferenceEpoch=${1}
+  sv_Unit=${2}
+  iv_Value=${3}
+  
+  sv_NewDateString=$(echo "%S:%M:%H:%d:%m:%Y" | sed "s|%"${sv_Unit}"|"${iv_Value}"|")
+  iv_NewEpoch=$(date -j -f "%S:%M:%H:%d:%m:%Y" $(date -r ${iv_ReferenceEpoch} "+"${sv_NewDateString}) "+%s")
+  
+  if [ ${iv_NewEpoch} -ge ${iv_ReferenceEpoch} ]
+  then
+    iv_ReferenceEpoch=${iv_NewEpoch}
+  else
+    sv_NextUnit=$(echo "SMHdmy" | tr "${sv_Unit}" "\n" | tail -n1 | cut -c1)
+    if [ -n "${sv_NextUnit}" ]
+    then
+      iv_ReferenceEpoch=$(date -j -r ${iv_NewEpoch} -v +1${sv_NextUnit} +%s)
+    fi
+  fi
+
+  echo "${iv_ReferenceEpoch}"
+}
+
+# ---
+
+case ${GLB_SV_EVENTNAME} in
+    
+Sys-PolicyInstall)
+
+  iv_NowEpoch=$(date -u "+%s")
+
+  # ---
+
+  iv_LastAuditEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:LastAuditEpoch")
+  if [ -z "${iv_LastAuditEpoch}" ]
+  then
+    GLB_NF_SETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:FirstAuditEpoch" ${iv_NowEpoch}
+    GLB_NF_SETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:LastAuditEpoch" ${iv_NowEpoch}
+    iv_LastAuditEpoch=${iv_NowEpoch}
+  fi
+  iv_FirstAuditEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:FirstAuditEpoch")
+
+  # ---
+
+  iv_AuditTag=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AuditTag")
+  if [ -z "${iv_AuditTag}" ]
+  then
+    # If no tag defined, use monthname-year - i.e. Sep-2021
+    iv_AuditTag=$(date -r ${iv_FirstAuditEpoch} "+%b-%Y")
+    GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:AuditTag" ${iv_AuditTag}
+  fi
+
+  # ---
+
+  # Initialise holiday epoch prefs
+  iv_HolidayPrefCount=0
+  GLB_SF_DELETEPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:Holidays"
+
+  # Read holiday config dates and populate holiday epoch prefs
+  iv_HolidayCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays")"
+  for (( iv_HolidayIndex=0; iv_HolidayIndex<${iv_HolidayCount}; iv_HolidayIndex++ ))
+  do
+    iv_ReferenceEpoch=$(date -j -f "%S:%M:%H:%d:%m:%Y" $(date -u "+0:0:0:%d:%m:%Y") "+%s")
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "ReferenceEpoch $(date -r ${iv_ReferenceEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    # ---
+
+    bv_UseDefaultValue=${GLB_BC_TRUE}
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:Start:Day")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:Start:Month")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:Start:Year")"
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
+    fi
+
+    iv_StartEpoch=${iv_ReferenceEpoch}
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "StartEpoch $(date -r ${iv_StartEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    # ---
+ 
+    bv_UseDefaultValue=${GLB_BC_TRUE}
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:End:Day")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:End:Month")"
+    if [ -z "${iv_UnitValue}" ]
+    then
+      if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
+      then
+        iv_UnitValue=1
+      fi
+    else
+      bv_UseDefaultValue=${GLB_BC_FALSE}
+    fi
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
+    fi
+
+    iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays:${iv_HolidayIndex}:End:Year")"
+    if [ -n "${iv_UnitValue}" ]
+    then
+      iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
+    fi
+
+    iv_EndEpoch=${iv_ReferenceEpoch}
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "EndEpoch $(date -r ${iv_EndEpoch} "+%S:%M:%H:%d:%m:%Y")"
+
+    # ---
+
+    if [ ${iv_StartEpoch} -lt ${iv_EndEpoch} ]
+    then
+      if [ ${iv_NowEpoch} -lt ${iv_EndEpoch} ]
+      then
+        GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:Holidays:${iv_HolidayPrefCount}:StartEpoch" ${iv_StartEpoch}
+        GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:Holidays:${iv_HolidayPrefCount}:EndEpoch" ${iv_EndEpoch}
+        iv_HolidayPrefCount=$((${iv_HolidayPrefCount}+1))
+      fi
+    fi
+    
+    # ---
+
+  done
+  ;;
+  
+Sys-Boot)
+  iv_AuditTag=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AuditTag")
+
+  iv_TotalSecs=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:${iv_AuditTag}:TotalSecs")
+  if [ -n "${iv_TotalSecs}" ]
+  then
+  
+    iv_InUseSecs=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:${iv_AuditTag}:InUseSecs")
+    if [ -n "${iv_InUseSecs}" ]
+    then
+      iv_BaseHours="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:WorkingWeek:Hours")"
+      if [ -z "${iv_BaseHours}" ]
+      then
+        iv_BaseHours=0
+      fi
+      
+      iv_BaseMinutes="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:WorkingWeek:Minutes")"
+      if [ -z "${iv_BaseMinutes}" ]
+      then
+        iv_BaseMinutes=0
+      fi
+      
+      iv_BaseSeconds=$(( (${iv_BaseHours}*60 + ${iv_BaseMinutes})*60 ))
+      if [ ${iv_BaseSeconds} -eq 0 ]
+      then
+        # default to 37 hours per week
+        iv_BaseSeconds=133200
+      fi
+
+      iv_UsePercentage=$(( ((${iv_InUseSecs}*100)/${iv_TotalSecs})*604800/${iv_BaseSeconds} ))
+      
+      sv_DisplayText="Avg Use ${iv_UsePercentage}%"
+        
+      #if [ ${iv_UsePercentage} -lt 30 ]
+      #then
+      #  sv_DisplayText="${sv_DisplayText} (Low)"
+      #else
+      #  if [ ${iv_UsePercentage} -lt 60 ]
+      #  then
+      #    sv_DisplayText="${sv_DisplayText} (Good)"
+      #  else
+      #    sv_DisplayText="${sv_DisplayText} (High)"
+      #  fi
+      #fi
+        
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "${sv_DisplayText}"
+
+      # Only display after we have a weeks worth of audit
+      if [ ${iv_TotalSecs} -gt 604800 ]
+      then
+        GLB_NF_SETLOGINWINDOWLINE 3 "${sv_DisplayText}"
+      else
+        GLB_NF_SETLOGINWINDOWLINE 3 ""
+      fi
+    fi
+  fi
+  ;;
+  
+Sys-Poll)
+  iv_NowEpoch=$(date -u "+%s")
+  iv_NowYear=$(date -r ${iv_NowEpoch} "+%Y")
+  iv_NowMonthName=$(date -r ${iv_NowEpoch} "+%b")
+  iv_NowMonthNum=$(date -r ${iv_NowEpoch} "+%m")
+  iv_NowDayName=$(date -r ${iv_NowEpoch} "+%a")
+  iv_NowHour=$(date -r ${iv_NowEpoch} "+%H")
+
+  # ---
+
+  iv_AuditTag=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:AuditTag")
+
+  iv_LastAuditEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:LastAuditEpoch")
+  if [ -z "${iv_LastAuditEpoch}" ]
+  then
+    iv_LastAuditEpoch=${iv_NowEpoch}
+  fi
+
+  # ---
+
+  iv_AuditInterval=$((${iv_NowEpoch}-${iv_LastAuditEpoch}))
+
+  if [ ${iv_AuditInterval} -lt $((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Time since last audit (${iv_AuditInterval}) indicates this is normal usage, as it is within the limits ($((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) secs)"
+
+    # Check that someone is logged in
+    if [ "$(stat -f '%Su' /dev/console)" != "root" ]
+    then
+      iv_SysIdleSecs=$(GLB_IF_SYSTEMIDLESECS)
+      
+      
+      if [ ${iv_SysIdleSecs} -lt $((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Idle time (${iv_SysIdleSecs}) indicates user session is active, as it is within limits ($((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) secs)"
+
+        nf_UpdateRecord "InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowMonthName}:InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowDayName}:InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowHour}:InUseSecs" ${iv_AuditInterval}
+
+        nf_UpdateRecord "${iv_AuditTag}:InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowMonthName}:InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowDayName}:InUseSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowHour}:InUseSecs" ${iv_AuditInterval}
+       
+      else
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Idle time (${iv_SysIdleSecs}) indicates user session is idle, as it exceeds the limits ($((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) secs)"
+
+        nf_UpdateRecord "IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowMonthName}:IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowDayName}:IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_NowHour}:IdleSecs" ${iv_AuditInterval}
+
+        nf_UpdateRecord "${iv_AuditTag}:IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowMonthName}:IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowDayName}:IdleSecs" ${iv_AuditInterval}
+        nf_UpdateRecord "${iv_AuditTag}:${iv_NowHour}:IdleSecs" ${iv_AuditInterval}
+      
+      fi
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Excluding session from user audit. User is not logged in."
+   fi
+  else
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Time since last audit (${iv_AuditInterval}) indicates there has been a break in normal usage, as it exceeds the limits ($((${GLB_IC_SYSPOLLTRIGGERSECS}*3)) secs)"
+
+  fi
+
+  # Adjust audit timings for holidays 
+
+  iv_OrigInterval=${iv_AuditInterval}
+
+  iv_HolidayPrefCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Holidays")"
+  for (( iv_HolidayPrefIndex=0; iv_HolidayPrefIndex<${iv_HolidayPrefCount}; iv_HolidayPrefIndex++ ))
+  do
+    iv_StartEpoch="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:Holidays:${iv_HolidayPrefIndex}:StartEpoch")"
+    iv_EndEpoch="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:Holidays:${iv_HolidayPrefIndex}:EndEpoch")"
+
+    if [ ${iv_LastAuditEpoch} -lt ${iv_StartEpoch} ]
+    then
+      if [ ${iv_NowEpoch} -gt ${iv_StartEpoch} ]
+      then
+        if [ ${iv_NowEpoch} -gt ${iv_EndEpoch} ]
+        then
+          iv_AuditInterval=$(( ${iv_LastAuditEpoch}-(${iv_EndEpoch}-${iv_StartEpoch}) ))
+        else
+          iv_AuditInterval=$(( ${iv_LastAuditEpoch}-(${iv_NowEpoch}-${iv_StartEpoch}) ))
+        fi
+      fi
+    else
+      if [ ${iv_LastAuditEpoch} -lt ${iv_EndEpoch} ]
+      then
+        if [ ${iv_NowEpoch} -gt ${iv_EndEpoch} ]
+        then
+          iv_AuditInterval=$(( ${iv_LastAuditEpoch}-(${iv_EndEpoch}-${iv_LastAuditEpoch}) ))
+        else
+          iv_AuditInterval=$(( ${iv_LastAuditEpoch}-(${iv_NowEpoch}-${iv_LastAuditEpoch}) ))
+        fi
+      fi
+    fi
+
+  done  
+  
+  if [ ${iv_AuditInterval} -lt 0 ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Please check holiday definitions for overlapping dates"
+    iv_AuditInterval=0
+  fi
+  
+  if [ ${iv_AuditInterval} -ne ${iv_OrigInterval} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Adjusting audit timings (${iv_OrigInterval} to ${iv_AuditInterval}) for holidays"
+  fi
+
+  nf_UpdateRecord "TotalSecs" ${iv_AuditInterval}
+  nf_UpdateRecord "${iv_AuditTag}:TotalSecs" ${iv_AuditInterval}
+
+  GLB_NF_SETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Audit:LastAuditEpoch" ${iv_NowEpoch}
+  ;;
+  
+Sys-PolicyUninstall)
+  # Clear login window line
+  GLB_NF_SETLOGINWINDOWLINE 3 ""
+  ;;
+  
+*)
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Trigger '${GLB_SV_EVENTNAME}' is not supported."
+  ;;
+
+esac
+  
+# ---
+
+# Tidy up
+
+. "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh
+
+# ---

@@ -55,7 +55,7 @@ nf_SetupARD()
   sv_ARDsetting="$(GLB_SF_GETPLISTPROPERTY "/Library/Preferences/com.apple.RemoteManagement.plist" ":ARD_AllLocalUsers"):$(GLB_SF_GETPLISTPROPERTY "/Library/Preferences/com.apple.RemoteManagement.plist" ":DirectoryGroupLoginsEnabled"):$(GLB_SF_GETPLISTPROPERTY "/Library/Preferences/com.apple.RemoteManagement.plist" ":LoadRemoteManagementMenuExtra")"
   if [ ${sv_ARDsetting} != "false:true:true" ]
   then
-    # Only set ARD kickstart options if no-one is logged in - otherwise the logged in user will get weird pop-ups
+    # Only set ARD kickstart options if no-one is logged in - otherwise the logged in user may get weird pop-ups
     if [ "$(stat -f '%Su' /dev/console)" = "root" ]
     then
       # Uninstall all existing ARD settings and prefs, enable directory authentication options, restrict ARD service access to specific users, activate and restart agent, always enable menuextra so that users know they are being observed
