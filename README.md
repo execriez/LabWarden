@@ -193,7 +193,7 @@ This example shows how to deploy an application to a workstation from the web vi
 
 After a small delay, a disk image containing the application **MuseScore** will be downloaded from the internet and mounted. The application will be installed into /Applications and the disk image will be unmounted and discarded.
 
-The profile contents are shown below. See the Sys-SoftwareManifest section in the LabWardeb policy list (later) for an explanation of the policy options.
+The profile contents are shown below. See the Sys-SoftwareManifest section in the LabWarden policy list (later) for an explanation of the policy options.
 
 	<?xml version="1.0" encoding="UTF-8"?>
 	<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1602,13 +1602,18 @@ These should be edited and configured to your own needs.
 
 This policy collects usage stats. It is called as root and triggered by the **Sys-Boot** and **Sys-Poll** events.
 
-Usage is calculated at 100% for full working week. For example for a 37 hour working week, usage will be shown at 100% for 37 hours of computer use.
-
 The calculated usage is displayed on line #3 of the login window text and in RemoteDesktop Info Field #3. Usage is not displayed until stats have been collected for one week.
 
 ![AD Group Members Tab, Members](images/AvgUse.jpg "Sys-UsageStats")
 
-The config contains a key called **AuditTag**. The displayed stats are reset to zero with each new audit tag. If the key is undefined, it defaults to ShortMonthName-Year, i.e. Sep-2021.  
+The stats usage text shows; Avg Use (%), Weekly use (Hours, Mins) and a simple textual graph that uses the characters .oO to illustrate daily use. 
+
+In the example above, there is some use Mondays, more use on Tuesdays, and little or no use the rest of the week.
+
+Usage is calculated at 100% for full working week. For example for a 37 hour working week, usage will be shown at 100% for 37 hours of computer use.
+
+
+The config contains a key called **AuditTag**. The displayed stats are reset to zero with each new audit tag. If the key is undefined, it defaults to Year-MonthNum, i.e. 2021-09.  
 
 There are also two arrays called **WorkingWeek** and **Holidays**.
 
@@ -2022,7 +2027,7 @@ This should be configured to your own needs.
 
 This is the first of two policies that link local folders to user network folders.
 
-It is initialised as root via the **Sys-NetworkUp** event, and called as the user via the **Usr-AtDesktop**.
+It is called as the user via the **Usr-AtDesktop** and **Usr-Poll** events.
 
 This policy creates symbolic links (soft links) from paths within the users network share, to paths within users local home folder.
 
@@ -2053,7 +2058,7 @@ This should be configured to your own needs.
 
 This is the second of two policies that link local folders to user network folders.
 
-It is initialised as root via the **Sys-NetworkUp** event, and called as the user via the **Usr-AtDesktop**.
+It is called as the user via the **Usr-AtDesktop** and **Usr-Poll** events.
 
 This policy creates mount points to paths within the users network share, linked to paths within users local home folder.
 
@@ -2633,6 +2638,16 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.12 - 10-Oct-2021
+
+* Updated the policies Usr-CreateHomeFolderAliases and Usr-CreateHomeFolderRedirections. With these policies, the network user home folder is now always mounted within the folder "/NetworkMounts/USERHOME" for ease of access to files within the home root folder. The Dock and Sidebar are now only checked for reload if home folders have actually been redirected. The policies also now trigger on Usr-Poll which picks up the situation where redirections are missed at first login due to user profile creation taking too long.
+
+* Updated policy Sys-UsageStats. Audit stat counters could be influenced by locale changes which is now fixed. Also, usage is now displayed as percentage, in hours and mins per week, and as a simple graph built of .oO characters that shows usage Sun to Sat, i.e. [..oOOo.]
+
+3.2.11 - 26-Sep-2021
+
+* Updated the legacy policy Sys-UpdatePackage, as installation files could be left in the '/usr/local/LabWarden/REPO' directory. 
 
 3.2.10 - 22-Sep-2021
 

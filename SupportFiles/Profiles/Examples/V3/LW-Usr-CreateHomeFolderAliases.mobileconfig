@@ -5,7 +5,7 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>D1EBC44F-60C1-4818-91AF-3CABA0767038</key>
+			<key>CAA9193F-E9CD-413B-B0D5-4F309D580895</key>
 			<dict>
 				<key>Config</key>
 				<dict>
@@ -27,16 +27,20 @@
 						<key>Name</key>
 						<string>Usr-AtDesktop</string>
 					</dict>
+					<dict>
+						<key>Name</key>
+						<string>Usr-Poll</string>
+					</dict>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>D1EBC44F-60C1-4818-91AF-3CABA0767038</string>
+			<string>CAA9193F-E9CD-413B-B0D5-4F309D580895</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>D1EBC44F-60C1-4818-91AF-3CABA0767038</string>
+			<string>CAA9193F-E9CD-413B-B0D5-4F309D580895</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -46,7 +50,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Usr-CreateHomeFolderAliases</string>
 	<key>PayloadIdentifier</key>
-	<string>86769B7A-9237-4111-A061-B8F26EF16ACD</string>
+	<string>1AA44D1C-36BC-4FDD-BA90-791F45854180</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -56,7 +60,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>86769B7A-9237-4111-A061-B8F26EF16ACD</string>
+	<string>1AA44D1C-36BC-4FDD-BA90-791F45854180</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

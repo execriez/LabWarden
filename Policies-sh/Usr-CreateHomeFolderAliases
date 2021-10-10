@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 28-Aug-2021
+# Version:  3.2.12
+# Modified: 09-Oct-2021
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -27,7 +27,6 @@
 # within in the users local home. 
 #
 # Triggered by the following events:
-#   Sys-NetworkUp           (as root)
 #   Usr-AtDesktop           (as user)
 #
 # Called as follows:    
@@ -46,7 +45,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.2.12"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-CreateHomeFolderRedirections"
@@ -66,17 +65,25 @@ nf_ReloadFinder() # Reload the Finder
   pkill -U ${GLB_SV_RUNUSERNAME} Finder
 }
 
+nf_RebuildDockAndSidebar() # Rebuild the Dock and Sidebar
+{
+  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupDock &
+  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupSidebar &
+}
+
 nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home folder redirections
 {
   local sv_TargetHomeDirPath
   local sv_RedirectListFilePath
   local sv_ReqdLinkEntry
   local sv_ReqdLinkFilePath
+  local bv_RebuildDockAndSidebar
   local bv_ReloadFinder
 
   sv_RedirectListFilePath="${1}"
   sv_TargetHomeDirPath="${2}"
     
+  bv_RebuildDockAndSidebar=${GLB_BC_FALSE}
   bv_ReloadFinder=${GLB_BC_FALSE}
 
   if test -f "${sv_RedirectListFilePath}"
@@ -106,6 +113,8 @@ nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home fol
             /bin/rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
           fi
 
+          bv_RebuildDockAndSidebar=${GLB_BC_TRUE}
+          
           if [ "${sv_ReqdLinkFilePath}" = "/Desktop" ]
           then
             bv_ReloadFinder=${GLB_BC_TRUE}
@@ -124,6 +133,13 @@ nf_UndoPathRedir() # FileRedirectList TargetHomeDir - Undo any existing home fol
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Desktop folder redirected - Finder needs to be reloaded."
     nf_ReloadFinder
   fi
+
+  # If any folder was linked/unlinked we need to rebuild Dock and Sidebar
+  if [ "${bv_RebuildDockAndSidebar}" = ${GLB_BC_TRUE} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Folders have been redirected - Dock and Sidebar need to be rebuilt."
+    nf_RebuildDockAndSidebar
+  fi
 }
 
 nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
@@ -138,6 +154,7 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
   local bv_TargetIsLocal
   local iv_StartEpoch
   local bv_GotError
+  local bv_RebuildDockAndSidebar
   local bv_ReloadFinder
 
   sv_RedirectListFilePath="${1}"
@@ -147,6 +164,7 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
   # Take a note when this function started
   iv_StartEpoch=$(date -u "+%s")
 
+  bv_RebuildDockAndSidebar=${GLB_BC_FALSE}
   bv_ReloadFinder=${GLB_BC_FALSE}
   
   if test -f "${sv_RedirectListFilePath}"
@@ -160,8 +178,6 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
       bv_TargetIsLocal=${GLB_BC_FALSE}
     fi
 
-    # Backup location for existing files/folders that might be replaced by a link
-    sv_BackupDirPath="${sv_TargetHomeDirPath}/Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
 
     # Read entries from file
     while read sv_ReqdLinkEntry
@@ -174,24 +190,26 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
       sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
       if test -n "${sv_ReqdLinkFilePath}"
       then
-      
+        sv_TargetPath="${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+        sv_SourcePath="${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}"
+            
         # Make sure there is a target enclosing folder to store the symbolic link
-        sv_EnclosingDirPath="$(dirname "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}")"
+        sv_EnclosingDirPath="$(dirname "${sv_TargetPath}")"
         /bin/mkdir -p "${sv_EnclosingDirPath}"
       
         # Make sure we have a source folder or source file parent folder
         if [ "${sv_ReqdLinkEntry}" != "${sv_ReqdLinkFilePath}" ]
         then
           # We are linking to a directory - so make sure it exists
-          /bin/mkdir -p "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}"
+          /bin/mkdir -p "${sv_SourcePath}"
           if [ $? -ne 0 ]
           then
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error creating folder '${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}'"
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error creating folder '${sv_SourcePath}'"
             bv_GotError=${GLB_BC_TRUE}
           fi
         else
           # We are linking to a file - so make sure the parent folder exists
-          sv_EnclosingDirPath="$(dirname "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}")"
+          sv_EnclosingDirPath="$(dirname "${sv_SourcePath}")"
           /bin/mkdir -p "${sv_EnclosingDirPath}"
           if [ $? -ne 0 ]
           then
@@ -203,74 +221,75 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
         # If there are errors at source, delete any existing link at target
         if [ "${bv_GotError}" = ${GLB_BC_TRUE} ]
         then
-          if test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          if test -L "${sv_TargetPath}"
           then
-            rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+            rm -f "${sv_TargetPath}"
           fi
         
         else
         
-          if test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          if test -L "${sv_TargetPath}"
           then
             # If the filepath references a link, get the originating filepath
-            sv_ExistingLinkTargetPath="$(stat -f %Y "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}")"
-            if [ "${sv_ExistingLinkTargetPath}" = "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" ]
+            sv_ExistingLinkTargetPath="$(stat -f %Y "${sv_TargetPath}")"
+            if [ "${sv_ExistingLinkTargetPath}" = "${sv_SourcePath}" ]
             then
               GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "A valid link already exists for folder '${sv_ReqdLinkFilePath}'."
             else
-              rm -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+              rm -f "${sv_TargetPath}"
             fi
           fi
 
+          # Backup location for existing files/folders that might be replaced by a link
+          sv_BackupDirPath="${sv_EnclosingDirPath}/Backup/"$(date -r ${iv_StartEpoch} '+%Y-%m-%d_%H-%M-%S')
+
           # Back up anything that exists at the target (where the link is going to be stored)
-          if test -e "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          if test -e "${sv_TargetPath}"
           then
             # something exists at the target
-            if ! test -L "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+            if ! test -L "${sv_TargetPath}"
             then
               # Its not an existing link
-              if test -d "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+              if test -d "${sv_TargetPath}"
               then
                 # If the existing folder at the target is local, remove any ACLs that might stop us doing our stuff
                 if [ "${bv_TargetIsLocal}" = ${GLB_BC_TRUE} ]
                 then
-                  /bin/chmod -RN "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+                  /bin/chmod -RN "${sv_TargetPath}"
                 fi
                 # Check if existing folder is empty - and backup if necessary
-                if test -z "$(ls -A1 "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}" | grep -Ev "^.DS_Store$|^.localized$")"
+                if test -z "$(ls -A1 "${sv_TargetPath}" | grep -Ev "^.DS_Store$|^.localized$")"
                 then
-                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting empty folder '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
-                  /bin/rm -fR "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting empty folder '${sv_TargetPath}'."
+                  /bin/rm -fR "${sv_TargetPath}"
                 else
-                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Backing up existing folder '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
-                  # Make sure there is a target enclosing folder to backup the folder
-                  sv_EnclosingDirPath="$(dirname "${sv_BackupDirPath}${sv_ReqdLinkFilePath}")"
-                  /bin/mkdir -p "${sv_EnclosingDirPath}"
+                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Backing up existing folder '${sv_TargetPath}'."
+                  /bin/mkdir -p "${sv_BackupDirPath}"
                   # Move (back up) existing folder at target
-                  /bin/mv -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_EnclosingDirPath}/"
+                  /bin/mv -f "${sv_TargetPath}" "${sv_BackupDirPath}/"
                 fi
               else
-                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Backing up existing file '${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}'."
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Backing up existing file '${sv_TargetPath}'."
                 # If the existing file at the target is local, remove any ACLs that might stop us doing our stuff
                 if [ "${bv_TargetIsLocal}" = ${GLB_BC_TRUE} ]
                 then
-                  /bin/chmod -N "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+                  /bin/chmod -N "${sv_TargetPath}"
                 fi
-                # Make sure there is a target enclosing folder to backup the file
-                sv_EnclosingDirPath="$(dirname "${sv_BackupDirPath}${sv_ReqdLinkFilePath}")"
-                /bin/mkdir -p "${sv_EnclosingDirPath}"
+                /bin/mkdir -p "${sv_BackupDirPath}"
                 # Move (back up) existing file at target
-                /bin/mv -f "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_EnclosingDirPath}/"
+                /bin/mv -f "${sv_TargetPath}" "${sv_BackupDirPath}/"
               fi
             fi
           fi
           
           # Only create the link if nothing exists at the target
-          if ! test -e "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+          if ! test -e "${sv_TargetPath}"
           then
             # Create link - source file/folder -to- target link
             GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating link for folder '${sv_ReqdLinkFilePath}'."
-            /bin/ln -sf "${sv_SourceHomeDirPath}${sv_ReqdLinkFilePath}" "${sv_TargetHomeDirPath}${sv_ReqdLinkFilePath}"
+            /bin/ln -sf "${sv_SourcePath}" "${sv_TargetPath}"
+
+            bv_RebuildDockAndSidebar=${GLB_BC_TRUE}
 
             if [ "${sv_ReqdLinkFilePath}" = "/Desktop" ]
             then
@@ -294,6 +313,12 @@ nf_DoPathRedir() # FileRedirectList TargetHomeDir SourceHomeDir
     nf_ReloadFinder
   fi
 
+  # If any folder was linked/unlinked we need to rebuild Dock and Sidebar
+  if [ "${bv_RebuildDockAndSidebar}" = ${GLB_BC_TRUE} ]
+  then
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Folders have been redirected - Dock and Sidebar need to be rebuilt."
+    nf_RebuildDockAndSidebar
+  fi
 }
 
 nf_UnmakePathRedirections()
@@ -379,6 +404,7 @@ nf_MakePathRedirections()
     # Create the required link list
     rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
     touch "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
+    
     iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:${sv_LegacyKey}Path")"
     for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
     do
@@ -456,35 +482,53 @@ Usr-PolicyUninstall)
   fi
   ;;
   
-Usr-PolicyInstall|Usr-ManualTrigger|Usr-AtDesktop)
+Usr-PolicyInstall|Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
   # config options
 
-  # If the network home is not mounted - mount it
-  if [ -z "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
+  # Changed my mind again on naming this folder
+  if test -e "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES"
   then
-    if [ -n "${GLB_SV_CONSOLEUSERSHAREURI}" ]
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Mounting the user network home"
+    mv "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NetworkMounts"
+  fi
 
-      sv_ConsoleUserShareDirPath="${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES/USERHOME"
-      mkdir -p "${sv_ConsoleUserShareDirPath}"
-      if [ "$(GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}/" "${sv_ConsoleUserShareDirPath}")" = ${GLB_BC_TRUE} ]
+  if [ -n "${GLB_SV_CONSOLEUSERSHAREURI}" ]
+  then
+    # Mount the network home root somewhere accessible
+    sv_ReqdLinkFilePath="/NetworkMounts/USERHOME"
+
+    if [ -n "$(mount | grep -i " on ${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}")" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "A mount already exists for folder '${sv_ReqdLinkFilePath}'."
+          
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Mounting user home at folder '${sv_ReqdLinkFilePath}'."
+
+      # If the local directory is a link - delete it
+      if [ -L "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ]
       then
-        GLB_SV_CONSOLEUSERSHAREDIRPATH="${sv_ConsoleUserShareDirPath}"
+        rm -f "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
       fi
-  
+
+      # Make sure the local directory exists
+      mkdir -p "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+
+      # Mount network folder at path and remount if already mounted somewhere else
+      if [ "$(GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}/" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ${GLB_BC_TRUE})" = ${GLB_BC_TRUE} ]
+      then
+        if [ -z "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
+        then
+          GLB_SV_CONSOLEUSERSHAREDIRPATH="${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+        fi
+      fi
+
     fi
   fi
 
   if [ -n "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
   then
     nf_MakePathRedirections
-
   fi
 
-  # Existing shortcuts in the dock & sidebar may have changed
-  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupDock &
-  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupSidebar &
   ;;
   
 *)

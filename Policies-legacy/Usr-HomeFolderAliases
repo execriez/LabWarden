@@ -27,7 +27,6 @@
 # within in the users local home. 
 #
 # Triggered by the following events:
-#   Sys-NetworkUp           (as root)
 #   Usr-AtDesktop           (as user)
 #
 # Called as follows:    

@@ -104,6 +104,70 @@ sf_MakeConfigFile()   # PolicyName Tag - returns string "<ConfigFilePath>,<Prope
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
+GLB_SV_POLICYNAME="Usr-CreateHomeFolderAliases"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Usr-AtDesktop"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Usr-Poll"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:0" "/Desktop/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:1" "/Documents/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:2" "/Downloads/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:3" "/Movies/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:4" "/Music/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:5" "/Pictures/"
+
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:0" "/Library/Application Support/audacity/.audacity.sock"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:1" "/Library/Application Support/CrashReporter/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:2" "/Library/Caches/com.apple.helpd/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:3" "/Library/Calendars/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:4" "/Library/com.apple.nsurlsessiond/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:5" "/Library/Containers/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:6" "/Library/IdentityServices/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:7" "/Library/Keychains/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:8" "/Library/Logs/DiagnosticReports/"
+# GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Legacy:Path:9" "/Library/Messages/"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Usr-CreateHomeFolderRedirections"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Usr-AtDesktop"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Usr-Poll"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:0" "/Desktop/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:1" "/Documents/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:2" "/Downloads/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:3" "/Movies/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:4" "/Music/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:5" "/Pictures/"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+
 GLB_SV_POLICYNAME="Sys-UsageStats"
 sv_Tag=""
 

@@ -2,11 +2,10 @@
 #
 # Short:    Usr Policy script - Home folder redirection
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 21-Aug-2021
+# Version:  3.2.12
+# Modified: 09-Oct-2021
 #
 # Triggered by the following events:
-#   Sys-NetworkUp   (as root)
 #   Usr-AtDesktop   (as user)
 #
 # Called as follows:    
@@ -25,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.2.12"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -64,41 +63,68 @@ case ${GLB_SV_EVENTNAME} in
 Usr-PolicyInstall|Usr-PolicyUninstall)
   ;;
   
-Usr-AtDesktop|Usr-ManualTrigger)
-  # If the network home is not mounted - mount it
-  if [ -z "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
-  then
-    if [ -n "${GLB_SV_CONSOLEUSERSHAREURI}" ]
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Mounting the user network home"
+Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
 
-      sv_ConsoleUserShareDirPath="${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES/USERHOME"
-      mkdir -p "${sv_ConsoleUserShareDirPath}"
-      if [ "$(GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}/" "${sv_ConsoleUserShareDirPath}")" = ${GLB_BC_TRUE} ]
-      then
-        GLB_SV_CONSOLEUSERSHAREDIRPATH="${sv_ConsoleUserShareDirPath}"
-      fi
-  
-    fi
-  fi
-  
+  bv_RebuildDockAndSidebar=${GLB_BC_FALSE}
   bv_ReloadFinder=${GLB_BC_FALSE}
 
-  if [ -n "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" ]
+  # Changed my mind again on naming this folder
+  if test -e "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES"
   then
-    # Mount the home sub-folders
-    iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path")"
-    for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
-    do
-      sv_ReqdLinkEntry="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path:${iv_LoopCount}")"
-      sv_ReqdLinkEntry=$(echo "/${sv_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
-      sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
-      if test -n "${sv_ReqdLinkFilePath}"
+    mv "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NETWORKSHARES" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}/NetworkMounts"
+  fi
+
+  if [ -n "${GLB_SV_CONSOLEUSERSHAREURI}" ]
+  then
+    # Mount the network home root somewhere accessible
+    sv_ReqdLinkFilePath="/NetworkMounts/USERHOME"
+
+    if [ -n "$(mount | grep -i " on ${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}")" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "A redirect already exists for folder '${sv_ReqdLinkFilePath}'."
+          
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating redirect for folder '${sv_ReqdLinkFilePath}'."
+
+      bv_RebuildDockAndSidebar=${GLB_BC_TRUE}
+          
+      # If the local directory is a link - delete it
+      if [ -L "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ]
       then
+        rm -f "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+      fi
+
+      # Make sure the local directory exists
+      mkdir -p "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+
+      # Mount network folder at path and remount if already mounted somewhere else
+      GLB_BF_MOUNTURIATPATH "${GLB_SV_CONSOLEUSERSHAREURI}/" "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ${GLB_BC_TRUE}
+
+    fi
+  fi
+
+  # Mount the home sub-folders
+  iv_ObjectCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path")"
+  for (( iv_LoopCount=0; iv_LoopCount<${iv_ObjectCount}; iv_LoopCount++ ))
+  do
+    sv_ReqdLinkEntry="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Path:${iv_LoopCount}")"
+    sv_ReqdLinkEntry=$(echo "/${sv_ReqdLinkEntry}" | sed "s|/[/]*|/|g")
+    sv_ReqdLinkFilePath=$(echo "${sv_ReqdLinkEntry}" | sed "s|/$||")
+    if test -n "${sv_ReqdLinkFilePath}"
+    then
+      if [ -n "$(mount | grep -i " on ${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}")" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "A redirect already exists for folder '${sv_ReqdLinkFilePath}'."
+          
+      else
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating redirect for folder '${sv_ReqdLinkFilePath}'."
+
+        bv_RebuildDockAndSidebar=${GLB_BC_TRUE}
+          
         # If the local directory is a link - delete it
         if [ -L "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}" ]
         then
-          rm -f "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
+            rm -f "${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}${sv_ReqdLinkFilePath}"
         fi
 
         # Make sure the local directory exists
@@ -115,14 +141,16 @@ Usr-AtDesktop|Usr-ManualTrigger)
           bv_ReloadFinder=${GLB_BC_TRUE}
         fi
       fi
+    fi
   
-    done
-
-  fi
+  done
 
   # Existing shortcuts in the dock & siebar may have changed. Finder may need reloading too if the desktop has been redirected.
-  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupDock &
-  "${GLB_SV_PROJECTDIRPATH}"/bin/SetupSidebar &
+  if [ "${bv_RebuildDockAndSidebar}" = ${GLB_BC_TRUE} ]
+  then
+    "${GLB_SV_PROJECTDIRPATH}"/bin/SetupDock &
+    "${GLB_SV_PROJECTDIRPATH}"/bin/SetupSidebar &
+  fi
 
   # Check if the Desktop was linked
   if [ "${bv_ReloadFinder}" = ${GLB_BC_TRUE} ]

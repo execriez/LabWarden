@@ -2,7 +2,7 @@
 #
 # Short:    Sys Policy script - Update the LabWarden installation to a later version
 # Author:   Mark J Swift
-# Version:  3.2.8
+# Version:  3.2.11
 # Modified: 29-Aug-2021
 #
 # Triggered by the following events:
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.0"
+GLB_SV_CODEVERSION="3.2.11"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -124,12 +124,24 @@ Sys-Idle|Sys-ManualTrigger|Sys-PolicyInstall)
           GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing '${sv_PackageURI}'."
           installer 2>&1 -pkg "${sv_UpdatePackageFilePath}" -target / >> "${GLB_SV_LOGFILEPATH}"
 
+          sv_Err=$?
+          if [ ${sv_Err} -ne 0 ]
+          then
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Install failed with error ${sv_Err} ('${sv_PackageURI}')"
+          fi
+
           # Delete the installer file if it is on /tmp
           if [ -n "$(echo "${sv_UpdatePackageFilePath}" | grep "^/tmp/")" ]
           then
             rm -f "${sv_UpdatePackageFilePath}"
           fi
-        else
+ 
+           # Delete the installer file if it is in the LabWarden REPO
+          if [ -n "$(echo "${sv_UpdatePackageFilePath}" | grep "^/usr/local/LabWarden/REPO")" ]
+          then
+            rm -f "${sv_UpdatePackageFilePath}"
+          fi
+       else
           GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "User is logged in, delaying Install of '${sv_PackageURI}'."
         fi
       fi

@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Syncs specified folders from the users local home to network home
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.12
+# Modified: 09-Oct-2020
 #
 # Triggered by the following events:
 #   Usr-VolDidMount (as user)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.12"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -130,8 +130,11 @@ case ${GLB_SV_EVENTNAME} in
 Usr-VolDidMount)
   if [ -n "${GLB_SV_MOUNTEDVOLUMEDIRPATH}" ]
   then
-    if [ -n "$(echo "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" | grep -i "^${GLB_SV_MOUNTEDVOLUMEDIRPATH}")" ]
+    if [ -z "$(echo "${GLB_SV_CONSOLEUSERSHAREDIRPATH}" | grep -i "^${GLB_SV_MOUNTEDVOLUMEDIRPATH}")" ]
     then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Mount wasn't the user network home."
+
+    else
       # The user network home was just mounted
 
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "This policy can be potentially unsafe if misconfigured"

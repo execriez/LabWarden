@@ -6,7 +6,6 @@
 # Modified: 12-Nov-2020
 #
 # Triggered by the following events:
-#   Sys-NetworkUp   (as root)
 #   Usr-AtDesktop   (as user)
 #
 # Called as follows:    
