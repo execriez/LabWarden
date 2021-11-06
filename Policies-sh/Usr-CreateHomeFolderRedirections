@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Home folder redirection
 # Author:   Mark J Swift
-# Version:  3.2.12
-# Modified: 09-Oct-2021
+# Version:  3.2.13
+# Modified: 19-Oct-2021
 #
 # Triggered by the following events:
 #   Usr-AtDesktop   (as user)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.12"
+GLB_SV_CODEVERSION="3.2.13"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -55,6 +55,11 @@ else
   then
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - User home is on network."
   else
+    # Grab  lock
+    if [ $(GLB_BF_NAMEDLOCKGRAB "FolderRedir") = ${GLB_BC_FALSE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Cannot grab lock."
+    else
   
 # ---
 
@@ -169,7 +174,8 @@ Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
 esac
   
 # ---
-  
+
+    fi
   fi
 fi
 

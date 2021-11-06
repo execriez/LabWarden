@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Desktop Wallpaper
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.13
+# Modified: 10-Oct-2021
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.13"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -62,7 +62,7 @@ Usr-AtDesktop|Usr-PolicyInstall)
 
     else
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting Desktop Wallpaper"
-      osascript -e "tell application \"System Events\" to set picture of every desktop to \"${sv_DesktopWallpaperFilePath}\""
+      open -a "${GLB_SV_PROJECTDIRPATH}"/bin/SetWallpaper.app "${sv_DesktopWallpaperFilePath}"
     fi
   fi
   ;;

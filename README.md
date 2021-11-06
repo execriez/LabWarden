@@ -850,6 +850,63 @@ There are a number of example profiles:
 These should be edited and configured to your own needs.
 
 
+### Sys-LocalAccess
+
+This policy enables SSH and restricts SSH access to members of the com.apple.access_ssh group. 
+
+It sets up ARD remote user access via Apple's "Remote Desktop" application and via screen sharing using the Finder menu's "connect to Server..." with the address "vnc://someworkstation.local". 
+
+At installation, it clears existing nested groups from the groups: admin, com.apple.access_ssh, ard_admin, ard_interact, ard_manage, ard_reports.
+
+It provides the ability to make directory groups be members of local groups.
+
+It is called as root and triggered by the **Sys-Poll** event.
+
+The ARD functionality uses the kickstart utility. It remains here while kickstart is supported by MacOS but may be removed in future versions of LabWarden.
+
+				<key>Config</key>
+				<dict>
+					<key>Association</key>
+					<array>
+						<dict>
+							<key>DirectoryGroup</key>
+							<string>Mac_Local_Admin</string>
+							<key>LocalGroup</key>
+							<array>
+								<string>admin</string>
+							</array>
+						</dict>
+						<dict>
+							<key>DirectoryGroup</key>
+							<string>Mac_Local_SSH</string>
+							<key>LocalGroup</key>
+							<array>
+								<string>com.apple.access_ssh</string>
+							</array>
+						</dict>
+						<dict>
+							<key>DirectoryGroup</key>
+							<string>Mac_Local_ARD</string>
+							<key>LocalGroup</key>
+							<array>
+								<string>ard_admin</string>
+							</array>
+						</dict>
+					</array>
+				</dict>
+
+The **Association** array holds a list of directory groups and local groups. 
+
+The **DirectoryGroup** key holds the name of a directory group. 
+
+The **LocalGroup** array holds a list of local groups that the Directory Group should be a member of.
+
+There is one example profile:
+
+[LW-Sys-LocalAccess.mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-LocalAccess.mobileconfig)
+
+This should be edited and configured to your own needs.
+
 ### Sys-LocalProfileRetention
 
 **USE WITH CAUTION**
@@ -1045,126 +1102,6 @@ There are a number of example profiles:
 
 These should be edited and configured to your own needs.
 
-
-### Sys-RemoteManagement
-
-This policy sets up remote user access via Apple's "Remote Desktop" application and via screen sharing using the Finder menu's "connect to Server..." with the address "vnc://someworkstation.local". 
-
-It can set up access for local users, and for directory users.
-
-It is called as root and triggered by the **Sys-Poll** event.
-
-The policy uses the kickstart utility, so may not be that successful on recent MacOS systems. It remains here but may be removed in future versions of LabWarden.
-
-				<key>Config</key>
-				<dict>
-					<key>Groups</key>
-					<array>
-						<dict>
-							<key>Access</key>
-							<string>admin</string>
-							<key>Name</key>
-							<string>dirgroup1</string>
-						</dict>
-						<dict>
-							<key>Access</key>
-							<string>interact</string>
-							<key>Name</key>
-							<string>dirgroup2</string>
-						</dict>
-					</array>
-					<key>LocalUsers</key>
-					<array>
-						<dict>
-							<key>Name</key>
-							<string>localuser1</string>
-							<key>Privs</key>
-							<array>
-								<string>all</string>
-							</array>
-						</dict>
-						<dict>
-							<key>Name</key>
-							<string>localuser2</string>
-							<key>Privs</key>
-							<array>
-								<string>DeleteFiles</string>
-								<string>ControlObserve</string>
-								<string>TextMessages</string>
-								<string>ShowObserve</string>
-								<string>OpenQuitApps</string>
-								<string>GenerateReports</string>
-								<string>RestartShutDown</string>
-								<string>SendFiles</string>
-								<string>ChangeSettings</string>
-								<string>ObserveOnly</string>
-							</array>
-						</dict>
-					</array>
-					<key>Users</key>
-					<array>
-						<dict>
-							<key>Access</key>
-							<string>admin</string>
-							<key>Name</key>
-							<string>diruser1</string>
-						</dict>
-						<dict>
-							<key>Access</key>
-							<string>interact</string>
-							<key>Name</key>
-							<string>diruser2</string>
-						</dict>
-						<dict>
-							<key>Access</key>
-							<string>manage</string>
-							<key>Name</key>
-							<string>diruser3</string>
-						</dict>
-						<dict>
-							<key>Access</key>
-							<string>reports</string>
-							<key>Name</key>
-							<string>diruser4</string>
-						</dict>
-					</array>
-				</dict>
-
-The **LocalUsers** array holds a list of local users who have access to ARD. This list contains a **Name** key and a **Privs** array. 
-
-The **Name** key holds the name of the local user. 
-
-**Privs** can be any comination of the following values: all, DeleteFiles, ControlObserve, TextMessages, ShowObserve, OpenQuitApps, GenerateReports, RestartShutDown, SendFiles, ChangeSettings, ObserveOnly, none. 
-
-The meaning of these keys is explained in the ARD kickstart help page, which can be found by typing the following in a shell: 
-
-	/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -help
-	
-The **Users** key holds a list of directory users who have access to ARD. This contains a **Name** key and a **Access** key. **Name** is the name of the directory user. **Access** can be one of the following values: admin, interact, manage, reports.
-
-The **Groups** key holds a list of directory groups who have access to ARD. This contains a **Name** key and a **Access** key. **Name** is the name of the directory group. **Access** can be one of the following values: admin, interact, manage, reports.
-
-The 'Access' values are equivalent to the following 'Privs' values:
-
-**admin**: GenerateReports, OpenQuitApps, ChangeSettings, SendFiles, DeleteFiles, TextMessages, RestartShutDown, ControlObserve, ShowObserve (all)
-
-**interact**: TextMessages, ControlObserve, ShowObserve
-
-**manage**: GenerateReports, OpenQuitApps, ChangeSettings, SendFiles, DeleteFiles, TextMessages, RestartShutDown
-
-**reports**: GenerateReports
-
-This policy is also useful for setting up ARD screen sharing.
-
-If you have some directory users who need to remotely view and control other peoples screens - add them via the Users or Groups key, and give them **interact** access. 
-
-They will then be able to connect to the remote screens of affected workstations via the Finder menu "connect to Server..." with the address "vnc://someworkstation.local".
-
-There is one example profile:
-
-[LW-Sys-RemoteManagement.mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-RemoteManagement.mobileconfig)
-
-This should be edited and configured to your own needs.
 
 ### Sys-RestartAfterLongSleep
 
@@ -1637,31 +1574,19 @@ The Holidays array contains the **Start** and **End**; **Day**, **Month** and **
 
 					<key>Holidays</key>
 					<array>
+					
 						<dict>
-
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>6</integer>
-								<key>Month</key>
-								<integer>9</integer>
-								<key>Year</key>
-								<integer>2021</integer>
-							</dict>
-							<key>End</key>
-							<dict>
-								<key>Day</key>
-								<integer>21</integer>
+								<integer>22</integer>
 								<key>Month</key>
 								<integer>10</integer>
 								<key>Year</key>
 								<integer>2021</integer>
 							</dict>
 
-						</dict>
-						<dict>
-
-							<key>Start</key>
+							<key>End</key>
 							<dict>
 								<key>Day</key>
 								<integer>1</integer>
@@ -1670,23 +1595,36 @@ The Holidays array contains the **Start** and **End**; **Day**, **Month** and **
 								<key>Year</key>
 								<integer>2021</integer>
 							</dict>
-							<key>End</key>
+						</dict>
+						
+						<dict>
+							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>17</integer>
+								<integer>20</integer>
 								<key>Month</key>
 								<integer>12</integer>
 								<key>Year</key>
 								<integer>2021</integer>
 							</dict>
 
+							<key>End</key>
+							<dict>
+								<key>Day</key>
+								<integer>4</integer>
+								<key>Month</key>
+								<integer>1</integer>
+								<key>Year</key>
+								<integer>2022</integer>
+							</dict>
 						</dict>
+
 					</array>
 				</dict>
 
 There is one example mobileconfig:
 
-[LW-Sys-UsageStats.mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-UsageStats.mobileconfig)
+[LW-Sys-UsageStats-(Sep-2021).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-UsageStats-(Sep-2021).mobileconfig)
 
 This should be edited and configured to your own needs.
 
@@ -2638,6 +2576,24 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.14 - 06-Nov-2021
+
+* Added policy Sys-LocalAccess which deprecates Sys-RemoteManagement. This policy enables SSH and restricts SSH access to members of the com.apple.access_ssh group. It enables ARD. It clears existing nested groups from the groups: admin, com.apple.access_ssh, ard_admin, ard_interact, ard_manage, ard_reports. It provides the ability to make directory groups be members of local groups for remote access.
+
+3.2.13 - 06-Nov-2021
+
+* Altered the policy Usr-DesktopWallpaperURI to use an automator app to change the user desktop, instead of using osascript. osascript caused users to be asked to authorise system events before changing the desktop background.
+
+* Updated the policies Usr-CreateHomeFolderAliases and Usr-CreateHomeFolderRedirections to prevent multiple instances running at the same time. This could happen at policy install. 
+
+* Fix in Sys-NetworkTime for error that is thrown by sntp if the file is missing. 
+
+* Fix. A bug in Sys-UsageStats that corrupted total audit count after a holiday period. Fortunately this count can be recalculated from the first audit epoch. This caused usage to be displayed as 0% after a holiday.
+
+* Fix. The Sys-PowerOnError policy aborts if it is already active by another trigger. Previously, errors could stack up badly and affect responsiveness.
+ 
+* Change. The internal function GLB_BF_NAMEDLOCKGRAB silent flag is only silent for lock waits, failures and log manipulations. Successful grabs are logged. GLB_NF_NAMEDLOCKRELEASE no longer accepts a silent flag.
 
 3.2.12 - 10-Oct-2021
 

@@ -2,7 +2,7 @@
 #
 # Short:    Sys Policy script - Sets the system time (ntp) server
 # Author:   Mark J Swift
-# Version:  3.2.8
+# Version:  3.2.13
 # Modified: 22-Aug-2021
 #
 # Triggered by the following events:
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.2.13"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -104,7 +104,13 @@ Sys-NetworkUp)
       if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168689664 ]
       then
         # MacOS 10.14 and later
+        if [ ! -e "/var/db/ntp-kod" ]
+        then
+          touch /var/db/ntp-kod
+          chown root:wheel /var/db/ntp-kod
+        fi
         sntp -sS ${sv_TimeServer}
+        
       else
         # MacOS 10.13 and earlier
         ntpdate -u ${sv_TimeServer}

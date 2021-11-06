@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Schedules a power on if a LabWarden Error occurs 
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 28-Aug-2021
+# Version:  3.2.13
+# Modified: 06-Nov-2021
 #
 # Triggered by the following events:
 #   Sys-Error       (as root)
@@ -26,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.2.13"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -70,6 +70,15 @@ if_NextUnitValueEpoch()   # ReferenceEpoch, Unit (i.e. S, M, H, d, m or Y), Valu
 
   echo "${iv_ReferenceEpoch}"
 }
+
+# ---
+
+# Grab lock - we only want one instance of this policy running at any time
+if [ $(GLB_BF_NAMEDLOCKGRAB "${GLB_SV_POLICYNAME}" 0 ${GLB_BC_TRUE}) = ${GLB_BC_FALSE} ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted. Policy already active by another trigger."
+  
+else
 
 # ---
 
@@ -202,6 +211,13 @@ Sys-Error|Sys-Alert|Sys-Critical)
 
 esac
   
+# ---
+
+# Release lock
+GLB_NF_NAMEDLOCKRELEASE "${GLB_SV_POLICYNAME}"
+
+fi
+
 # ---
 
 # Tidy up

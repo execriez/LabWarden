@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 24-Aug-2021
+# Version:  3.2.13
+# Modified: 06-Nov-2021
 #
 # This include defines some global variables and functions that could be used in any project script.
 #
@@ -68,7 +68,7 @@
 #  GLB_NF_LOGMESSAGE <LogLevelInt> <MessageText>                           - Output message text to the log file
 #  GLB_NF_SHOWNOTIFICATION <LogLevelInt> <MessageText>                     - Show a pop-up notification
 #  GLB_BF_NAMEDLOCKGRAB <LockNameString> <MaxSecsInt> <SilentFlagBool>     - Grab a named lock
-#  GLB_NF_NAMEDLOCKRELEASE <LockNameString> <MaxSecsInt> <SilentFlagBool>  - Release a named lock
+#  GLB_NF_NAMEDLOCKRELEASE <LockNameString>                                - Release a named lock
 #  GLB_NF_NAMEDFLAGCREATE <FlagNameString>                                 - Create a named flag. FlagNameString can be anything you like.
 #  GLB_NF_NAMEDFLAGTEST <FlagNameString>                                   - Test if a named flag exists
 #  GLB_NF_NAMEDFLAGDELETE <FlagNameString>                                 - Delete a named flag
@@ -169,7 +169,7 @@ then
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting login window text line #${iv_InfoIndex} to '${sv_InfoText}'"
       /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
       
-      GLB_NF_NAMEDLOCKRELEASE "LoginwindowText" ${GLB_BC_TRUE}
+      GLB_NF_NAMEDLOCKRELEASE "LoginwindowText"
       
     fi
   }
@@ -443,7 +443,7 @@ then
           then
             if [ $(stat -f "%z" "${GLB_SV_LOGFILEPATH}") -gt ${GLB_IV_LOGSIZEMAXBYTES} ]
             then
-              if [ "$(GLB_BF_NAMEDLOCKGRAB "BackupLog" 0 ${GLB_BC_TRUE})" = ${GLB_BC_TRUE} ]
+              if [ "$(GLB_BF_NAMEDLOCKGRAB "ManipulateLog" 0 ${GLB_BC_TRUE})" = ${GLB_BC_TRUE} ]
               then
                 mv -f "${GLB_SV_LOGFILEPATH}" "${GLB_SV_LOGFILEPATH}.bak"
                 for (( iv_LoopCount=0; iv_LoopCount<=8; iv_LoopCount++ ))
@@ -467,7 +467,7 @@ then
                 rm -f "${sv_LogFileName}.bak"
                 cd "${sv_WorkingDirPath}"
               fi
-              GLB_NF_NAMEDLOCKRELEASE "BackupLog" ${GLB_BC_TRUE}
+              GLB_NF_NAMEDLOCKRELEASE "ManipulateLog"
             fi
           fi
   
@@ -609,7 +609,7 @@ then
   GLB_BF_NAMEDLOCKGRAB() # ; LockName [MaxSecs] [SilentFlag]; 
   # LockName can be anything 
   # MaxSecs is the max number of secs to wait for lock
-  # SilentFlag, if true then lock activity is not logged
+  # SilentFlag, if true then lock waits and failures is not logged
   # Returns 'true' or 'false'
   {
     local sv_LockName
@@ -647,7 +647,7 @@ then
       sv_ActiveLockPID="$(cat 2>/dev/null "${sv_LockDirPath}/${sv_LockName}" | head -n1)"
       if [ "${sv_ActiveLockPID}" = "${GLB_IV_THISSCRIPTPID}" ]
       then
-        if [ "${bv_SilentFlag}" = ${GLB_BC_FALSE} ]
+        if [ "${sv_LockName}" != "ManipulateLog" ]
         then
           GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Grabbed lock '${sv_LockName}'"
         fi
@@ -665,14 +665,20 @@ then
       then
         if [ "${bv_SilentFlag}" = ${GLB_BC_FALSE} ]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Grab lock failed, another task is being greedy '${sv_LockName}'"
+          if [ "${sv_LockName}" != "ManipulateLog" ]
+          then
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Grab lock failed, another task is being greedy '${sv_LockName}'"
+          fi
         fi
         break
       fi 
            
       if [ "${bv_SilentFlag}" = ${GLB_BC_FALSE} ]
       then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Waiting for lock '${sv_LockName}'"
+        if [ "${sv_LockName}" != "ManipulateLog" ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Waiting for lock '${sv_LockName}'"
+        fi
       fi
       sleep 1
     done
@@ -714,12 +720,6 @@ then
 
     sv_LockName="${1}"
 
-    bv_SilentFlag="${2}"
-    if test -z "${bv_SilentFlag}"
-    then
-      bv_SilentFlag=${GLB_BC_FALSE}
-    fi
-    
     sv_LockDirPath="${GLB_SV_RUNUSERTEMPDIRPATH}/Locks"
 
     if test -s "${sv_LockDirPath}/${sv_LockName}"
@@ -727,7 +727,7 @@ then
       sv_ActiveLockPID="$(cat 2>/dev/null "${sv_LockDirPath}/${sv_LockName}" | head -n1)"
       if [ "${sv_ActiveLockPID}" = "${GLB_IV_THISSCRIPTPID}" ]
       then
-        if [ "${bv_SilentFlag}" = ${GLB_BC_FALSE} ]
+        if [ "${sv_LockName}" != "ManipulateLog" ]
         then
           GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Releasing lock '${sv_LockName}'"
         fi

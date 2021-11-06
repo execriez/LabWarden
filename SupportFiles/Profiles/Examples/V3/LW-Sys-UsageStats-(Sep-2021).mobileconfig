@@ -5,43 +5,16 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>2C6D94C9-377D-49ED-B583-7B492099C3BE</key>
+			<key>59CF9B5D-966D-4907-BB6D-1F21596CD422</key>
 			<dict>
 				<key>Config</key>
 				<dict>
-					<key>Holiday</key>
+					<key>AuditTag</key>
+					<string>Sep-2021</string>
+					<key>Holidays</key>
 					<array>
 						<dict>
 							<key>End</key>
-							<dict>
-								<key>Day</key>
-								<integer>21</integer>
-								<key>Month</key>
-								<integer>10</integer>
-								<key>Year</key>
-								<integer>2021</integer>
-							</dict>
-							<key>Start</key>
-							<dict>
-								<key>Day</key>
-								<integer>6</integer>
-								<key>Month</key>
-								<integer>9</integer>
-								<key>Year</key>
-								<integer>2021</integer>
-							</dict>
-						</dict>
-						<dict>
-							<key>End</key>
-							<dict>
-								<key>Day</key>
-								<integer>17</integer>
-								<key>Month</key>
-								<integer>12</integer>
-								<key>Year</key>
-								<integer>2021</integer>
-							</dict>
-							<key>Start</key>
 							<dict>
 								<key>Day</key>
 								<integer>1</integer>
@@ -50,38 +23,38 @@
 								<key>Year</key>
 								<integer>2021</integer>
 							</dict>
-						</dict>
-						<dict>
-							<key>End</key>
-							<dict>
-								<key>Day</key>
-								<integer>11</integer>
-								<key>Month</key>
-								<integer>2</integer>
-								<key>Year</key>
-								<integer>2022</integer>
-							</dict>
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>4</integer>
+								<integer>22</integer>
 								<key>Month</key>
-								<integer>2</integer>
+								<integer>10</integer>
 								<key>Year</key>
-								<integer>2022</integer>
+								<integer>2021</integer>
 							</dict>
 						</dict>
 						<dict>
 							<key>End</key>
 							<dict>
 								<key>Day</key>
-								<integer>8</integer>
-								<key>Month</key>
 								<integer>4</integer>
+								<key>Month</key>
+								<integer>1</integer>
 								<key>Year</key>
 								<integer>2022</integer>
 							</dict>
 							<key>Start</key>
+							<dict>
+								<key>Day</key>
+								<integer>20</integer>
+								<key>Month</key>
+								<integer>12</integer>
+								<key>Year</key>
+								<integer>2021</integer>
+							</dict>
+						</dict>
+						<dict>
+							<key>End</key>
 							<dict>
 								<key>Day</key>
 								<integer>21</integer>
@@ -90,21 +63,30 @@
 								<key>Year</key>
 								<integer>2022</integer>
 							</dict>
+							<key>Start</key>
+							<dict>
+								<key>Day</key>
+								<integer>14</integer>
+								<key>Month</key>
+								<integer>2</integer>
+								<key>Year</key>
+								<integer>2022</integer>
+							</dict>
 						</dict>
 						<dict>
 							<key>End</key>
 							<dict>
 								<key>Day</key>
-								<integer>27</integer>
+								<integer>25</integer>
 								<key>Month</key>
-								<integer>5</integer>
+								<integer>4</integer>
 								<key>Year</key>
 								<integer>2022</integer>
 							</dict>
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>25</integer>
+								<integer>11</integer>
 								<key>Month</key>
 								<integer>4</integer>
 								<key>Year</key>
@@ -115,7 +97,7 @@
 							<key>End</key>
 							<dict>
 								<key>Day</key>
-								<integer>17</integer>
+								<integer>6</integer>
 								<key>Month</key>
 								<integer>6</integer>
 								<key>Year</key>
@@ -124,7 +106,27 @@
 							<key>Start</key>
 							<dict>
 								<key>Day</key>
-								<integer>6</integer>
+								<integer>30</integer>
+								<key>Month</key>
+								<integer>5</integer>
+								<key>Year</key>
+								<integer>2022</integer>
+							</dict>
+						</dict>
+						<dict>
+							<key>End</key>
+							<dict>
+								<key>Day</key>
+								<integer>5</integer>
+								<key>Month</key>
+								<integer>9</integer>
+								<key>Year</key>
+								<integer>2022</integer>
+							</dict>
+							<key>Start</key>
+							<dict>
+								<key>Day</key>
+								<integer>20</integer>
 								<key>Month</key>
 								<integer>6</integer>
 								<key>Year</key>
@@ -157,11 +159,11 @@
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>2C6D94C9-377D-49ED-B583-7B492099C3BE</string>
+			<string>59CF9B5D-966D-4907-BB6D-1F21596CD422</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>2C6D94C9-377D-49ED-B583-7B492099C3BE</string>
+			<string>59CF9B5D-966D-4907-BB6D-1F21596CD422</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -169,9 +171,9 @@
 	<key>PayloadDescription</key>
 	<string></string>
 	<key>PayloadDisplayName</key>
-	<string>LW Sys-UsageStats</string>
+	<string>LW Sys-UsageStats (Sep-2021)</string>
 	<key>PayloadIdentifier</key>
-	<string>A66DA2AF-0413-4A18-A1FF-E8B2EC51C8E6</string>
+	<string>28850A86-1090-473F-A9A3-EE6BD3B9B512</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -181,7 +183,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>A66DA2AF-0413-4A18-A1FF-E8B2EC51C8E6</string>
+	<string>28850A86-1090-473F-A9A3-EE6BD3B9B512</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

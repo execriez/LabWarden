@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets up remote access to a workstation
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.2.13
+# Modified: 05-Nov-2021
 #
 # references:
 #  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
@@ -13,7 +13,7 @@
 #   Sys-Poll (as root)
 #
 # Called as follows:    
-#   SystemRemoteManagement <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
+#   Sys-RemoteManagement <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
 
 # ---
 
@@ -28,10 +28,10 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.2.13f"
 
 # Define a list of policies that replace this one
-GLB_SV_DEPRECATEDBYPOLICYLIST=""
+GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-LocalAccess"
 
 # ---
 

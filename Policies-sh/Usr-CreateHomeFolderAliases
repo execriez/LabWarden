@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  3.2.12
-# Modified: 09-Oct-2021
+# Version:  3.2.13
+# Modified: 19-Oct-2021
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.12"
+GLB_SV_CODEVERSION="3.2.13"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-CreateHomeFolderRedirections"
@@ -385,8 +385,8 @@ nf_MakePathRedirections()
     touch "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
 
     # Check the existing link list
-    rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt"
-    touch "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt"
+    touch "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt"
     while read sv_ReqdLinkEntry
     do
       # Sanitise the Entry
@@ -396,7 +396,7 @@ nf_MakePathRedirections()
       then
         if test -L "${GLB_SV_CONSOLEUSERHOMEDIRPATH}${sv_ReqdLinkFilePath}"
         then
-          echo "${sv_ReqdLinkEntry}" >>"${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt"
+          echo "${sv_ReqdLinkEntry}" >>"${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt"
         fi
       fi
     done < "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
@@ -418,13 +418,13 @@ nf_MakePathRedirections()
     done
 
     # Find out which folders we need to check for links/unlinks
-    echo "$(cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt" ; cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt" )" | sort -u > "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Check.txt"
+    echo "$(cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt" ; cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt" )" | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Check.txt"
 
     # Find out which folders we need to unlink (if we ever change the link list)
-    echo "$(cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt" ; cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Unlink.txt"
+    echo "$(cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt" ; cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Unlink.txt"
 
     # Find out which folders we need to link
-    echo "$(cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt" ; cat "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Link.txt"
+    echo "$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt" ; cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Check.txt" )" | sort | uniq -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Link.txt"
 
     # Link files (did use .FolderRedir-Link.txt, but the alternate home folder might change - so we should remake all links)
     if test -s "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
@@ -434,17 +434,17 @@ nf_MakePathRedirections()
     fi
 
     # Unlink files
-    if test -s "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Unlink.txt"
+    if test -s "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Unlink.txt"
     then
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Unlinking folders."
-      nf_UndoPathRedir "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Unlink.txt" "${GLB_SV_CONSOLEUSERHOMEDIRPATH}"
+      nf_UndoPathRedir "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Unlink.txt" "${GLB_SV_CONSOLEUSERHOMEDIRPATH}"
     fi
 
     # Delete temporary files
-    rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Old.txt"
-    rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Check.txt"
-    rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Unlink.txt"
-    rm -f "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir-Link.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Old.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Check.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Unlink.txt"
+    rm -f "${GLB_SV_THISSCRIPTTEMPDIRPATH}/.FolderRedir-Link.txt"
 
     # Delete the link file if it is empty
     if ! test -s "${GLB_SV_CONSOLEUSERHOMEDIRPATH}/.FolderRedir.txt"
@@ -470,6 +470,11 @@ else
   then
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - User home is on network."
   else
+    # Grab  lock
+    if [ $(GLB_BF_NAMEDLOCKGRAB "FolderRedir") = ${GLB_BC_FALSE} ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted - Cannot grab lock."
+    else
   
 # ---
 
@@ -538,7 +543,8 @@ Usr-PolicyInstall|Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
 esac
   
 # ---
-  
+
+    fi
   fi
 fi
 
