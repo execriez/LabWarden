@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 21-Aug-2021
+# Version:  3.2.15
+# Modified: 09-Nov-2021
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.2.15"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -185,6 +185,13 @@ sf_ItemInstallStatus() # Index, DefaultStatus i.e. :${GLB_SV_CONFIGUUID}:Config:
   bv_VersionIsCurrent=${bv_DefaultInstalledStatus}
 
   sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:FileName")"
+
+  # if we didn't supply a filename, use the manifest name
+  if [ -z "${sv_ItemFileName}" ]
+  then
+    sv_ItemFileName="$(basename "${sv_ManifestURI}")"
+  fi
+
 GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemFileName '${sv_ItemFileName}'"
 
   if [ -z "${sv_ItemFileName}" ]
@@ -556,6 +563,13 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "About to run through Items to ${sv_Act
           for (( iv_ItemIndex=0; iv_ItemIndex<${iv_ItemCount}; iv_ItemIndex++ ))
           do
             sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:FileName")"
+
+            # if we didn't supply a filename, use the manifest name
+            if [ -z "${sv_ItemFileName}" ]
+            then
+              sv_ItemFileName="$(basename "${sv_ManifestURI}")"
+            fi
+
 #GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemFileName '${sv_ItemFileName}'"
 
             sv_ItemInstallStatus=$(sf_ItemInstallStatus "${iv_ItemIndex}" ${bv_DefaultInstalledStatus})
@@ -1048,231 +1062,6 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting Manifest from repository ('
   fi
 }
 
-bf_RunIsAllowed()
-{
-  local iv_ReferenceEpoch
-  local bv_UseDefaultValue
-  local iv_UnitValue
-  local iv_StartEpoch
-  local iv_EndEpoch
-  local iv_LastTryEpoch
-  local bv_RunIsAllowed
-
-  iv_ReferenceEpoch=${GLB_IV_THISSCRIPTSTARTEPOCH}
-
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ReferenceEpoch $(date -r ${iv_ReferenceEpoch} "+%S:%M:%H:%d:%m:%Y")"
-
-  bv_UseDefaultValue=${GLB_BC_TRUE}
-  
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Second")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "S" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Minute")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "M" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Hour")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "H" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Day")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=1
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Month")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=1
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Start:Year")"
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_PrevUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
-  fi
-
-  iv_StartEpoch=${iv_ReferenceEpoch}
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "StartEpoch $(date -r ${iv_StartEpoch} "+%S:%M:%H:%d:%m:%Y")"
-
-  bv_UseDefaultValue=${GLB_BC_TRUE}
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Second")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "S" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Minute")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "M" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Hour")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=0
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "H" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Day")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=1
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "d" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Month")"
-  if [ -z "${iv_UnitValue}" ]
-  then
-    if [ "${bv_UseDefaultValue}" = "${GLB_BC_TRUE}" ]
-    then
-      iv_UnitValue=1
-    fi
-  else
-    bv_UseDefaultValue=${GLB_BC_FALSE}
-  fi
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "m" ${iv_UnitValue})
-  fi
-
-  iv_UnitValue="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:End:Year")"
-  if [ -n "${iv_UnitValue}" ]
-  then
-    iv_ReferenceEpoch=$(if_NextUnitValueEpoch ${iv_ReferenceEpoch} "y" ${iv_UnitValue})
-  fi
-
-  iv_EndEpoch=${iv_ReferenceEpoch}
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "EndEpoch $(date -r ${iv_EndEpoch} "+%S:%M:%H:%d:%m:%Y")"
-
-  bv_RunIsAllowed=${GLB_BC_TRUE}
-  
-  if [ ${iv_StartEpoch} -eq ${iv_EndEpoch} ]
-  then  
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Run is allowed. Out-of-hours limits not set."
-    bv_RunIsAllowed=${GLB_BC_TRUE}
-    
-  else
-    if [ ${GLB_IV_THISSCRIPTSTARTEPOCH} -lt ${iv_EndEpoch} ]
-    then  
-      iv_LastTryEpoch=$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastTryEpoch")
-      if [ -z "${iv_LastTryEpoch}" ]
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Run is allowed. We are out-of-hours and have never run."
-        bv_RunIsAllowed=${GLB_BC_TRUE}
-
-      else
-        if [ ${iv_LastTryEpoch} -lt ${iv_StartEpoch} ]
-        then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Run is allowed. We are out-of-hours and haven't run recently."
-          bv_RunIsAllowed=${GLB_BC_TRUE}
-
-        else
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Run is not allowed. We are out-of-hours but a run has recently happened."
-          bv_RunIsAllowed=${GLB_BC_FALSE}
-
-        fi
-      fi
-    
-    else
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Run is not allowed. We are within working hours."
-      bv_RunIsAllowed=${GLB_BC_FALSE}
-  
-    fi
-  fi
-
-  echo "${bv_RunIsAllowed}"
-}
-
 # ---
 
 case ${GLB_SV_EVENTNAME} in
@@ -1294,10 +1083,7 @@ Sys-PolicyInstall)
   ;;
 
 Sys-Idle)
-  if [ "$(bf_RunIsAllowed)" = "${GLB_BC_TRUE}" ]
-  then
-    bf_RunAction "INSTALL"
-  fi
+  bf_RunAction "INSTALL"
   ;;
   
 Sys-ManualTrigger)

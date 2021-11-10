@@ -194,6 +194,7 @@ nf_LimitSpawns() # <ConfigPlist> <EventName>
   while [ "$(jobs -r | wc -l)" -ge ${sv_maxSpawns} ]
   do
     # We don't want to hog the CPU - so lets sleep a while
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Waiting for $(jobs -r | wc -l) policies triggered by '${GLB_SV_EVENTNAME}' to finish"
     sleep 1
   done
 }
@@ -578,9 +579,9 @@ do
   # Create a list of 'Trigger' process PIDs
   ps -U root -xo "pid, user, command" | grep "${GLB_SV_THISSCRIPTFILEPATH}" | grep -v "grep" | sed "s|^[ ]*||;s| .*||" | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt"
 
-  # Get the PID of the 'Trigger' process with the highest PID
-  iv_HighestTriggerPID=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | tail -n1)
-  if [ ${GLB_IV_THISSCRIPTPID} != ${iv_HighestTriggerPID} ]
+  # Get the PID of the 'Trigger' process with the lowest PID
+  iv_LowestTriggerPID=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | head -n1)
+  if [ ${GLB_IV_THISSCRIPTPID} != ${iv_LowestTriggerPID} ]
   then
     # All other 'Trigger' processes just quit
     break

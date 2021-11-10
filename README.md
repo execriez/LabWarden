@@ -1253,6 +1253,10 @@ If **Action** is **Install** or **Uninstall** then the action will occur during 
 
 If **Action** is set to be **Auto**, then the action will be determined dependent upon whether the policy profile itself is being installed or uninstalled. This happens during the **Sys-PolicyInstall** or **Sys-PolicyUninstall** events.
 
+The optional **MinOS** key defines the minimum OS required for the policy to be actioned.
+
+The optional **MaxOS** key defines the maximum OS supported for the policy to be actioned.
+
 The **ManifestURI** key defines the location of the install/uninstall media.
 
 The ManifestURI protocol identifier can be one of **file://** , **ftp://** , **http://** , **https://** or **smb://** 
@@ -1262,8 +1266,6 @@ Where the protocol identifier is **https://** a connection will be attempted wit
 Where the protocol identifier is **smb://** a connection will be made using the computer account name and password. You should note however that scripting smb: connections will likely fail on MacOS 10.15 and later.
 
 If a **.dmg** is defined, that disk image will be mounted.
-
-The **MinOS** key defines the minimum OS required for the policy to be actioned.
 
 The **Item** array contains a list of media types relevant to the install (or uninstall)
 
@@ -1323,7 +1325,7 @@ If **TryMethod** is undefined, it defaults to the value **Once**.
 
 #### Items of type Executable:
 
-An item of type **Executable** is always assumed to be installed and uninstalled. An attempt to install or uninstall will only occur if the **TryMethod** is set to be **Always** or **Fix**.
+An item of type **Executable** is always assumed to be already installed and uninstalled. As such, an install or uninstall will only happen if the **TryMethod** is set to be **Always** or **Fix**.
 
 Both install and uninstall are actioned by executing the command indicated by the **Filename** key which should be located in **SrcDir** (relative to the **ManifestURI**). If **SrcDir** is undefined, it defaults to the value **"/"**.
   
@@ -2576,6 +2578,16 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.15 - 09-Nov-2021
+
+* Fixed a typo in PolicyDefs.sh that prevented basic auth being tried with computer account credentials when resolving a HTTPS URL. This was noticeable if Sys-SoftwareManifest tried to deploy an install from a secured web address.
+
+* Removed some legacy code from Sys-SoftwareManifest
+
+* Fixed an issue where too many nested triggers could cause the Trigger code to get stuck in an idle loop. Noticeable when an error in a policy caused multiple Sys-Error events.
+
+* Slight modification to RadmindUpdate code
 
 3.2.14 - 06-Nov-2021
 

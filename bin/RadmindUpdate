@@ -238,20 +238,9 @@ nf_showmessage()   # intloglevel strmessage
 
 nf_notifyserver()   # intloglevel strmessage
 {
-  local iv_LogLevel
-  local sv_Message
-  local sv_LogLevel
-  
-  iv_LogLevel=${1}
-  sv_LogText="${2}"
-
-  nf_showmessage "${iv_LogLevel}" "${sv_LogText}"
-
   if test -n "${sv_NotifyURI}"
   then
-    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
-    
-    CURL --http1.1 --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") -d loglevelstr=$(sf_urlencode "${sv_LogLevel}") -d logtextstr=$(sf_urlencode "${sv_LogText}") "${sv_NotifyURI}"
+    CURL --http1.1 --max-time 120 --connect-timeout 10 -s -S -d os=$(sf_urlencode "${sv_SystemVersionStampAsString}") "${sv_NotifyURI}"
     if [ $? != "0" ]
     then
       # Some kind of error occurred
@@ -271,7 +260,9 @@ chmod 755 /private/var/radmind/client
 sv_fsdiffCompareSysPath="/"
 sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
 
-nf_notifyserver ${GLB_IC_MSGLEVELINFO} "Checking server ${sv_RadServer} for transcript changes"
+nf_showmessage ${GLB_IC_MSGLEVELINFO} "Checking server ${sv_RadServer} for transcript changes"
+
+nf_notifyserver
 
 /usr/local/bin/ktcheck 2>&1 -i -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer}
 iv_ErrCode="$?"
@@ -286,12 +277,14 @@ case "${iv_ErrCode}" in
   nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Transcript changes found"
   ;;
 *)
-  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - ktcheck failed (${iv_ErrCode})"
+  nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - ktcheck failed (${iv_ErrCode})"
   exit 99
   ;;
 esac
 
 nf_showmessage ${GLB_IC_MSGLEVELINFO} "Examining the filesystem for differences..."
+
+nf_notifyserver
 
 # run fsdiff, redirecting output to a file.
 rm -f ${sv_fsdiffOutputFilePath}
@@ -320,7 +313,7 @@ case "${iv_ErrCode}" in
     ;;
   *)
     rm -f ${sv_fsdiffOutputFilePath}
-    nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - fsdiff failed (${iv_ErrCode})"
+    nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - fsdiff failed (${iv_ErrCode})"
     exit 99
     ;;
   esac
@@ -342,7 +335,7 @@ then
     if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
     then
       rm -f ${sv_fsdiffOutputFilePath}
-      nf_notifyserver ${GLB_IC_MSGLEVELERR} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
+      nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
       exit 99
     fi
   fi
@@ -352,7 +345,9 @@ fi
 # Apply the changes
 launchctl stop org.cups.cupsd
 
-nf_notifyserver ${GLB_IC_MSGLEVELNOTICE} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+
+nf_notifyserver
 
 /usr/local/bin/lapply 2>&1 ${sv_CaseSwitch} -i -F -% -c${sv_RadCksum} -w${iv_RadAuthLevel} -h${sv_RadServer} ${sv_fsdiffOutputFilePath}
 iv_ErrCode="$?"
@@ -361,21 +356,21 @@ launchctl stop org.cups.cupsd
 
 launchctl start org.cups.cupsd
 
+rm -f /private/var/radmind/client/error.T
 case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  nf_notifyserver ${GLB_IC_MSGLEVELNOTICE} "Apply successful - we should restart."
+  nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Apply successful - we should restart."
+  mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/last.T
   exit 0
   ;;
 1)
-  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Apply failed - no changes made"
-  rm -f /private/var/radmind/client/error.T
+  nf_showmessage ${GLB_IC_MSGLEVELERR} "Apply failed - no changes made"
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 99
   ;;
 2)
-  nf_notifyserver ${GLB_IC_MSGLEVELERR} "Apply failed - changes made"
-  rm -f /private/var/radmind/client/error.T
+  nf_showmessage ${GLB_IC_MSGLEVELERR} "Apply failed - changes made"
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 99
   ;;

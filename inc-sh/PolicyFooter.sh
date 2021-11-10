@@ -17,7 +17,7 @@
 while [ -n "$(jobs -r)" ]
 do
   # We don't want to hog the CPU - so lets sleep a while
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Waiting for sub tasks of '${GLB_SV_POLICYNAME}' to finish"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Waiting for $(jobs -r | wc -l) sub tasks of '${GLB_SV_POLICYNAME}' to finish"
   sleep 1
 done
 

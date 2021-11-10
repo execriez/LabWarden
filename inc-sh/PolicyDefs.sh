@@ -2,7 +2,7 @@
 #
 # Short:    Policy specific routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.7
+# Version:  3.2.15
 # Modified: 30-May-2021
 #
 # Should be included into scripts as follows:
@@ -342,7 +342,7 @@ then
       https)
         # Use basic AUTH passing computer creds if the URL is local and the user is root
         bv_UseAuth=${GLB_BC_FALSE}
-        if test -n "${echo "${sv_FileURI}" | grep -i "^https://[^/]*.${GLB_SV_ADDNSDOMAINNAME}/"}"
+        if test -n "$(echo "${sv_FileURI}" | grep -i '^https:\/\/[^\/]*\.'${GLB_SV_ADDNSDOMAINNAME}'\/')"
         then
           if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
           then
