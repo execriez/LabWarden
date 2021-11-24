@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Home folder redirection
 # Author:   Mark J Swift
-# Version:  3.2.13
-# Modified: 19-Oct-2021
+# Version:  3.2.17
+# Modified: 22-Nov-2021
 #
 # Triggered by the following events:
 #   Usr-AtDesktop   (as user)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.13"
+GLB_SV_CODEVERSION="3.2.17"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -68,7 +68,7 @@ case ${GLB_SV_EVENTNAME} in
 Usr-PolicyInstall|Usr-PolicyUninstall)
   ;;
   
-Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
+Usr-AtDesktop|Usr-Poll|Usr-ManualTrigger)
 
   bv_RebuildDockAndSidebar=${GLB_BC_FALSE}
   bv_ReloadFinder=${GLB_BC_FALSE}
@@ -175,6 +175,8 @@ esac
   
 # ---
 
+      # Release lock
+      GLB_NF_NAMEDLOCKRELEASE "FolderRedir"
     fi
   fi
 fi

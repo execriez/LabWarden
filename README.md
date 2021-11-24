@@ -1245,7 +1245,7 @@ These should be edited and configured to your own needs.
 
 ### Sys-SoftwareManifest
 
-This policy installs and uninstalls software. The policy is called as root and triggered by the **Sys-Idle**, **Sys-PolicyInstall** or **Sys-PolicyUninstall** events.
+This policy installs and uninstalls software. The policy is called as root and triggered by the **Sys-Idle**, **Sys-LoginWindowIdle**, **Sys-PolicyInstall** and **Sys-PolicyUninstall** events.
 
 The **Action** key can be either **Install**, **Uninstall** or **Auto**. If **Action** is undefined, it will default to **Install**
 
@@ -1327,15 +1327,17 @@ If **TryMethod** is undefined, it defaults to the value **Once**.
 
 An item of type **Executable** is always assumed to be already installed and uninstalled. As such, an install or uninstall will only happen if the **TryMethod** is set to be **Always** or **Fix**.
 
+If **Action** is set to **Uninstall**, the command will only run if there are items in the manifest that are still installed.
+
 Both install and uninstall are actioned by executing the command indicated by the **Filename** key which should be located in **SrcDir** (relative to the **ManifestURI**). If **SrcDir** is undefined, it defaults to the value **"/"**.
-  
+
+Executable command line parameters are passed in the **Executable:Args** key.
+
 In the example below, **SrcDir** is undefined, so the **Install.command** will be executed from the root of the location defined by the **ManifestURI**. 
 
 In this case, the **TryMethod** is set to be **Fix**. 
 
 This means that if **Action** is defined as **Install** the command will be only run if there are items in the manifest that have not been installed.
-
-If **Action** is set to **Uninstall**, the command will only run if there are items in the manifest that are still installed.
 
 					<key>Item</key>
 					<array>
@@ -1345,6 +1347,12 @@ If **Action** is set to **Uninstall**, the command will only run if there are it
 							
 							<key>Type</key>
 							<string>Executable</string>
+
+							<key>Executable</key>
+							<dict>
+								<key>Args</key>
+								<string>--action=install</string>
+							</dict>
 
 							<key>TryMethod</key>
 							<string>Fix</string>
@@ -2578,6 +2586,26 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.2.18 - 24-Nov-2021
+
+* Removed a (possible) typo in Sys-SoftwareManifest that added an unwanted addition to the end of an executables command line options
+
+3.2.17 - 22-Nov-2021
+
+* The --fail option is added to the curl commands in the function GLB\_SF\_RESOLVEFILEURITOPATH so that http 404 does not return an html file describing the error.
+
+* Added Sys-LoginWindowIdle to the supported triggers for Sys-SoftwareManifest and Sys-UpdatePackage. You can use one or both in your policy config. This gives the option to only install software when idle at the login screen.
+
+* Sys-UpdatePackage no longer runs at policy install. This is to prevent unexpected system reboots.
+
+* Fixed a bug in policies Usr-CreateHomeFolderAliases and Usr-CreateHomeFolderRedirections where the "FolderRedir" lock was not released.
+
+3.2.16 - 19-Nov-2021
+
+* Added GLB\_SV\_ARCH global var that contains the processor architecture i.e. i386 or arm
+
+* Update to prevent more than one instance of the legacy policy Sys-UpdatePackage running at the same time. This is to prevent packages being installed twice when the policy is first installed. 
 
 3.2.15 - 09-Nov-2021
 

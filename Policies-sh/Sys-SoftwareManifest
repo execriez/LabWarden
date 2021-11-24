@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.2.15
-# Modified: 09-Nov-2021
+# Version:  3.2.18
+# Modified: 24-Nov-2021
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.15"
+GLB_SV_CODEVERSION="3.2.18"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -933,7 +933,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
 
                     # Do a software update
                     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Running ${sv_Action} executable ('${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs})"
-                    eval "'${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs} ${sv_Action}"
+                    eval "'${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs}"
                     sv_Err=$?
                     if [ ${sv_Err} -ne 0 ]
                     then
@@ -1082,7 +1082,7 @@ Sys-PolicyInstall)
   fi
   ;;
 
-Sys-Idle)
+Sys-Idle|Sys-LoginWindowIdle)
   bf_RunAction "INSTALL"
   ;;
   

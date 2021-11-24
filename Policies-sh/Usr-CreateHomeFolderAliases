@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  3.2.13
-# Modified: 19-Oct-2021
+# Version:  3.2.17
+# Modified: 22-Nov-2021
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.13"
+GLB_SV_CODEVERSION="3.2.17"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-CreateHomeFolderRedirections"
@@ -480,6 +480,9 @@ else
 
 case ${GLB_SV_EVENTNAME} in
     
+Usr-PolicyInstall)
+  ;;
+  
 Usr-PolicyUninstall)
   if [ $(GLB_BF_POLICYCONFIGISINSTALLED "Usr-CreateHomeFolderAliases,Usr-CreateHomeFolderRedirections") = ${GLB_BC_FALSE} ]
   then
@@ -487,7 +490,7 @@ Usr-PolicyUninstall)
   fi
   ;;
   
-Usr-PolicyInstall|Usr-ManualTrigger|Usr-AtDesktop|Usr-Poll)
+Usr-AtDesktop|Usr-Poll|Usr-ManualTrigger)
   # config options
 
   # Changed my mind again on naming this folder
@@ -544,6 +547,8 @@ esac
   
 # ---
 
+      # Release lock
+      GLB_NF_NAMEDLOCKRELEASE "FolderRedir"
     fi
   fi
 fi

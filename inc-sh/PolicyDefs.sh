@@ -2,8 +2,8 @@
 #
 # Short:    Policy specific routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.15
-# Modified: 30-May-2021
+# Version:  3.2.17
+# Modified: 22-Nov-2021
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc-sh/PolicyDefs.sh
@@ -331,7 +331,7 @@ then
         ;;
   
       http|ftp)
-        curl --http1.1 --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
+        curl --http1.1 --fail --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "${sv_DstFilePath}"
         if ! test -s "${sv_DstFilePath}"
         then
           # if the file is empty, delete it
@@ -355,9 +355,9 @@ then
           
         if [ "${bv_UseAuth}" = ${GLB_BC_FALSE} ]
         then
-          curl --http1.1 --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "$sv_DstFilePath"
+          curl --http1.1 --fail --max-time 120 --connect-timeout 10 -s -S "${sv_FileURI}" > "${sv_DstFilePath}"
         else
-          curl --http1.1 --max-time 120 --connect-timeout 10 -s -S --anyauth --user ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} "${sv_FileURI}" > "$sv_DstFilePath"
+          curl --http1.1 --fail --max-time 120 --connect-timeout 10 -s -S --anyauth --user ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} "${sv_FileURI}" > "${sv_DstFilePath}"
         fi
         if ! test -s "${sv_DstFilePath}"
         then

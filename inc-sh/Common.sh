@@ -2,7 +2,7 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.13
+# Version:  3.2.16
 # Modified: 06-Nov-2021
 #
 # This include defines some global variables and functions that could be used in any project script.
@@ -26,6 +26,7 @@
 #  GLB_IV_RUNUSERID                       - The user ID of the user that is running this script
 #  GLB_BV_RUNUSERISADMIN                  - Whether the user running this script is an admin (true/false)
 #
+#  GLB_SV_ARCH                            - Processor architecture, i.e. i386 or arm
 #  GLB_SV_MODELIDENTIFIER                 - Model ID, i.e. MacBookPro5,4
 #
 #  GLB_IV_BUILDVERSIONSTAMPASNUMBER       - The build version represented as a number, i.e. 14F1808 translates to 29745664
@@ -1098,17 +1099,21 @@ then
   
   # -- Get some info about the hardware
   
+  GLB_SV_ARCH=$(uname -p)
+  
   GLB_SV_MODELIDENTIFIER=$(system_profiler SPHardwareDataType | grep "Model Identifier" | cut -d":" -f2 | tr -d " ")
 
   # -- Get some info about the OS
 
-  # Last OS X version would probably be 10.255.25 (259Z2047)
+  # Last possible MacOS version is 255.255.255 unsurprisingly
+  # Last possible build number is 2047Z2047z. 
   
   # Calculate BuildVersionStampAsNumber
   
   GLB_SV_BUILDVERSIONSTAMPASSTRING="$(sw_vers -buildVersion)"
   
-  # Split build version (eg 14A379a) into parts (14,A,379,a)
+  # Split build version (eg 14A379a) into parts (14,A,379,a). BuildMajorNum is the Darwin version
+  # Starting 2001, there have been 20 BuildMajorNum in 20 years. So last build could be around the year 4048
   iv_BuildMajorNum=$(echo ${GLB_SV_BUILDVERSIONSTAMPASSTRING} | sed "s|[a-zA-Z][0-9]*||;s|[a-zA-Z]*$||")
   sv_BuildMinorChar=$(echo ${GLB_SV_BUILDVERSIONSTAMPASSTRING} | sed "s|^[0-9]*||;s|[0-9]*[a-zA-Z]*$||")
   iv_BuildRevisionNum=$(echo ${GLB_SV_BUILDVERSIONSTAMPASSTRING} | sed "s|^[0-9]*[a-zA-Z]||;s|[a-zA-Z]*$||")

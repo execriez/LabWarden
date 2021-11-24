@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Update the LabWarden installation to a later version
 # Author:   Mark J Swift
-# Version:  3.2.11
-# Modified: 29-Aug-2021
+# Version:  3.2.17
+# Modified: 10-Nov-2021
 #
 # Triggered by the following events:
 #   Sys-Poll            (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.11"
+GLB_SV_CODEVERSION="3.2.17"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -58,9 +58,21 @@ if_VersionStringToNumber()
 
 # ---
 
+# Grab lock - we only want one instance of this policy running at any time
+if [ $(GLB_BF_NAMEDLOCKGRAB "${GLB_SV_POLICYNAME}") = ${GLB_BC_FALSE} ]
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy aborted. Cannot grab lock."
+else
+
+# ---
+
 case ${GLB_SV_EVENTNAME} in
     
-Sys-Idle|Sys-ManualTrigger|Sys-PolicyInstall)
+Sys-PolicyInstall)
+  # Do nothing
+  ;;
+  
+Sys-Idle|Sys-LoginWindowIdle|Sys-ManualTrigger)
 
   iv_PackageCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Package")"
   for (( iv_PackageIndex=0; iv_PackageIndex<${iv_PackageCount}; iv_PackageIndex++ ))
@@ -161,6 +173,13 @@ Sys-PolicyUninstall)
 
 esac
   
+# ---
+
+# Release lock
+GLB_NF_NAMEDLOCKRELEASE "${GLB_SV_POLICYNAME}"
+
+fi
+
 # ---
 
 # Tidy up
