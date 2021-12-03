@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets up remote access to a workstation
 # Author:   Mark J Swift
-# Version:  3.2.14
-# Modified: 06-Nov-2021
+# Version:  3.2.19
+# Modified: 28-Nov-2021
 #
 # references:
 #  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
@@ -28,7 +28,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.14"
+GLB_SV_CODEVERSION="3.2.19"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -214,7 +214,7 @@ nf_AddDirGroupsToLocalgroups()
 	    iv_err=$?
         if [ ${iv_err} -ne 0 ]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error getting UUID for group '${sv_DirGroupName}'; (${iv_err}) ${sv_err}"
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Error getting UUID for group '${sv_DirGroupName}'; (${iv_err}) ${sv_err}"
           
         else
           sv_DirGroupUUID=${sv_err}
@@ -225,7 +225,7 @@ nf_AddDirGroupsToLocalgroups()
             iv_err=$?
 		    if [ ${iv_err} -ne 0 ]
             then
-		      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error adding group '${sv_DirGroupName}' to ${sv_LocalGroupName}; (${iv_err}) ${sv_err}"
+		      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Error adding group '${sv_DirGroupName}' to ${sv_LocalGroupName}; (${iv_err}) ${sv_err}"
           
 		    else
 		      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Group '${sv_DirGroupName}' added to ${sv_LocalGroupName}"

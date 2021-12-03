@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 28-Aug-2021
+# Version:  3.2.19
+# Modified: 02-Dec-2021
 #
 # Called as follows:    
 #   Trigger <event> [<optionalparam>]
@@ -573,42 +573,29 @@ do
   sleep 1
 done
 
-# If we are root we will always be root
-while [ "${GLB_SV_RUNUSERNAME}" = "root" ]
-do
-  # Create a list of 'Trigger' process PIDs
-  ps -U root -xo "pid, user, command" | grep "${GLB_SV_THISSCRIPTFILEPATH}" | grep -v "grep" | sed "s|^[ ]*||;s| .*||" | sort -u > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt"
+# ---
 
-  # Get the PID of the 'Trigger' process with the lowest PID
-  iv_LowestTriggerPID=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | head -n1)
-  if [ ${GLB_IV_THISSCRIPTPID} != ${iv_LowestTriggerPID} ]
-  then
-    # All other 'Trigger' processes just quit
-    break
-  fi
-
-  # The 'Trigger' process with the highest PID processes all Shutdown and Restart requests
+# Should we shutdown or restart
+if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+then
+  # Count how many 'Trigger' processes are running
+  ps -U root -xo "pid, command" | grep -v "grep" | grep "${GLB_SV_THISSCRIPTFILEPATH}" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt"
   iv_TriggerCount=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
+
+  # Only check for shutdown and restart requests if we are the sole Trigger process
   if [ ${iv_TriggerCount} -eq 1 ]
   then
-    # We only Shutdown or Restart when this is the only 'Trigger' process running
-
     if [ "$(GLB_NF_NAMEDFLAGTEST Restart)" = ${GLB_BC_TRUE} ]
     then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Restarting workstation"
       shutdown -r now
     fi
   
     if [ "$(GLB_NF_NAMEDFLAGTEST Shutdown)" = ${GLB_BC_TRUE} ]
     then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Shutting down workstation"
       shutdown -h now
     fi
-    
-    break
   fi
-
-done
+fi
 
 # ---
 

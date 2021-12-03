@@ -2587,9 +2587,15 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.2.19 - 02-Dec-2021
+
+* Removed unnecessary wait around code from Trigger which fixes idle-loop issues and complexities.
+
+* Dir group errors in policy Sys-LocalAccess are downgraded to a warning, as such errors may simply be because the directory is unavailable (i.e. if working offsite).
+
 3.2.18 - 24-Nov-2021
 
-* Removed a (possible) typo in Sys-SoftwareManifest that added an unwanted addition to the end of an executables command line options
+* Removed a code error in Sys-SoftwareManifest that added an unwanted addition to the end of an executables command line options
 
 3.2.17 - 22-Nov-2021
 
