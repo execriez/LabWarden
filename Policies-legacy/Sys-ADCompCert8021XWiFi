@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
 # Author:   Mark J Swift
-# Version:  3.2.0
-# Modified: 12-Nov-2020
+# Version:  3.2.20
+# Modified: 30-Jan-2022
 #
 # Required for 802.1X authentication
 #
@@ -26,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.0"
+GLB_SV_CODEVERSION="3.2.20"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-dot1xWiFi"
@@ -132,7 +132,7 @@ Sys-NetworkUp|Sys-PolicyInstall)
     sv_EncodedCertCsrFileContents="$(GLB_SF_URLENCODE "$(cat "${sv_CertCsrFilePath}")")"
 
     # Post the Certificate request to the Web Enrollment page 
-    sv_ReqReplyContent="$(curl --connect-timeout 10 -k --ntlm -u ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} -d CertRequest=${sv_EncodedCertCsrFileContents} -d SaveCert=yes -d Mode=newreq -d CertAttrib=CertificateTemplate:"${sv_CertTemplate}" ${sv_CertAuthURL}/certfnsh.asp)"
+    sv_ReqReplyContent="$(curl --http1.1 --connect-timeout 10 -k --ntlm -u ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} -d CertRequest=${sv_EncodedCertCsrFileContents} -d SaveCert=yes -d Mode=newreq -d CertAttrib=CertificateTemplate:"${sv_CertTemplate}" ${sv_CertAuthURL}/certfnsh.asp)"
 
     if test -z "${sv_ReqReplyContent}"
     then
@@ -154,7 +154,7 @@ Sys-NetworkUp|Sys-PolicyInstall)
         sv_PrevCertificateConfigPayloadUUID="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:CertificateConfigPayloadUUID")"
 
         # Pull the computer cert down in PEM format
-        curl --connect-timeout 10 -k -o "${sv_CertPemFilePath}" -A "${sv_BrowserAgent}" --ntlm -u ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} "${sv_CertAuthURL}/certnew.cer?ReqID=${iv_ReqReplyID}&Enc=b64"
+        curl --http1.1 --connect-timeout 10 -k -o "${sv_CertPemFilePath}" -A "${sv_BrowserAgent}" --ntlm -u ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} "${sv_CertAuthURL}/certnew.cer?ReqID=${iv_ReqReplyID}&Enc=b64"
 
         # Get the certificate serial - so we can check for it later in the keychain
         sv_CertSerial=$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -serial | cut -f2 -d=)

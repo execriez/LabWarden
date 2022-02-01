@@ -2,8 +2,8 @@
 #
 # Short:    Common routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.16
-# Modified: 06-Nov-2021
+# Version:  3.2.21
+# Modified: 01-Feb-2021
 #
 # This include defines some global variables and functions that could be used in any project script.
 #
@@ -251,19 +251,21 @@ then
     sv_WakeType=${2}
     iv_SchedEpoch=${3}
   
-    if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168558592 ]
-    then
-      sv_Tag="pmset"
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting the 'owner' in a 'pmset sched' command does not appear to work on MacOS 10.12 and later"
-    fi
-
     iv_NowEpoch=$(date -u "+%s")
   
     if [ ${iv_NowEpoch} -lt ${iv_SchedEpoch} ]
     then
-      # Cancel any existing named schedules
-      GLB_NF_SCHEDULECANCEL "${sv_Tag}" "${sv_WakeType}"
-  
+      if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168558592 ]
+      then
+        sv_Tag="pmset"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting the 'owner' in a 'pmset sched' command does not appear to work on MacOS 10.12 and later"
+
+      else
+        # Cancel any existing named schedules
+        GLB_NF_SCHEDULECANCEL "${sv_Tag}" "${sv_WakeType}"
+
+      fi
+
       sv_SchedLine=$(date -r ${iv_SchedEpoch} "+%m/%d/%y %H:%M:%S")
       pmset schedule ${sv_WakeType} "${sv_SchedLine}" "${sv_Tag}"
 

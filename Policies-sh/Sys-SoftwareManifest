@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.2.18
-# Modified: 24-Nov-2021
+# Version:  3.2.20
+# Modified: 26-Jan-2022
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.18"
+GLB_SV_CODEVERSION="3.2.20"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -985,6 +985,14 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                       then
                         sv_ItemMode="og-w"
                       fi
+
+                      if [ ! -d "${sv_ItemDstDir}" ]
+                      then
+                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Creating destination dir '${sv_ItemDstDir}'"
+                        # At some point, maybe think about setting permissions according to owner/group/mode above
+                        mkdir -p "${sv_ItemDstDir}"
+                      fi
+
                       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: ${sv_Action}ing '${sv_ItemType}' '${sv_ItemDstPath}'"
 
 #GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "cp -pR ${sv_ManifestSrcPath}${sv_ItemSrcPath} ${sv_ItemDstDir}"

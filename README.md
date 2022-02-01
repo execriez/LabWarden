@@ -2587,6 +2587,16 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.2.21 - 01-Feb-2022
+
+* Fix in GLB_NF_SCHEDULE4EPOCH in Common.sh. The code that removed redundant schedules meant that only one schedule could be active. The function no longer tries to tidy up redundant schedules. 
+
+3.2.20 - 26-Jan-2022
+
+* Fix for Sys-SoftwareManifest "file copy" installations, for when the destination path does not exist.
+
+* Fix for Sys-UsageStats for when the system clock defaults. Previously if the system time pre-dated the last audit epoch, usage stats could be corrupted displaying negative values.
+
 3.2.19 - 02-Dec-2021
 
 * Removed unnecessary wait around code from Trigger which fixes idle-loop issues and complexities.
