@@ -1260,7 +1260,7 @@ These should be edited and configured to your own needs.
 
 ### Sys-SoftwareManifest
 
-This policy installs and uninstalls software. The policy is called as root and triggered by the **Sys-Idle**, **Sys-LoginWindowIdle**, **Sys-PolicyInstall** and **Sys-PolicyUninstall** events.
+This policy installs and uninstalls software. The policy is called as root and triggered by the **Sys-PolicyInstall** and **Sys-PolicyUninstall** events, and optionally triggered by the **Sys-Poll**, and **Sys-Idle** events.
 
 The **Action** key can be either **Install**, **Uninstall** or **Auto**. If **Action** is undefined, it will default to **Install**
 
@@ -2598,6 +2598,12 @@ LabWarden includes code from the following sources:
 * [BaddMann](https://www.jamf.com/jamf-nation/discussions/9311/network-port-mapping "BaddMann") - tcpdump command to list CDP info, I'm only guessing that this is the original listing 
 
 ## History
+
+3.3.1 - 23-May-2022
+
+* Fix in 'ManagedPrefs' utility for case where you uninstall the last managed pref, leaving no managed prefs file. 
+
+* Added the 'Sys-Poll' trigger as an option in the 'Sys-SoftwareManifest' policy. 
 
 3.3.0 - 22-May-2022
 

@@ -2,11 +2,12 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.3.0
+# Version:  3.3.1
 # Modified: 22-May-2022
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
+#   Sys-Poll           (as root)
 #   Sys-Idle           (as root)
 #
 # Called as follows:    
@@ -25,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.1"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -1146,7 +1147,7 @@ Sys-PolicyInstall)
   # bf_RunAction "INSTALL"
   ;;
 
-Sys-Idle|Sys-LoginWindowIdle)
+Sys-Poll|Sys-Idle|Sys-LoginWindowIdle)
   bf_RunAction "INSTALL"
   ;;
   

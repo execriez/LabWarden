@@ -2,8 +2,8 @@
 #
 # Short:    Utility Script - Update configs from installed mobileconfigs
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.1
+# Modified: 23-May-2022
 #
 # Called as follows:    
 #   ManagedPrefs [-list|-update]
@@ -65,7 +65,7 @@ esac
 
 # ---
 
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.1"
 
 # ---
 
@@ -215,9 +215,6 @@ case ${sv_CommandOption} in
 
     # --- now strip the configs from the installed mobileconfigs
   
-    if [ -e "${sv_ManagedPrefsFilePath}" ]
-    then
-
     sv_ConfigTmpDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/Config"
     mkdir -p "${sv_ConfigTmpDirPath}"
 
@@ -229,11 +226,13 @@ case ${sv_CommandOption} in
   
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Exporting Managed prefs"
 
-
       # We will only exit when we are satisfied we have a stable export of the current managed prefs
       while [ 1 -eq 1 ]
       do
         
+        if [ -e "${sv_ManagedPrefsFilePath}" ]
+        then
+
         # Wait until there hasn't been a change to the managed pref file for a short time
         while [ 1 -eq 1 ]
         do
@@ -252,6 +251,8 @@ case ${sv_CommandOption} in
           
           sleep 1
         done
+        
+        fi
 
         # Export the all the managed prefs into a file
         if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
@@ -543,8 +544,6 @@ case ${sv_CommandOption} in
       fi
     done
 
-    fi
-    
     # ---
 
     # Release lock
