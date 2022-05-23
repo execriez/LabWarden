@@ -212,26 +212,6 @@ case ${sv_CommandOption} in
     # the location of the managed prefs file
     sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
 
-    if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
-    then
-
-      # make sure the managed prefs directory exists
-      if ! test -e "/Library/Managed Preferences"
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating folder '/Library/Managed Preferences'"
-        mkdir -p "/Library/Managed Preferences"
-        chmod 755 "/Library/Managed Preferences"
-      fi
-      
-      # make sure the managed prefs files exists
-      if [ ! -e "${sv_ManagedPrefsFilePath}" ]
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating empty '${sv_ManagedPrefsFilePath}'"
-        /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
-        chmod 644 "${sv_ManagedPrefsFilePath}"
-      fi
-         
-    fi
 
     # --- now strip the configs from the installed mobileconfigs
   
