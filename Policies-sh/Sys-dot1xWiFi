@@ -2,11 +2,15 @@
 #
 # Short:    Sys Policy script - Requests and installs a computer certificate from a certificate authority server, then sets up Wi-Fi for 802.1X
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 24-Aug-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
-# Required for 802.1X authentication
+# Required for 802.1X wifi authentication
+# This policy builds then installs a wifi enrolment mobileconfig.
 #
+# On MacOS 11 and later the policy should be seen as legacy, as installing mobileconfigs administratively via a script is not allowed.
+# On those systems, the policy builds the config but leaves it for the admin to install it manually (see logs).
+# 
 # Triggered by the following events:
 #   Sys-NetworkUp (as root)
 #
@@ -26,7 +30,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.8"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -36,15 +40,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
-
-# ---
-
-if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 184549376 ]
-then
-  # Exit if MacOS is version 11.0 or later
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy aborted - Installing mobileconfigs administratively is not supported in MacOS 11 and later"
-else
 
 # ---
 
@@ -72,43 +67,60 @@ Sys-NetworkUp|Sys-PolicyInstall)
   # Get the Wi-Fi proxy options
   sv_ProxyType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ProxyType")"
 
-  bv_RenewComputerCert=${GLB_BC_TRUE}
+  # We are storing this temporary mobileconfig in a permanent location
+  # as we may keep it to install manually if we are not allowed to install it
+  sv_MobileConfigFilePath="$(dirname ${GLB_SV_CONFIGFILEPATH})/${GLB_SV_CONFIGUUID}-${sv_SSIDSTR}.mobileconfig"
 
-  sv_CertSerial="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:CertSerial")"
-  if test -n "${sv_CertSerial}"
+  # If the MacOS version is earlier than 11.0, delete any old wifi enrolment files
+  if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -lt 184549376 ]
   then
-    sv_CertPemDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/Certs"
-    mkdir -p ${sv_CertPemDirPath}
+    rm -f "${sv_MobileConfigFilePath}"
+  fi
 
-    # Read all Certs with the name of this hostname into a Certs directory
-    /usr/bin/security find-certificate -a -c "${GLB_SV_ADCOMPUTERNAME}" -p /Library/Keychains/System.keychain | awk 'dosplit==1{n++;dosplit=0} /-----END CERTIFICATE-----/ {dosplit=1} {print > ("'${sv_CertPemDirPath}/Cert'-" n ".pem")}'
+  if [ -e "${sv_MobileConfigFilePath}" ]
+  then
+    # If the wifi enrolment file exists we must be on MacOS version 11.0 or later, and not allowed to administratively install the mobileconfig 
+    bv_RenewComputerCert=${GLB_BC_FALSE}
 
-    while read sv_CertPemFilePath
-    do
-      sv_ThisCertSerial=$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -serial | cut -f2 -d=)
-      if [ "${sv_ThisCertSerial}" = "${sv_CertSerial}" ]
-      then
-        iv_CertStartEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -startdate | cut -f2 -d=)" "+%s")
-        iv_CertEndEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -enddate | cut -f2 -d=)" "+%s")
+  else
+    bv_RenewComputerCert=${GLB_BC_TRUE}
 
-        iv_RenewCertBeforeDays="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RenewCertBeforeDays")"
+    sv_CertSerial="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:CertSerial")"
+    if test -n "${sv_CertSerial}"
+    then
+      sv_CertPemDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/Certs"
+      mkdir -p ${sv_CertPemDirPath}
 
-        if [ $((${iv_CertEndEpoch}-(${iv_RenewCertBeforeDays}*24*60*60))) -gt ${GLB_IV_THISSCRIPTSTARTEPOCH} ]
+      # Read all Certs with the name of this hostname into a Certs directory
+      /usr/bin/security find-certificate -a -c "${GLB_SV_ADCOMPUTERNAME}" -p /Library/Keychains/System.keychain | awk 'dosplit==1{n++;dosplit=0} /-----END CERTIFICATE-----/ {dosplit=1} {print > ("'${sv_CertPemDirPath}/Cert'-" n ".pem")}'
+
+      while read sv_CertPemFilePath
+      do
+        sv_ThisCertSerial=$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -serial | cut -f2 -d=)
+        if [ "${sv_ThisCertSerial}" = "${sv_CertSerial}" ]
         then
-          # Cert hasn't expired yet
-          iv_RevokeCertBeforeEpoch="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RevokeCertBeforeEpoch")"
+          iv_CertStartEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -startdate | cut -f2 -d=)" "+%s")
+          iv_CertEndEpoch=$(date -j -f "%b %d %T %Y %Z" "$(cat "${sv_CertPemFilePath}" | /usr/bin/openssl x509 -noout -enddate | cut -f2 -d=)" "+%s")
 
-          if [ ${iv_CertStartEpoch} -ge ${iv_RevokeCertBeforeEpoch} ]
+          iv_RenewCertBeforeDays="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RenewCertBeforeDays")"
+
+          if [ $((${iv_CertEndEpoch}-(${iv_RenewCertBeforeDays}*24*60*60))) -gt ${GLB_IV_THISSCRIPTSTARTEPOCH} ]
           then
-            # Cert hasn't been revoked
-            bv_RenewComputerCert=${GLB_BC_FALSE}
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Computer certificate is still valid"
-           fi
+            # Cert hasn't expired yet
+            iv_RevokeCertBeforeEpoch="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:RevokeCertBeforeEpoch")"
+
+            if [ ${iv_CertStartEpoch} -ge ${iv_RevokeCertBeforeEpoch} ]
+            then
+              # Cert hasn't been revoked
+              bv_RenewComputerCert=${GLB_BC_FALSE}
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Computer certificate is still valid"
+             fi
+          fi
+          break
         fi
-        break
-      fi
-    done < <(find ${sv_CertPemDirPath} -iname "*.pem")
+      done < <(find ${sv_CertPemDirPath} -iname "*.pem")
     
+    fi
   fi
   
   if [ "${bv_RenewComputerCert}" = ${GLB_BC_TRUE} ]
@@ -128,15 +140,13 @@ Sys-NetworkUp|Sys-PolicyInstall)
     sv_CertPemFilePath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/${sv_CertPayloadUUID}.pem"
     sv_CertPk12FilePath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/${sv_CertPayloadUUID}.p12"
     
-    sv_MobileConfigFilePath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/${sv_ConfigPayloadUUID}.mobileconfig"
-
     # Generate a CSR file
     /usr/bin/openssl req -new -batch -newkey rsa:2048 -nodes -subj "/" -outform PEM -keyout "${iv_CertKeyFilePath}" -out "${sv_CertCsrFilePath}"
 
     # URL encode the CSR
     sv_EncodedCertCsrFileContents="$(GLB_SF_URLENCODE "$(cat "${sv_CertCsrFilePath}")")"
 
-    # Post the Certificate request to the Web Enrollment page 
+    # Post the Certificate request to the Web Enrolment page 
     sv_ReqReplyContent="$(curl --http1.1 --connect-timeout 10 -k --ntlm -u ${GLB_SV_ADTRUSTACCOUNTNAME}:${GLB_SV_ADTRUSTACCOUNTPASSWORD} -d CertRequest=${sv_EncodedCertCsrFileContents} -d SaveCert=yes -d Mode=newreq -d CertAttrib=CertificateTemplate:"${sv_CertTemplate}" ${sv_CertServURL}/certfnsh.asp)"
 
     if test -z "${sv_ReqReplyContent}"
@@ -266,16 +276,24 @@ HEREDOC
         # Insert the pkcs12 file into the mobileconfig
         /usr/libexec/PlistBuddy -c "Import PayloadContent:0:PayloadContent ${sv_CertPk12FilePath}" "${sv_MobileConfigFilePath}"
 
-        if [ -n "${sv_PrevCertificateConfigPayloadUUID}" ]
-        then
-          # Remove any previous payload
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing old certificate payload"
-          profiles >/dev/null 2>&1 -R -p "${sv_PrevCertificateConfigPayloadUUID}"
-        fi
-
         # Install the new mobileconfig
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing new certificate payload"
-        profiles -I -F "${sv_MobileConfigFilePath}"
+        if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 184549376 ]
+        then
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Administrative Installation of '${sv_MobileConfigFilePath}' is not supported in MacOS 11 and later. You should install manually."
+
+        else
+          if [ -n "${sv_PrevCertificateConfigPayloadUUID}" ]
+          then
+            # Remove any previous payload
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing old certificate payload"
+            profiles >/dev/null 2>&1 -R -p "${sv_PrevCertificateConfigPayloadUUID}"
+          fi
+
+          # Install the new mobileconfig
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing new certificate payload"
+          profiles -I -F "${sv_MobileConfigFilePath}"
+          rm -f "${sv_MobileConfigFilePath}"
+        fi
         
         GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:CertificateConfigPayloadUUID" "${sv_ConfigPayloadUUID}"
       fi
@@ -290,8 +308,15 @@ Sys-PolicyUninstall)
   if [ -n "${sv_CertificateConfigPayloadUUID}" ]
   then
     # Remove any previous payload
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing old certificate payload"
-    profiles >/dev/null 2>&1 -R -p "${sv_CertificateConfigPayloadUUID}"
+    if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 184549376 ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Adding and removing mobileconfigs administratively is not supported in MacOS 11 and later"
+
+    else
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing old certificate payload"
+      profiles >/dev/null 2>&1 -R -p "${sv_CertificateConfigPayloadUUID}"
+      
+    fi
   fi
   ;;
 
@@ -304,10 +329,6 @@ Sys-PolicyInstall)
   ;;
 
 esac
-
-# ---
-
-fi
 
 # ---
 

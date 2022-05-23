@@ -2,14 +2,42 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  3.2.19
-# Modified: 02-Dec-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called as follows:    
 #   Trigger <event> [<optionalparam>]
 #
 # Handles LabWarden events:
-
+#
+# Requires BaseDefs
+#  GLB_BC_FALSE
+#  GLB_BC_TRUE
+#  GLB_IC_MSGLEVELDEBUG
+#  GLB_IC_MSGLEVELERR
+#  GLB_IC_MSGLEVELINFO
+#  GLB_IC_MSGLEVELNOTICE
+#  GLB_IC_MSGLEVELWARN
+#  GLB_NF_LOGMESSAGE
+#  GLB_NF_SHOWNOTIFICATION
+#  GLB_SC_PROJECTVERSION
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTFILEPATH
+#  GLB_SV_THISSCRIPTTEMPDIRPATH
+#
+#  GLB_BF_NAMEDLOCKGRAB
+#  GLB_IF_GETPLISTARRAYSIZE
+#  GLB_NF_NAMEDFLAGTEST
+#  GLB_NF_NAMEDLOCKRELEASE
+#  GLB_NF_SETPLISTPROPERTY
+#  GLB_SF_GETPLISTPROPERTY
+#  GLB_SF_GETDIRECTORYOBJECTATTRVALUE
+#
+# Requires CoreDefs
+#  GLB_SV_COMPUTERCONFIGDIRPATH
+#  GLB_SV_RUNNINGCONFIGDIRPATH
+#
 # ---
 
 # The code version on the Trigger routine always matches the project version
@@ -63,6 +91,23 @@ fi
 
 # ---
 
+# Include the Core Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+
+  # Exit if something went wrong unexpectedly
+  if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
+  then
+    echo >&2 "Something unexpected happened - '${0}' COREDEFS"
+    exit 90
+  fi
+fi
+
+# By the time we get here, quite a few global variables have been set up.
+
+# ---
+
 # Get event type - Sys, Usr or App
 sv_EventType=$(echo "${GLB_SV_EVENTNAME}" | sed "s|-.*||")
 
@@ -73,7 +118,8 @@ Usr|App)
   then
     exit 0
   fi
-  GLB_SV_CONSOLEUSERNAME="${GLB_SV_RUNUSERNAME}"
+  sv_ConsoleUserName="${GLB_SV_RUNUSERNAME}"
+  sv_ManagedPrefsFilePath=~/"Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
   ;;
 
 Sys)
@@ -81,6 +127,8 @@ Sys)
   then
     exit 0
   fi
+  sv_ConsoleUserName=""
+  sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
   ;;
   
 esac
@@ -91,8 +139,8 @@ esac
 case ${GLB_SV_EVENTNAME} in
 
 Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
-  GLB_SV_CONSOLEUSERNAME="${GLB_SV_OPTIONALPARAM}"
-  if [ -z "${GLB_SV_CONSOLEUSERNAME}" ]
+  sv_ConsoleUserName="${GLB_SV_OPTIONALPARAM}"
+  if [ -z "${sv_ConsoleUserName}" ]
   then
     exit 0
   fi
@@ -100,25 +148,30 @@ Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login
   
 esac
 
-# ---
+# -- Begin Function Definition --
 
-# Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
-then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+sf_PolicyExeFilePath() # <PolicyName> - Return path to the policy executable given the PolicyName
+{
+  local sv_PolicyName
+  local sv_PolicyFilePath
+  local sv_PolicySearchPath
+  local sv_PolicyPath
+    
+  sv_PolicyName="${1}"
+    
+  sv_PolicySearchPath="Policies-custom,Policies-legacy,Policies-sh"
+  while read sv_PolicyPath
+  do
+    sv_PolicyFilePath="${GLB_SV_PROJECTDIRPATH}"/${sv_PolicyPath}/${sv_PolicyName}
+    if [ -e "${sv_PolicyFilePath}" ]
+    then
+      break
+    fi
+    sv_PolicyFilePath=""  
+  done < <(echo ${sv_PolicySearchPath}| tr "," "\n")
 
-  # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
-  then
-    echo >&2 "Something unexpected happened"
-    exit 90
-  fi
-fi
-
-# By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
-
-# ---
+  echo "${sv_PolicyFilePath}"
+}
 
 # List policies in config that are triggered by the event
 nf_ShowTriggeredList() # <ConfigPlist> <EventName>
@@ -200,12 +253,176 @@ nf_LimitSpawns() # <ConfigPlist> <EventName>
 }
 
 # ---
-
+  
 if test -z "${GLB_SV_TARGETPOLICYNAME}"
 then
   GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' triggered"
 else
   GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Targeted event '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' triggered"
+fi
+
+# -- Get some info about the logged in user
+
+if test -n "${sv_ConsoleUserName}"
+then
+
+  # Get user ID
+  iv_ConsoleUserID="$(id -u ${sv_ConsoleUserName})"
+  
+  # Check if user is an admin (returns 'true' or 'false')
+  if [ "$(dseditgroup -o checkmember -m "${sv_ConsoleUserName}" -n . admin | cut -d" " -f1)" = "yes" ]
+  then
+    bv_ConsoleUserIsAdmin=${GLB_BC_TRUE}
+  else
+    bv_ConsoleUserIsAdmin=${GLB_BC_FALSE}
+  fi
+  
+  # Where would the user home normally be if it were local
+  if [ "${sv_ConsoleUserName}" = "root" ]
+  then
+    sv_ConsoleUserLocalHomeDirPath="/var/root"
+  
+  else
+    sv_ConsoleUserLocalHomeDirPath="/Users/${sv_ConsoleUserName}"
+      
+  fi
+  
+  # Get the User Home directory
+  sv_ConsoleUserHomeDirPath=$(eval echo ~${sv_ConsoleUserName})
+    
+  # Make sure that we got a valid home
+  if test -n "$(echo ${sv_ConsoleUserHomeDirPath} | grep '~')"
+  then
+    sv_ConsoleUserHomeDirPath="/Users/${sv_ConsoleUserName}"
+  fi
+  
+  # Decide whether the user home is on the local drive
+  if test -n "$(stat -f "%Sd" "${sv_ConsoleUserHomeDirPath}" | grep "^disk")"
+  then
+    bv_ConsoleUserHomeIsLocal=${GLB_BC_TRUE}
+    sv_ConsoleUserLocalHomeDirPath="${sv_ConsoleUserHomeDirPath}"
+      
+  else
+    bv_ConsoleUserHomeIsLocal=${GLB_BC_FALSE}
+      
+  fi
+  
+  # Check if user is a local account (returns 'true' or 'false')
+  if [ "$(dseditgroup -o checkmember -m "${sv_ConsoleUserName}" -n . localaccounts | cut -d" " -f1)" = "yes" ]
+  then
+    bv_ConsoleUserIsLocal=${GLB_BC_TRUE}
+  else
+    bv_ConsoleUserIsLocal=${GLB_BC_FALSE}
+  fi
+  
+  #  Get the local accounts 'OriginalHomeDirectory' property
+  sv_Value=$(GLB_SF_GETDIRECTORYOBJECTATTRVALUE "/Local/Default/Users" "${sv_ConsoleUserName}" "OriginalHomeDirectory")
+  if [ "${sv_Value}" = "ERROR" ]
+  then
+    sv_Value=""
+  fi
+
+  if test -n "${sv_Value}"
+  then
+    bv_ConsoleUserIsMobile=${GLB_BC_TRUE}
+  else
+    bv_ConsoleUserIsMobile=${GLB_BC_FALSE}
+  fi
+  
+  # Get the network defined home directory
+  if [ "${bv_ConsoleUserIsLocal}" = ${GLB_BC_FALSE} ]
+  then
+    # - Network account -
+  
+    # Get UserHomeNetworkURI 
+    # eg: smb://yourserver.com/staff/t/testuser
+    # or  smb://yourserver.com/Data/Student%20Homes/Active/teststudent
+  
+    #  Get 'SMBHome' property
+    sv_Value=$(GLB_SF_GETDIRECTORYOBJECTATTRVALUE "/Search/Users" "${sv_ConsoleUserName}" "SMBHome")
+    if [ "${sv_Value}" = "ERROR" ]
+    then
+      sv_Value=""
+    fi
+      
+    # We are only interested in one entry
+    sv_Value=$(echo ${sv_Value} | head -n1)
+      
+    if [ -n "${sv_Value}" ]
+    then
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "SMBHome ${sv_Value}"
+      # Check for characters that we may not have considered
+      sv_CheckString=$(GLB_SF_URLENCODE "${sv_Value}" | sed 's|%5c|\\|g;s|%20| |g')
+      if [ "${sv_CheckString}" != "${sv_Value}" ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Unexpected characters in SMBHome property ${sv_Value}"
+      fi
+      # Prepend the preferred protocol
+      sv_PropertyString="Network protocol to be used";sv_protocol=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||")
+      if test -z "${sv_protocol}"
+      then
+        sv_protocol="smb"
+      fi
+      sv_ConsoleUserShareURI=$(GLB_SF_URLENCODE "${sv_Value}" | sed "s|%5c|/|g"| sed "s|^[/]*|${sv_protocol}://|")
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
+
+    else
+      #  Get 'HomeDirectory' property
+      sv_Value=$(GLB_SF_GETDIRECTORYOBJECTATTRVALUE "/Search/Users" "${sv_ConsoleUserName}" "HomeDirectory")
+      if [ "${sv_Value}" = "ERROR" ]
+      then
+        sv_Value=""
+      fi
+      
+      # We are only interested in one entry
+      sv_Value=$(echo ${sv_Value} | head -n1)
+      
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "HomeDirectory ${sv_Value}"
+      sv_ConsoleUserShareURI=$(echo "${sv_Value}" | sed "s|<[^>]*>||g;s|/$||;s|^[^:]*:||")
+      if test -z "${sv_ConsoleUserShareURI}"
+      then
+        #  Get 'OriginalHomeDirectory' property
+        sv_Value=$(GLB_SF_GETDIRECTORYOBJECTATTRVALUE "/Search/Users" "${sv_ConsoleUserName}" "OriginalHomeDirectory")
+        if [ "${sv_Value}" = "ERROR" ]
+        then
+          sv_Value=""
+        fi
+      
+        # We are only interested in one entry
+        sv_Value=$(echo ${sv_Value} | head -n1)
+      
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "OriginalHomeDirectory ${sv_Value}"
+        sv_ConsoleUserShareURI=$(echo "${sv_Value}" | sed "s|<[^>]*>||g;s|/$||;s|^[^:]*:||")    
+      fi  
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
+    fi
+    
+    if test -n "${sv_ConsoleUserShareURI}"
+    then
+      # Get full path to the network HomeDirectory 
+      # ie: /Volumes/staff/t/testuser
+      # or  /Volumes/Data/Student Homes/Active_Q2/pal/teststudpal
+      while read sv_MountEntry
+      do
+        sv_MountPoint=$(echo ${sv_MountEntry} | sed -E 's|(^.*) on (.*) (\(.*\))|\2|' | grep -v '^/$')
+        sv_MountShare=$(echo ${sv_MountEntry} | sed -E 's|(^.*) on (.*) (\(.*\))|\1|' | sed 's|'${sv_ConsoleUserName}'@||')
+        if test -n "$(echo "${sv_ConsoleUserShareURI}" | sed "s|^[^:]*:||" | grep -E "^${sv_MountShare}")"
+        then
+          sv_ConsoleUserHomeNetworkDirPath=$(GLB_SF_URLDECODE "${sv_MountPoint}$(echo ${sv_ConsoleUserShareURI} | sed "s|^[^:]*:||;s|^"${sv_MountShare}"||")")
+          if test -e "${sv_ConsoleUserHomeNetworkDirPath}"
+          then
+            sv_ConsoleUserShareDirPath="${sv_ConsoleUserHomeNetworkDirPath}"
+            break
+          fi
+        fi
+      done < <(mount | grep "//${sv_ConsoleUserName}@")
+      
+    fi
+  fi
+    
+  sv_ConsoleUserInfo="${sv_ConsoleUserName};${iv_ConsoleUserID};${bv_ConsoleUserIsAdmin};${bv_ConsoleUserIsLocal};${bv_ConsoleUserIsMobile};${bv_ConsoleUserHomeIsLocal};${sv_ConsoleUserHomeDirPath};${sv_ConsoleUserLocalHomeDirPath};${sv_ConsoleUserShareURI};${sv_ConsoleUserShareDirPath}"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "sv_ConsoleUserInfo ${sv_ConsoleUserInfo}"
+
 fi
 
 # ---
@@ -231,6 +448,20 @@ then
 
     mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Config"
     mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Prefs"
+
+    # Make sure profile changes are being watched
+    if [ -e "${sv_ManagedPrefsFilePath}" ]
+    then
+      if [ -z "$(launchctl list | grep "${GLB_SC_PROJECTSIGNATURE}.${sv_EventType}-ManagedPrefs" )" ]
+      then
+        if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+        then
+          launchctl load /Library/LaunchDaemons/"${GLB_SC_PROJECTSIGNATURE}.${sv_EventType}-ManagedPrefs.plist"
+        else
+          launchctl load /Library/LaunchAgents/"${GLB_SC_PROJECTSIGNATURE}.${sv_EventType}-ManagedPrefs.plist"
+        fi
+      fi
+    fi
 
     # Make sure policies have been processed for event info
     if [ ! -f "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/LabWarden-KnownEvents.plist" ]
@@ -265,15 +496,15 @@ then
           # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
           sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
 
-          sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+          sv_PolicyExeFilePath=$(sf_PolicyExeFilePath "${sv_PolicyName}")
           if test -n "${sv_PolicyExeFilePath}"
           then
             # Run script in background, but wait if too many already running
             nf_LimitSpawns
 
             # Install policy
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyInstall' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
-            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyInstall" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyInstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyInstall" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
 
           fi
         fi
@@ -319,15 +550,15 @@ then
           # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
           sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
 
-          sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+          sv_PolicyExeFilePath=$(sf_PolicyExeFilePath "${sv_PolicyName}")
           if test -n "${sv_PolicyExeFilePath}"
           then
             # Run script in background, but wait if too many already running
             nf_LimitSpawns
 
             # Uninstall policy
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyUninstall' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
-            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyUninstall" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyUninstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyUninstall" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
             
           fi
         fi
@@ -518,7 +749,7 @@ fi
 
           if [ "${bv_ExecutePolicy}" = ${GLB_BC_TRUE} ]
           then
-            sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
+            sv_PolicyExeFilePath=$(sf_PolicyExeFilePath "${sv_PolicyName}")
             if test -z "${sv_PolicyExeFilePath}"
             then
               GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - named policy not found"
@@ -533,7 +764,7 @@ fi
 # y sv_PolicyName
 # y GLB_SV_EVENTNAME
 # y GLB_SV_OPTIONALPARAM
-# y GLB_SV_CONSOLEUSERINFO
+# y sv_ConsoleUserInfo
 # y sv_PolicyConfigUUID
 # y sv_PolicyConfigFilePath 
 # y sv_PolicyPrefsFilePath
@@ -543,8 +774,8 @@ fi
 
 
                 # Run policy against event
-                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
-                "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${GLB_SV_EVENTNAME}" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+                "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${GLB_SV_EVENTNAME}" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
 
                 iv_NowEpoch=$(date -u "+%s")
                 GLB_NF_SETPLISTPROPERTY "${sv_PolicyPrefsFilePath}" ":${sv_PolicyConfigUUID}:Prefs:${GLB_SV_EVENTNAME}:LastRunEpoch" "${iv_NowEpoch}"

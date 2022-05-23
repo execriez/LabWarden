@@ -2,8 +2,8 @@
 #
 # Short:    Do something when the active Console User switches
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called by ConsoleUserWarden as follows:    
 #   ConsoleUserWarden-UserSwich <ActiveConsoleUser> <PreviousConsoleUser>

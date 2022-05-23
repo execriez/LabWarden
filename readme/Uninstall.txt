@@ -1,8 +1,10 @@
 UNINSTALLING:
 
-To uninstall, locate then double-click the "LabWarden-Uninstaller.pkg" installer package that can be found in the "SupportFiles" directory.
+Open the Terminal app, and download the LabWarden.pkg installer to your desktop by typing the following command. 
 
-Alternatively, uninstall by running the package from the following link: https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden-Uninstaller.pkg
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden-Uninstaller.pkg --output ~/Desktop/LabWarden-Uninstaller.pkg
+
+Double-click the downloaded package in order to uninstall LabWarden
 
 The uninstaller will uninstall the following files and directories:
 
@@ -23,5 +25,6 @@ The uninstaller will uninstall the following files and directories:
 /Library/LaunchDaemons/com.github.execriez.labwarden.Sys-Poll.plist
 
 /usr/LabWarden/
+
 After you uninstall, you should reboot.
 

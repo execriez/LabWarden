@@ -2,8 +2,8 @@
 #
 # Short:    Policy specific routines (shell)
 # Author:   Mark J Swift
-# Version:  3.2.17
-# Modified: 22-Nov-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Should be included into scripts as follows:
 #   . /usr/local/LabWarden/inc-sh/PolicyDefs.sh
@@ -40,26 +40,40 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-if [ -z "${GLB_BC_PLCY_ISINCLUDED}" ]
+if [ -z "${GLB_BC_PLCYDEFS_INCLUDED}" ]
 then
 
   # ---
   
-  # Include the Common library (if it is not already loaded)
-  if [ -z "${GLB_BC_COMM_ISINCLUDED}" ]
+  # Include the Base Defs library (if it is not already loaded)
+  if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
   then
-    . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Common.sh
+    . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh
 
     # Exit if something went wrong unexpectedly
-    if [ -z "${GLB_BC_COMM_ISINCLUDED}" ]
+    if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
     then
-      echo >&2 "Something unexpected happened"
+      echo >&2 "Something unexpected happened - '${0}' BASEDEFS"
+      exit 90
+    fi
+  fi
+
+  # ---
+  
+  # Include the constants library (if it is not already loaded)
+  if [ -z "${GLB_BC_CORECONST_INCLUDED}" ]
+  then
+    . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreConst.sh
+
+    # Exit if something went wrong unexpectedly
+    if test -z "${GLB_BC_CORECONST_INCLUDED}"
+    then
+      echo >&2 "Something unexpected happened - '${0}' COREDEFS"
       exit 90
     fi
   fi
 
   # By the time we get here, quite a few global variables have been set up.
-  # Look at 'inc/Common.sh' for a complete list.
 
   # -- Begin Function Definition --
   
@@ -550,10 +564,324 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} 'cp -pR "'"${sv_SrcMountDirPath}/"'" "'
     echo "${sv_DstFilePath}"
   }
 
+  # set info lines on loginwindow and remote desktop computerinfo
+  GLB_NF_SETLOGINWINDOWLINE() #index text
+  {
+    local iv_InfoIndex
+    local sv_InfoText
+    local sv_LoginwindowText
+    local iv_LoopCount
+    local sv_Text
+  
+    iv_InfoIndex=${1}
+    sv_InfoText="${2}"
+  
+    if [ "$(GLB_BF_NAMEDLOCKGRAB "LoginwindowText" 10 ${GLB_BC_TRUE})" = ${GLB_BC_TRUE} ]
+    then
+      sv_LoginwindowText=""
+  
+      for (( iv_LoopCount=1; iv_LoopCount<=4; iv_LoopCount++ ))
+      do
+        if [ ${iv_LoopCount} -eq ${iv_InfoIndex} ]
+        then
+          # Update the RemoteDesktop Computer Info Fields
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting remote desktop computerinfo ${iv_InfoIndex} to '${sv_InfoText}'"
+          /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -computerinfo -set${iv_InfoIndex} -${iv_InfoIndex} "${sv_InfoText}"
+
+          if [ ${iv_LoopCount} -lt 4 ]
+          then
+            # Limit the maximum line length to something reasonable
+            sv_Text=$(echo "${sv_InfoText}" | cut -c1-64)
+          else
+            sv_Text=""
+          fi
+
+        else
+          # Get a line of the Loginwindow text which we dont want to overwrite
+          sv_Text=$(echo $(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow LoginwindowText | tr "\n" ";")";;;" | cut -d";" -f ${iv_LoopCount})
+
+        fi
+
+        sv_LoginwindowText="${sv_LoginwindowText}${sv_Text};"
+      done
+      sv_LoginwindowText=$(echo "${sv_LoginwindowText}" | sed "s/;$//" | tr ";" "\n")
+  
+      # Update the Loginwindow Text
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting login window text line #${iv_InfoIndex} to '${sv_InfoText}'"
+      /usr/bin/defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText -string "${sv_LoginwindowText}"
+      
+      GLB_NF_NAMEDLOCKRELEASE "LoginwindowText"
+      
+    fi
+  }
+
+  # Get seconds that mac mouse/keyboard has been idle - ref https://github.com/CLCMacTeam/IdleLogout
+  GLB_IF_HIDIdleTime()
+  {
+    echo $(($(ioreg -c IOHIDSystem | sed -e '/HIDIdleTime/ !{ d' -e 't' -e '}' -e 's/.* = //g' -e 'q') / 1000000000))
+  }
+
+  # Get seconds since last idle event
+  GLB_IF_SYSTEMIDLESECS()
+  {
+    local iv_LastIdleFlagEpoch
+    local iv_LastIdleSecs
+    local iv_IdleSecs
+    local iv_NowEpoch
+    
+    iv_NowEpoch=$(date -u "+%s")
+    iv_IdleSecs=$(GLB_IF_HIDIdleTime)
+
+    iv_LastIdleFlagEpoch=$(GLB_NF_NAMEDFLAGMEPOCH "LASTIDLEEVENT")
+    if [ ${iv_LastIdleFlagEpoch} -eq 0 ]
+    then
+      iv_LastIdleFlagEpoch=$((${iv_NowEpoch}-${iv_IdleSecs}))
+      GLB_NF_NAMEDFLAGCREATE "LASTIDLEEVENT" ${iv_LastIdleFlagEpoch}
+    fi
+    iv_LastIdleSecs=$((${iv_NowEpoch}-${iv_LastIdleFlagEpoch}))
+
+    if [ ${iv_LastIdleSecs} -gt ${GLB_IC_FORCEIDLETRIGGERSECS} ]
+    then
+      # If we have had a long period without idle events, something is wrong.
+      # (Maybe the mouse has been placed on top of the keyboard)
+      iv_IdleSecs=999999
+    fi
+
+    # output result in seconds
+    echo ${iv_IdleSecs}
+  }
+  
+  # Get the original file path - resolving any links
+  GLB_SF_ORIGINALFILEPATH()   # FilePath
+  {
+    local sv_Path
+    local sv_TruePath
+    local sv_PathPart
+    
+    sv_Path="${1}"
+    
+    sv_TruePath=""
+    while read sv_PathPart
+    do
+      if test -n "${sv_PathPart}"
+      then
+        sv_TruePath="${sv_TruePath}/${sv_PathPart}"
+        if test -L "${sv_TruePath}"
+        then
+          sv_TruePath="$(stat -f %Y "${sv_TruePath}")"
+        fi
+        if test -z "${sv_TruePath}"
+        then
+          break
+        fi
+      fi
+    done < <(echo ${sv_Path}| tr "/" "\n")
+    
+    echo "${sv_TruePath}"
+  }
+
+  # Schedule event for specified EPOCH time. Identify the event with a unique TAG.
+  # WAKETYPE can be one of sleep, wake, poweron, shutdown, wakeorpoweron
+  GLB_NF_SCHEDULE4EPOCH()   # TAG WAKETYPE EPOCH
+  {
+    local iv_SchedEpoch
+    local sv_SchedLine
+    local iv_NowEpoch
+  
+    sv_Tag=${1}
+    sv_WakeType=${2}
+    iv_SchedEpoch=${3}
+  
+    iv_NowEpoch=$(date -u "+%s")
+  
+    if [ ${iv_NowEpoch} -lt ${iv_SchedEpoch} ]
+    then
+      if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168558592 ]
+      then
+        sv_Tag="pmset"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting the 'owner' in a 'pmset sched' command does not appear to work on MacOS 10.12 and later"
+
+      else
+        # Cancel any existing named schedules
+        GLB_NF_SCHEDULECANCEL "${sv_Tag}" "${sv_WakeType}"
+
+      fi
+
+      sv_SchedLine=$(date -r ${iv_SchedEpoch} "+%m/%d/%y %H:%M:%S")
+      pmset schedule ${sv_WakeType} "${sv_SchedLine}" "${sv_Tag}"
+
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Scheduled ${sv_WakeType} $(date -r ${iv_SchedEpoch} "+%Y%m%d-%H:%M.%S")"
+    fi
+  }
+
+  # Cancel a scheduled event. Identify the event with a unique TAG and WAKETYPE.
+  # WAKETYPE can be one of sleep, wake, poweron, shutdown, wakeorpoweron
+  GLB_NF_SCHEDULECANCEL()   # TAG WAKETYPE
+  {
+    local iv_SchedEpoch
+    local sv_SchedLine
+  
+    sv_Tag=${1}
+    sv_WakeType=${2}
+  
+    # Check there isnt a named schedule already - ignored on 10.12 since owner not set correctly
+    pmset -g sched | grep -i "${sv_WakeType}" | grep -i "${sv_Tag}" | tr -s " " | cut -d " " -f5-6 | while read sv_SchedLine
+    do
+      if [ -n "${sv_SchedLine}" ]
+      then
+        pmset schedule cancel ${sv_WakeType} "${sv_SchedLine}" "${sv_Tag}" 2>/dev/null
+      fi
+    done
+  }
+
+  # List all scheduled events for specified WAKETYPE.
+  # WAKETYPE can be one of sleep, wake, poweron, shutdown, wakeorpoweron
+  GLB_IF_GETSCHEDULEDEPOCH()   # WAKETYPE
+  {
+    local iv_SchedEpoch
+    local sv_SchedLine
+  
+    sv_WakeType=${1}
+    
+    pmset -g sched | grep -i "${sv_WakeType}" | tr -s " " | cut -d " " -f5-6 | while read sv_SchedLine
+    do
+      if [ -n "${sv_SchedLine}" ]
+      then
+        iv_SchedEpoch=$(date -jf "%d/%m/%y %H:%M:%S" "${sv_SchedLine}" "+%s")
+      fi
+    done
+  }
+  
   # -- End Function Definition --
+  
+  # -- Get AD workstation name (the name when it was bound)
+  
+  # Get Computer AD trust account - i.e. yourcomputername$
+  GLB_SV_ADTRUSTACCOUNTNAME="$(dsconfigad 2>/dev/null -show | grep "Computer Account" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
+  
+  # AD computer name (without the trailing dollar sign)
+  GLB_SV_ADCOMPUTERNAME=$(echo ${GLB_SV_ADTRUSTACCOUNTNAME} | sed "s|\$$||")
   
   # ---
   
-  GLB_BC_PLCY_ISINCLUDED=${GLB_BC_TRUE}
+  # Get Computer full AD domain - i.e. yourdomain.yourcompany.com
+  GLB_SV_ADDNSDOMAINNAME="$(dsconfigad 2>/dev/null -show | grep "Active Directory Domain" | sed "s|\([^=]*\)=[ ]*\([^ ]*$\)|\2|")"
+  
+  # ---
+  
+  # If the workstation is bound to AD, make sure the computer name matches the AD object
+  if test -n "${GLB_SV_ADCOMPUTERNAME}"
+  then
+    if [ "${GLB_SV_HOSTNAME}" != "${GLB_SV_ADCOMPUTERNAME}" ]
+    then
+      GLB_SV_HOSTNAME="${GLB_SV_ADCOMPUTERNAME}"
+      /usr/sbin/systemsetup -setcomputername "${GLB_SV_ADCOMPUTERNAME}"
+      /usr/sbin/scutil --set ComputerName "${GLB_SV_ADCOMPUTERNAME}"
+      /usr/sbin/systemsetup -setlocalsubnetname "${GLB_SV_ADCOMPUTERNAME}"
+      /usr/sbin/scutil --set LocalHostName "${GLB_SV_ADCOMPUTERNAME}"
+      /usr/sbin/scutil --set HostName "${GLB_SV_ADCOMPUTERNAME}.${GLB_SV_ADDNSDOMAINNAME}"
+    
+    fi
+  fi
+  
+  # ---
+  
+  # Get Computer short AD domain - i.e. YOURDOMAIN
+  if test -n "${GLB_SV_ADDNSDOMAINNAME}"
+  then
+    # If we have just started up, we may need to wait a short time while the system populates the scutil vars
+    iv_DelayCount=0
+    while [ ${iv_DelayCount} -lt 5 ]
+    do
+      GLB_SV_ADFLATDOMAINNAME=$(echo "show com.apple.opendirectoryd.ActiveDirectory" | scutil | grep "DomainNameFlat" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+      if test -n "${GLB_SV_ADFLATDOMAINNAME}"
+      then
+        break
+      fi
+  
+      # we don't want to hog the CPU - so lets sleep a while
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Waiting around until the scutil ActiveDirectory vars are populated"
+      sleep 1
+        
+      iv_DelayCount=$((${iv_DelayCount}+1))
+    done
+  fi
+  
+  # --
+  
+  # Get Computer AD trust account password
+  if test -n "${GLB_SV_ADTRUSTACCOUNTNAME}"
+  then
+    GLB_SV_ADTRUSTACCOUNTPASSWORD=$(security find-generic-password -w -s "/Active Directory/${GLB_SV_ADFLATDOMAINNAME}" /Library/Keychains/System.keychain)
+  fi
+  
+  # -- Get Network info
+  
+  GLB_SV_IPV4PRIMARYSERVICEUUID=$(echo "show State:/Network/Global/IPv4" | scutil | grep "PrimaryService" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+  if test -n "${GLB_SV_IPV4PRIMARYSERVICEUUID}"
+  then
+    # Get DHCP option 15 (domain)
+    GLB_SV_IPV4PRIMARYSERVICEDHCPOPTION15=$(echo "show State:/Network/Service/${GLB_SV_IPV4PRIMARYSERVICEUUID}/DHCP" | scutil | grep "Option_15" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||" | sed -E "s/^<data> 0x//;s/00$//" | xxd -r -p)
+  
+    # Get user defined name - e.g. Wi-Fi
+    GLB_SV_IPV4PRIMARYSERVICEINTERFACENAME=$(echo "show Setup:/Network/Service/${GLB_SV_IPV4PRIMARYSERVICEUUID}" | scutil | grep "UserDefinedName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+  
+    # Get device name - e.g. en1
+    GLB_SV_IPV4PRIMARYSERVICEDEVICENAME=$(echo "show Setup:/Network/Service/${GLB_SV_IPV4PRIMARYSERVICEUUID}/Interface" | scutil | grep "DeviceName" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+  
+    # Get device hardware - e.g. Airport
+    GLB_SV_IPV4PRIMARYSERVICEHARDWARENAME=$(echo "show Setup:/Network/Service/${GLB_SV_IPV4PRIMARYSERVICEUUID}/Interface" | scutil | grep "Hardware" | cut -d":" -f 2- | sed "s|^[ ]*||;s|[ ]*$||")
+  fi
+  
+  # Get the the device name for wireless (eg en1)
+  GLB_SV_WIFIINTERFACEDEVICE="$(networksetup -listallhardwareports | tr "\n" ":" | sed "s|^[:]*||;s|::|;|g" | tr ";" "\n" | grep "Wi-Fi" | sed "s|\(.*Device:[ ]*\)\([^:]*\)\(.*\)|\2|" | head -n 1)"
+  
+  # -- Get Date/Time info
+
+  sv_NowDate=$(date "+%s:%M:%H:%w:%a:%d:%m:%b:%Y")
+  
+  GLB_IV_EPOCH=$(echo ${sv_NowDate} | cut -d":" -f1)
+  GLB_IV_MINUTE=$(echo ${sv_NowDate} | cut -d":" -f2 | sed "s|^0||")
+  GLB_IV_HOUR=$(echo ${sv_NowDate} | cut -d":" -f3 | sed "s|^0||")
+  GLB_IV_WEEKDAY=$(echo ${sv_NowDate} | cut -d":" -f4)
+  GLB_SV_WEEKDAY=$(echo ${sv_NowDate} | cut -d":" -f5)
+  GLB_IV_DAY=$(echo ${sv_NowDate} | cut -d":" -f6 | sed "s|^0||")
+  GLB_IV_MONTH=$(echo ${sv_NowDate} | cut -d":" -f7 | sed "s|^0||")
+  GLB_SV_MONTH=$(echo ${sv_NowDate} | cut -d":" -f8)
+  GLB_IV_YEAR=$(echo ${sv_NowDate} | cut -d":" -f9)
+  
+  sv_YesterdayDate=$(date -v-1d "+%w:%a:%d:%m:%b:%Y")
+  
+  GLB_IV_YWEEKDAY=$(echo ${sv_YesterdayDate} | cut -d":" -f1)
+  GLB_SV_YWEEKDAY=$(echo ${sv_YesterdayDate} | cut -d":" -f2)
+  GLB_IV_YDAY=$(echo ${sv_YesterdayDate} | cut -d":" -f3 | sed "s|^0||")
+  GLB_IV_YMONTH=$(echo ${sv_YesterdayDate} | cut -d":" -f4 | sed "s|^0||")
+  GLB_SV_YMONTH=$(echo ${sv_YesterdayDate} | cut -d":" -f5)
+  GLB_IV_YYEAR=$(echo ${sv_YesterdayDate} | cut -d":" -f6)
+  
+  # ---
+
+  # Support some short-form equivalents for easy definitions within match strings
+  GLB_SV_DHCPOPTION15=${GLB_SV_IPV4PRIMARYSERVICEDHCPOPTION15}
+  GLB_IV_BUILDVERSION=${GLB_IV_BUILDVERSIONSTAMPASNUMBER}
+  GLB_SV_BUILDVERSION=${GLB_SV_BUILDVERSIONSTAMPASSTRING}
+  GLB_IV_OS=${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER}
+  GLB_SV_OS=${GLB_SV_SYSTEMVERSIONSTAMPASSTRING}
+  GLB_SV_MODEL=${GLB_SV_MODELIDENTIFIER}
+  
+  # ---
+
+  # Support pre version 3.0.2 global expansions
+  GLB_COMPUTERNAME=${GLB_SV_HOSTNAME}
+  GLB_USERNAME=${GLB_SV_CONSOLEUSERNAME}
+  GLB_HOMEPATH=${GLB_SV_CONSOLEUSERHOMEDIRPATH}
+  GLB_HOMESHARE=${GLB_SV_CONSOLEUSERSHAREDIRPATH}
+  GLB_HOMELOCAL=${GLB_SV_CONSOLEUSERLOCALHOMEDIRPATH}
+  GLB_DOMAIN=${GLB_SV_ADFLATDOMAINNAME}
+  GLB_FQADDOMAIN=${GLB_SV_ADDNSDOMAINNAME}
+  
+  # ---
+  
+  GLB_BC_PLCYDEFS_INCLUDED=${GLB_BC_TRUE}
 
 fi

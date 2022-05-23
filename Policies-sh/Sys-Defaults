@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Over-rides inbuilt hard-coded defaults
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Triggered by the following events:
 #   Sys-Boot (as root)
@@ -26,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -36,7 +36,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 
@@ -44,18 +43,6 @@ case ${GLB_SV_EVENTNAME} in
 
 Sys-Boot|Sys-PolicyInstall)
   
-  # Get a value from the static config
-  bv_UseLoginhookDefault="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:UseLoginhook")"
-  if test -z "${bv_UseLoginhookDefault}"
-  then
-    # Use the hard-coded values if there is no static config entry
-    bv_UseLoginhookDefault=${GLB_BV_DFLTUSELOGINHOOK}
-  fi
-  # Write value to global config
-  GLB_NF_SETPLISTPROPERTY "${GLB_SV_SHAREDPREFSFILEPATH}" ":${GLB_SV_POLICYNAME}:Shared:UseLoginhook" "${bv_UseLoginhookDefault}"
-  # Update Log
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting global default:UseLoginhook='${bv_UseLoginhookDefault}' "
-
   # Get a value from the static config
   bv_LogIsActiveDefault="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:LogIsActive")"
   if test -z "${bv_LogIsActiveDefault}"
@@ -105,52 +92,6 @@ Sys-Boot|Sys-PolicyInstall)
   GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting global default:NotifyLevelTrap='${iv_NotifyLevelTrapDefault}' "
 
   # ---
-
-  # Set up the login hooks (but only if required)
-  sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
-  sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
-
-  if [ "${bv_UseLoginhookDefault}" = ${GLB_BC_TRUE} ]
-  then
-    # Add LoginHook
-    if test -z "${sv_CurrentLoginHookFilePath}"
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing LoginHook ${sv_CurrentLoginHookFilePath}"
-      defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LoginHook "${GLB_SV_PROJECTDIRPATH}"/EventHandlers-Sys/LoginHook
-    else
-      if test -z "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_SC_PROJECTNAME}")"
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "LoginHook in use ${sv_CurrentLoginHookFilePath}"
-      fi
-    fi
-  
-    # Add LogoutHook
-    if test -z "${sv_CurrentLogoutHookFilePath}"
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Installing LogoutHook ${sv_CurrentLoginHookFilePath}"
-      defaults write /private/var/root/Library/Preferences/com.apple.loginwindow LogoutHook "${GLB_SV_PROJECTDIRPATH}"/EventHandlers-Sys/LogoutHook
-    else
-      if test -z "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_SC_PROJECTNAME}")"
-      then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "LogoutHook in use ${sv_CurrentLogoutHookFilePath}"
-      fi
-    fi
-
-  else
-    # Remove LoginHook
-    if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep "^/usr/local/${GLB_SC_PROJECTNAME}")"
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
-      defaults write com.apple.loginwindow LoginHook ""
-    fi
-  
-    # Remove LogoutHook
-    if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep "^/usr/local/${GLB_SC_PROJECTNAME}")"
-    then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"
-      defaults write com.apple.loginwindow LogoutHook ""
-    fi
-  fi
 
   ;;
 

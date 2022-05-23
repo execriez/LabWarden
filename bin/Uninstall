@@ -2,12 +2,23 @@
 #
 # Short:    Uninstall Project (command-line)
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 #
 # Called as follows:    
 #   sudo Uninstall [<root_dirpath>]
+#
+# Requires
+#  GLB_IC_MSGLEVELERR
+#  GLB_IC_MSGLEVELNOTICE
+#  GLB_NF_LOGMESSAGE
+#  GLB_SC_PROJECTNAME
+#  GLB_SC_PROJECTSIGNATURE
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTNAME
+#  GLB_SV_THISSCRIPTTEMPDIRPATH
 
 # ---
   
@@ -16,25 +27,24 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.3.0"
 
 # ---
 
-# Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+# Include the Base Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
 then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' BASEDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 
@@ -80,7 +90,7 @@ then
   done < <(launchctl list | grep -i "${GLB_SC_PROJECTSIGNATURE}" | tr "\t" " " | cut -d" " -f3)
 
   # Remove LoginHook
-  sv_CurrentLoginHookFilePath="$(defaults read com.apple.loginwindow LoginHook)"
+  sv_CurrentLoginHookFilePath="$(defaults 2>/dev/null read com.apple.loginwindow LoginHook)"
   if test -n "$(echo "${sv_CurrentLoginHookFilePath}" | grep -i "/${GLB_SC_PROJECTNAME}/")"
   then
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LoginHook ${sv_CurrentLoginHookFilePath}"
@@ -88,7 +98,7 @@ then
   fi
   
   # Remove LogoutHook
-  sv_CurrentLogoutHookFilePath="$(defaults read com.apple.loginwindow LogoutHook)"
+  sv_CurrentLogoutHookFilePath="$(defaults 2>/dev/null read com.apple.loginwindow LogoutHook)"
   if test -n "$(echo "${sv_CurrentLogoutHookFilePath}" | grep -i "/${GLB_SC_PROJECTNAME}/")"
   then
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing LogoutHook ${sv_CurrentLogoutHookFilePath}"

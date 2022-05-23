@@ -2,8 +2,8 @@
 #
 # Short:    Gen Policy Footer - Included at the beginning of every (bash) gen policy
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Note: The following globals should be set up before this script is included:
 #       GLB_SV_PROJECTDIRPATH
@@ -194,20 +194,19 @@ esac
 # ---
 
 # Include the policy defs library (if it is not already loaded)
-if [ -z "${GLB_BC_PLCY_ISINCLUDED}" ]
+if [ -z "${GLB_BC_PLCYDEFS_INCLUDED}" ]
 then
   . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_PLCY_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_PLCYDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' PLCYDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 

@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Sets the user Desktop Wallpaper
 # Author:   Mark J Swift
-# Version:  3.2.13
-# Modified: 10-Oct-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Triggered by the following events:
 #   Usr-AtDesktop (as user)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.13"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -34,7 +34,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 
@@ -62,7 +61,7 @@ Usr-AtDesktop|Usr-PolicyInstall)
 
     else
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Setting Desktop Wallpaper"
-      open -a "${GLB_SV_PROJECTDIRPATH}"/bin/SetWallpaper.app "${sv_DesktopWallpaperFilePath}"
+      open -a "${GLB_SV_PROJECTDIRPATH}/bin/${GLB_SV_ARCH}/SetWallpaper.app" "${sv_DesktopWallpaperFilePath}"
     fi
   fi
   ;;

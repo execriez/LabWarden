@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.2.20
-# Modified: 26-Jan-2022
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.20"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -35,7 +35,11 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
+
+# ---
+
+# It's early days for this quite complex policy, so enable debug logging
+GLB_IV_LOGLEVELTRAP=${GLB_IC_MSGLEVELDEBUG}
 
 # ---
 
@@ -152,13 +156,18 @@ bf_VersionIsLater() #VersionStringA, VersionStringB - returns true if A is later
 # "false:false" - Item is not installed
 # "true:false"  - Item is installed, but the version is not current
 # "true:true"   - Item is installed, and the version is current
-sf_ItemInstallStatus() # Index, DefaultStatus i.e. :${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}, true
+sf_ItemInstallStatus() # ItemRoot, DefaultStatus i.e. :${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}, true
 {
-  local iv_ItemIndex
+  local sv_ItemRoot
+  local bv_DefaultInstalledStatus
   local bv_ItemIsInstalled
   local bv_VersionIsCurrent
-  local sv_ItemType
+  local sv_ManifestURIPath
+  local sv_ManifestURIFileName
   local sv_ItemFileName
+  local sv_ItemType
+  local sv_ItemExt
+  local sv_TryMethod
   local sv_ItemDstDir
   local sv_ItemDstPath
   local sv_VersionKey
@@ -167,11 +176,8 @@ sf_ItemInstallStatus() # Index, DefaultStatus i.e. :${GLB_SV_CONFIGUUID}:Config:
   local sv_InstalledVersion
   local sv_Itemmd5checksum
   local sv_Installedmd5checksum
-  local sv_TryMethod
-  local sv_ItemExt
-  local bv_DefaultInstalledStatus
   
-  iv_ItemIndex="${1}"
+  sv_ItemRoot="${1}"
   
   # When action is "INSTALL", default to thinking the item is installed
   # When action is "UNINSTALL", default to thinking the item is not installed
@@ -184,22 +190,16 @@ sf_ItemInstallStatus() # Index, DefaultStatus i.e. :${GLB_SV_CONFIGUUID}:Config:
   bv_ItemIsInstalled=${bv_DefaultInstalledStatus}
   bv_VersionIsCurrent=${bv_DefaultInstalledStatus}
 
-  sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:FileName")"
+  sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:FileName")"
 
-  # if we didn't supply a filename, use the manifest name
-  if [ -z "${sv_ItemFileName}" ]
-  then
-    sv_ItemFileName="$(basename "${sv_ManifestURI}")"
-  fi
-
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemFileName '${sv_ItemFileName}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemFileName '${sv_ItemFileName}'"
 
   if [ -z "${sv_ItemFileName}" ]
   then
     sv_ItemType="UNKNOWN"
 
   else
-    sv_ItemType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:Type")"
+    sv_ItemType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:Type")"
     if [ -z "${sv_ItemType}" ]
     then
       sv_ItemExt="$(echo ${sv_ItemFileName} | grep '\.' | sed 's|.*\.||' | tr [a-z] [A-Z] )"
@@ -226,14 +226,14 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemFileName 
     fi
   fi
   
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemType '${sv_ItemType}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemType '${sv_ItemType}'"
     
-  sv_TryMethod="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:TryMethod" | tr [a-z] [A-Z])"
+  sv_TryMethod="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:TryMethod" | tr [a-z] [A-Z])"
   if [ -z "${sv_TryMethod}" ]
   then
     sv_TryMethod="ONCE"
   fi
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_TryMethod '${sv_TryMethod}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_TryMethod '${sv_TryMethod}'"
 
   case ${sv_TryMethod} in
 
@@ -252,7 +252,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_TryMethod '${
     case ${sv_ItemType} in
               
     File)
-      sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:DstDir")"
+      sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:DstDir")"
       if [ -z "${sv_ItemDstDir}" ]
       then
         sv_ItemDstDir="/"
@@ -260,7 +260,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_TryMethod '${
       sv_ItemDstDir="$(echo "${sv_ItemDstDir}/" | tr -s "/")"
 
       sv_ItemDstPath="${sv_ItemDstDir}${sv_ItemFileName}"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '${sv_ItemDstPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemDstPath '${sv_ItemDstPath}'"
       if [ ! -e "${sv_ItemDstPath}" ]
       then
         bv_ItemIsInstalled=${GLB_BC_FALSE}
@@ -270,15 +270,15 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '
         bv_ItemIsInstalled=${GLB_BC_TRUE}
 
         # Get the item md5 checksum
-        sv_Itemmd5checksum="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:md5checksum")"
+        sv_Itemmd5checksum="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:${sv_ItemType}:md5checksum")"
         if [ -z "${sv_Itemmd5checksum}" ]
         then
           sv_Itemmd5checksum=0
         fi
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_Itemmd5checksum '${sv_Itemmd5checksum}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_Itemmd5checksum '${sv_Itemmd5checksum}'"
         
         sv_Installedmd5checksum=$(md5 -q "${sv_ItemDstPath}")
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_Installedmd5checksum '${sv_Installedmd5checksum}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_Installedmd5checksum '${sv_Installedmd5checksum}'"
 
         if [ "${sv_Itemmd5checksum}" = "${sv_Installedmd5checksum}" ]
         then
@@ -293,7 +293,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_Installedmd5c
     
     Application)
       # We have a valid application name, default to thinking the item is not installed
-      sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:DstDir")"
+      sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:DstDir")"
       if [ -z "${sv_ItemDstDir}" ]
       then
         sv_ItemDstDir="/Applications"
@@ -301,7 +301,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_Installedmd5c
       sv_ItemDstDir="$(echo "${sv_ItemDstDir}/" | tr -s "/")"
 
       sv_ItemDstPath="${sv_ItemDstDir}${sv_ItemFileName}"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '${sv_ItemDstPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemDstPath '${sv_ItemDstPath}'"
       if [ ! -e "${sv_ItemDstPath}" ]
       then
         bv_ItemIsInstalled=${GLB_BC_FALSE}
@@ -311,14 +311,14 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '
         bv_ItemIsInstalled=${GLB_BC_TRUE}
 
         # Get the item version
-        sv_VersionKey="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:VersionKey")"
+        sv_VersionKey="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:${sv_ItemType}:VersionKey")"
         if [ -z "${sv_VersionKey}" ]
         then
           sv_VersionKey="CFBundleShortVersionString"
         fi
         
-        sv_ItemVersion="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:${sv_VersionKey}")"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemVersion '${sv_ItemVersion}'"
+        sv_ItemVersion="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:${sv_ItemType}:${sv_VersionKey}")"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemVersion '${sv_ItemVersion}'"
         if [ -z "${sv_ItemVersion}" ]
         then
           sv_ItemVersion=0
@@ -331,7 +331,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemVersion '
           bv_VersionIsCurrent=${GLB_BC_FALSE}
         else
           sv_InstalledVersion=$(/usr/libexec/PlistBuddy 2>/dev/null -c "Print '${sv_VersionKey}'" "${sv_InfoFile}")
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_InstalledVersion '${sv_InstalledVersion}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_InstalledVersion '${sv_InstalledVersion}'"
           if [ -z "${sv_InstalledVersion}" ]
           then
             sv_InstalledVersion=0
@@ -348,8 +348,8 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_InstalledVers
       ;;
     
     Package)
-      sv_ItemID="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:ID")"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemID '${sv_ItemID}'"
+      sv_ItemID="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:${sv_ItemType}:ID")"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemID '${sv_ItemID}'"
       if [ -n "${sv_ItemID}" ]
       then
         # We have a valid package ID, check to see if the item is already installed
@@ -364,8 +364,8 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemID '${sv_
           bv_ItemIsInstalled=${GLB_BC_TRUE}
         fi
 
-        sv_ItemVersion="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:VersionString")"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemVersion '${sv_ItemVersion}'"
+        sv_ItemVersion="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" "${sv_ItemRoot}:${sv_ItemType}:VersionString")"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "ItemInstallStatus: sv_ItemVersion '${sv_ItemVersion}'"
         if [ -z "${sv_ItemVersion}" ]
         then
           sv_ItemVersion=0
@@ -404,15 +404,14 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemVersion '
   echo "${bv_ItemIsInstalled}:${bv_VersionIsCurrent}"
 }
 
-bf_RunAction() # [uninstall]
+bf_RunAction() # [install] | [uninstall] | [schedule]
 {
   local sv_Action
-  local sv_DefaultAction
+  local sv_CallMethod
   local bv_ActionAborted
   local sv_Err
-  local iv_ManifestCount
-  local iv_ManifestIndex
-  local sv_ManifestURI
+  local sv_ManifestURIPath
+  local sv_ManifestURIFileName
   local sv_MinOS
   local sv_MaxOS
   local bv_ManifestInstalled
@@ -421,9 +420,9 @@ bf_RunAction() # [uninstall]
   local iv_ItemIndex
   local sv_ItemType
   local sv_ItemInstallStatus
-  local sv_ManifestExt
   local sv_DmgMountPoint
   local sv_ManifestSrcPath
+  local sv_ManifestSrcExt
   local sv_ItemType
   local sv_RemoveMethod
   local sv_TryMethod
@@ -437,20 +436,58 @@ bf_RunAction() # [uninstall]
   local bv_DefaultInstalledStatus
   local bv_ItemInstalled
   local bv_ItemFullyInstalled
+  local sv_LegacyManifestURI
+  local iv_ManifestCount
+  local iv_ManifestIndex
+  local sv_ManifestRoot
   
-  # Install or uninstall a manifest
-    
-  sv_DefaultAction="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Action" | tr [a-z] [A-Z])"
-  if [ -z "${sv_DefaultAction}" ]
+  # Install or uninstall a manifest list
+  sv_CallMethod=$(echo "${1}" | tr [a-z] [A-Z])
+  if [ -z "${sv_CallMethod}" ]
   then
-    sv_DefaultAction="INSTALL"
+    sv_CallMethod="INSTALL"
+  fi
+    
+  # Check for old config. We still want to support previous configs, where there was a single manifest and no array
+  sv_LegacyManifestURI="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ManifestURI")"
+  if [ -n "${sv_LegacyManifestURI}" ]
+  then
+    iv_ManifestCount=1
+  else
+    iv_ManifestCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Manifest")"
+  fi
+  
+  if [ ${iv_ManifestCount} -gt 0 ]
+  then
+
+    for (( iv_ManifestIndex=0; iv_ManifestIndex<${iv_ManifestCount}; iv_ManifestIndex++ ))
+    do
+      if [ -n "${sv_LegacyManifestURI}" ]
+      then
+        sv_ManifestRoot=""
+        sv_ManifestURIPath="${sv_LegacyManifestURI}"
+      else
+        sv_ManifestRoot=":Manifest:${iv_ManifestIndex}"
+        sv_ManifestURIPath="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:URI")"
+      fi
+      
+
+  sv_ManifestURIFileName="$(basename "$(echo ${sv_ManifestURIPath} | grep -v '/$')")"
+  
+  sv_ManifestURIPath="$(echo "${sv_ManifestURIPath}" | sed "s|[/]*$||")"
+
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: sv_ManifestURIPath '${sv_ManifestURIPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: sv_ManifestURIFileName '${sv_ManifestURIFileName}'"
+
+  sv_Action="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Action" | tr [a-z] [A-Z])"
+  if [ -z "${sv_Action}" ]
+  then
+    sv_Action="INSTALL"
   fi
 
-  sv_Action=$(echo "${1}" | tr [a-z] [A-Z])
-
-  if [ "${sv_DefaultAction}" != "AUTO" ]
+  if [ "${sv_Action}" = "AUTO" ]
   then
-    sv_Action="${sv_DefaultAction}"
+    sv_Action="${sv_CallMethod}"
   fi
 
   if [ "${sv_Action}" != "UNINSTALL" ]
@@ -458,40 +495,37 @@ bf_RunAction() # [uninstall]
     sv_Action="INSTALL"
   fi
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_Action ${sv_Action}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: sv_Action '${sv_Action}'"
   
-  # Grab lock - we only want to install when there are no other installs happening, wait up to 10 mins
+  # Grab lock - we only want to install when there are no other installs or uninstalls happening, wait up to 10 mins
   if [ $(GLB_BF_NAMEDLOCKGRAB "${GLB_SV_THISSCRIPTFILENAME}" 600 ${GLB_BC_TRUE}) = ${GLB_BC_FALSE} ]
   then
     bv_ActionAborted=${GLB_BC_TRUE}
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Software ${sv_Action} aborted - Cannot grab lock"
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Software ${sv_Action} aborted - Cannot grab lock"
 
   else  
     GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastTryEpoch" "${GLB_IV_THISSCRIPTSTARTEPOCH}"
 
-    sv_ManifestURI="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:ManifestURI")"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestURI ${sv_ManifestURI}"
-
     bv_ActionAborted=${GLB_BC_FALSE}
     sv_Err=0
 
-    sv_MinOS="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:MinOS")"
+    sv_MinOS="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:MinOS")"
     if [ -n "${sv_MinOS}" ]
     then
       if [ "$(bf_VersionIsLater "${sv_MinOS}" "${GLB_SV_SYSTEMVERSIONSTAMPASSTRING}")" = "${GLB_BC_TRUE}" ]
       then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Software '${sv_Action}' '${sv_ManifestURI}' aborted - MinOS ${sv_MinOS} is later than the active OS ${GLB_SV_SYSTEMVERSIONSTAMPASSTRING}"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Manifest ${iv_ManifestIndex}: Software '${sv_Action}' '${sv_ManifestURIPath}' aborted - MinOS ${sv_MinOS} is later than the active OS ${GLB_SV_SYSTEMVERSIONSTAMPASSTRING}"
         bv_ActionAborted=${GLB_BC_TRUE}
         sv_Err=99
       fi
     fi
   
-    sv_MaxOS="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:MaxOS")"
+    sv_MaxOS="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:MaxOS")"
     if [ -n "${sv_MaxOS}" ]
     then
       if [ "$(bf_VersionIsLater "${GLB_SV_SYSTEMVERSIONSTAMPASSTRING}" "${sv_MaxOS}")" = "${GLB_BC_TRUE}" ]
       then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Software '${sv_Action}' '${sv_ManifestURI}' aborted - The active OS version ${GLB_SV_SYSTEMVERSIONSTAMPASSTRING} is later than MaxOS ${sv_MaxOS}"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Manifest ${iv_ManifestIndex}: Software '${sv_Action}' '${sv_ManifestURIPath}' aborted - The active OS version ${GLB_SV_SYSTEMVERSIONSTAMPASSTRING} is later than MaxOS ${sv_MaxOS}"
         bv_ActionAborted=${GLB_BC_TRUE}
         sv_Err=99
       fi
@@ -506,11 +540,11 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestURI ${sv_ManifestURI}"
         bv_DefaultInstalledStatus=${GLB_BC_FALSE}
       fi
 
-      iv_ItemCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item")"
+      iv_ItemCount="$(GLB_IF_GETPLISTARRAYSIZE "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item")"
       if [ ${iv_ItemCount} -gt 0 ]
       then
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Start check Manifest ${sv_Action} status"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: START check Manifest ${sv_Action} status"
 
         # ---
         # Run through the manifest items to check the installation status
@@ -518,15 +552,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Start check Manifest ${sv_Action} stat
         bv_ManifestFullyInstalled="${GLB_BC_TRUE}"
         for (( iv_ItemIndex=0; iv_ItemIndex<${iv_ItemCount}; iv_ItemIndex++ ))
         do
-          sv_TryMethod="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:TryMethod" | tr [a-z] [A-Z])"
-          if [ "${sv_TryMethod}" = "BLOCK" ]
-          then
-            bv_ManifestInstalled=${bv_DefaultInstalledStatus}
-            bv_ManifestFullyInstalled=${bv_DefaultInstalledStatus}
-            break
-          fi
-
-          sv_ItemInstallStatus=$(sf_ItemInstallStatus "${iv_ItemIndex}" ${bv_DefaultInstalledStatus})
+          sv_ItemInstallStatus=$(sf_ItemInstallStatus ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}" ${bv_DefaultInstalledStatus})
           if [ "${sv_ItemInstallStatus}" != "${GLB_BC_FALSE}:${GLB_BC_FALSE}" ]
           then
             bv_ManifestInstalled="${GLB_BC_TRUE}"
@@ -539,40 +565,42 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Start check Manifest ${sv_Action} stat
           fi
         done
             
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "ManifestInstalled '${bv_ManifestInstalled}'"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "ManifestFullyInstalled '${bv_ManifestFullyInstalled}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: RESULT ManifestInstalled '${bv_ManifestInstalled}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: RESULT ManifestFullyInstalled '${bv_ManifestFullyInstalled}'"
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "End check Manifest ${sv_Action} status"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: END check Manifest ${sv_Action} status"
         # ---
 
         if [[ ( ( "${sv_Action}" = "INSTALL" ) && ( "${bv_ManifestFullyInstalled}" = "${GLB_BC_TRUE}" ) ) || ( ( "${sv_Action}" = "UNINSTALL" ) && ( "${bv_ManifestInstalled}" = "${GLB_BC_FALSE}" ) ) ]]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${sv_Action} skipped - Already ${sv_Action}ed (${sv_ManifestURI})"
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Manifest ${sv_Action} skipped - Already ${sv_Action}ed (${sv_ManifestURIPath})"
           sv_Err=0
               
         else
+          sv_ManifestURILocalPath=""
           sv_ManifestSrcPath=""
           sv_DmgMountPoint=""
           
           # ---
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "About to run through Items to ${sv_Action}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: About to run through Items to ${sv_Action}"
 
           # ---
           # Run through the manifest items
           for (( iv_ItemIndex=0; iv_ItemIndex<${iv_ItemCount}; iv_ItemIndex++ ))
           do
-            sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:FileName")"
+            sv_ItemFileName="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:FileName")"
 
-            # if we didn't supply a filename, use the manifest name
+            # if we didn't supply a filename, use the manifest file name
             if [ -z "${sv_ItemFileName}" ]
             then
-              sv_ItemFileName="$(basename "${sv_ManifestURI}")"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - Item filename missing"
+              break
             fi
 
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemFileName '${sv_ItemFileName}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemFileName '${sv_ItemFileName}'"
 
-            sv_ItemInstallStatus=$(sf_ItemInstallStatus "${iv_ItemIndex}" ${bv_DefaultInstalledStatus})
+            sv_ItemInstallStatus=$(sf_ItemInstallStatus ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}" ${bv_DefaultInstalledStatus})
 
             if [ "${sv_ItemInstallStatus}" = "${GLB_BC_FALSE}:${GLB_BC_FALSE}" ]
             then
@@ -588,36 +616,36 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "About to run through Items to ${sv_Act
               fi
             fi
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: ItemInstalled '${bv_ItemInstalled}'"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: ItemFullyInstalled '${bv_ItemFullyInstalled}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: ItemInstalled '${bv_ItemInstalled}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: ItemFullyInstalled '${bv_ItemFullyInstalled}'"
 
-            sv_TryMethod="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:TryMethod" | tr [a-z] [A-Z])"
+            sv_TryMethod="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:TryMethod" | tr [a-z] [A-Z])"
             if [ -z "${sv_TryMethod}" ]
             then
               sv_TryMethod="ONCE"
             fi
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_TryMethod '${sv_TryMethod}'"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_TryMethod '${sv_TryMethod}'"
 
-# maybe Action, TryMethod - None, Once, Fix, Always, Block
+# maybe Action, TryMethod - CHECK, FIX, ONCE, ALWAYS
        
             # ---
             # Check the TryMethod special cases
                   
             # DO an install, if 
-            #  TryMethod != "BLOCK" AND TryMethod != "NONE" AND
+            #  TryMethod != "CHECK" AND
             #  Action = "INSTALL" AND
-            #  TryMethod = "ALWAYS"
-            #  or TryMethod = "Once" AND item is either not installed or not up to date
-            #  or TryMethod = "Fix" AND manifest is not fully installed
+            #  TryMethod = "FIX" AND manifest is not fully installed
+            #  or TryMethod = "ONCE" AND item is either not installed or not up to date
+            #  or TryMethod = "ALWAYS"
 
             # DO an uninstall, if 
-            #  TryMethod != "BLOCK" AND TryMethod != "NONE" AND
+            #  TryMethod != "CHECK" AND
             #  Action = "UNINSTALL" AND manifest item is installed
                   
             case ${sv_Action} in
             INSTALL)
               case ${sv_TryMethod} in
-              NONE|BLOCK)
+              CHECK|NEVER)
                 bv_ItemFullyInstalled="${GLB_BC_TRUE}"
                 ;;
 
@@ -637,7 +665,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: ItemFullyInstall
 
             UNINSTALL)
               case ${sv_TryMethod} in
-              NONE|BLOCK)
+              CHECK|NEVER)
                 bv_ItemInstalled="${GLB_BC_FALSE}"
                 ;;
 
@@ -650,12 +678,12 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: ItemFullyInstall
             # Do the install or uninstall
             if [[ ( ( "${sv_Action}" = "INSTALL" ) && ( "${bv_ItemFullyInstalled}" = "${GLB_BC_TRUE}" ) ) || ( ( "${sv_Action}" = "UNINSTALL" ) && ( "${bv_ItemInstalled}" = "${GLB_BC_FALSE}" ) ) ]]
             then
-              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: ${sv_Action} skipped - Already ${sv_Action}ed (${sv_ItemFileName})"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: ${sv_Action} skipped - Already ${sv_Action}ed (${sv_ItemFileName})"
               sv_Err=0
               
             else
 
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: Begin ${sv_Action}"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Begin ${sv_Action}"
 
               # ---
               # Work out the ItemType
@@ -664,7 +692,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: Begin ${sv_Actio
                 sv_ItemType="UNKNOWN"
 
               else
-                sv_ItemType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:Type")"
+                sv_ItemType="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:Type")"
                 if [ -z "${sv_ItemType}" ]
                 then
                   sv_ItemExt="$(echo ${sv_ItemFileName} | grep '\.' | sed 's|.*\.||' | tr [a-z] [A-Z] )"
@@ -690,13 +718,13 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: Begin ${sv_Actio
                   esac
                 fi
               fi
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemType '${sv_ItemType}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemType '${sv_ItemType}'"
 
               # ---
               # Work out the ItemSrcPath and ItemDstPath
               case ${sv_ItemType} in
               Executable|Package)
-                sv_ItemSrcDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:SrcDir")"
+                sv_ItemSrcDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:SrcDir")"
                 if [ -z "${sv_ItemSrcDir}" ]
                 then
                   sv_ItemSrcDir="/"
@@ -704,18 +732,18 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemType '${s
                 sv_ItemSrcDir="$(echo "${sv_ItemSrcDir}/" | tr -s "/")"
                   
                 sv_ItemSrcPath="${sv_ItemSrcDir}${sv_ItemFileName}"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemSrcPath '${sv_ItemSrcPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemSrcPath '${sv_ItemSrcPath}'"
                 ;;
                   
               File|Application)
-                sv_ItemSrcDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:SrcDir")"
+                sv_ItemSrcDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:SrcDir")"
                 if [ -z "${sv_ItemSrcDir}" ]
                 then
                   sv_ItemSrcDir="/"
                 fi
                 sv_ItemSrcDir="$(echo "${sv_ItemSrcDir}/" | tr -s "/")"
 
-                sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:DstDir")"
+                sv_ItemDstDir="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:DstDir")"
                 if [ -z "${sv_ItemDstDir}" ]
                 then
                   sv_ItemDstDir="/Applications"
@@ -724,8 +752,8 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemSrcPath '
 
                 sv_ItemSrcPath="${sv_ItemSrcDir}${sv_ItemFileName}"
                 sv_ItemDstPath="${sv_ItemDstDir}${sv_ItemFileName}"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemSrcPath '${sv_ItemSrcPath}'"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '${sv_ItemDstPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemSrcPath '${sv_ItemSrcPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemDstPath '${sv_ItemDstPath}'"
                 ;;
                     
               *)
@@ -740,160 +768,190 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Item ${iv_ItemIndex}: sv_ItemDstPath '
                 # If necessary, kill the item process(es)
                 while read sv_PID
                 do
-                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Killing item PID ${sv_PID} of '${sv_ItemType}' '${sv_ItemDstPath}'"
+                  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Killing item PID ${sv_PID} of '${sv_ItemType}' '${sv_ItemDstPath}'"
                   kill ${sv_PID}
                 done < <(ps -axo "pid, user, command" | grep -i "${sv_ItemDstPath}" | grep -v "grep" | sed "s|^[ ]*||" | cut -d" " -f1)
               fi
 
               # ---
               # Install/uninstall item
-              if [ "${sv_TryMethod}" != "NONE" ]
+              if [ "${sv_TryMethod}" != "CHECK" ]
               then
 
                 # ---
                 # Download manifest, if appropriate
                 # ---
 
-                if [ -z "${sv_ManifestSrcPath}" ]
+                if [ -n "${sv_ManifestURIPath}" ]
                 then
-
-                  if [ -n "${sv_ManifestURI}" ]
-                  then
             
-                    if [[ ( ( "${sv_Action}" = "INSTALL" ) || ( ( "${sv_Action}" = "UNINSTALL" ) && ( ( ${sv_ItemType} = "Executable" ) || ( ${sv_ItemType} = "Package" ) ) ) ) ]]
-                    then
+                  if [[ ( ( "${sv_Action}" = "INSTALL" ) || ( ( "${sv_Action}" = "UNINSTALL" ) && ( ( ${sv_ItemType} = "Executable" ) || ( ${sv_ItemType} = "Package" ) ) ) ) ]]
+                  then
               
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "About to resolve the manifest file"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: About to resolve the manifest file"
 
-                      sv_ManifestURIPath=$(GLB_SF_RESOLVEFILEURITOPATH "${sv_ManifestURI}" "/usr/local/LabWarden/REPO")
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestURIPath '${sv_ManifestURIPath}'"
 
-                      if [ -z "${sv_ManifestURIPath}" ]
+
+                    if [ -n "${sv_ManifestURIFileName}" ]
+                    then
+                      if [ -z "${sv_ManifestSrcPath}" ]
                       then
-                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${sv_Action} aborted - Manifest URI not resolvable ('${sv_ManifestURI}')"
-                        break
-                      else
-                        if [ ! -e "${sv_ManifestURIPath}" ]
+                        sv_ManifestURILocalPath=$(GLB_SF_RESOLVEFILEURITOPATH "${sv_ManifestURIPath}" "/usr/local/LabWarden/REPO")
+                          
+                        if [ -z "${sv_ManifestURILocalPath}" ]
                         then
-                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${sv_Action} aborted - Manifest file can not be found ('${sv_ManifestURI}')"
+                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - Manifest URI not resolvable ('${sv_ManifestURIPath}')"
                           break
+                          
+                        else
+
+                          sv_ManifestSrcPath="${sv_ManifestURILocalPath}"
+                                                
+                          # ---
+                          # Begin - check if manifest is an archive file (zip, tgz or dmg)
+                          # If so, point the manifest source path to the unarchived or mounted directory
+
+                          sv_ManifestSrcExt="$(echo ${sv_ManifestSrcPath} | grep '\.' | sed 's|.*\.||' | tr [a-z] [A-Z] )"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ManifestSrcExt '${sv_ManifestSrcExt}'"
+
+                          case ${sv_ManifestSrcExt} in
+                          ZIP)
+                            # To unarchive:
+                            #   cd SomeTempDirectory 
+                            #   unzip ZIPFilePath
+
+                            # Check if the source file is in the expected location
+                            if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
+                            then
+                              sv_UnarchiveDirPath=$(dirname "${sv_ManifestSrcPath}")
+                            else
+                              sv_UnarchiveDirPath="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
+                              mkdir -p "${sv_UnarchiveDirPath}"
+                            fi
+                      
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Unarchiving ZIP Manifest ('${sv_ManifestURIPath}')"
+                            cd "${sv_UnarchiveDirPath}"
+                            unzip "${sv_ManifestSrcPath}"
+                            sv_Err=$?
+                            cd ~/
+                            if [ ${sv_Err} -ne 0 ]
+                            then
+                              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - ZIP unarchive failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
+                              rm -fR "${sv_UnarchiveDirPath}"
+                              break
+                            fi
+                      
+                            # Check if we can remove the original source file
+                            if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
+                            then
+                              rm -f "${sv_ManifestSrcPath}"
+                            fi
+
+                            sv_ManifestSrcPath="${sv_UnarchiveDirPath}"
+                            ;;
+                        
+                          TGZ)
+                            # Note, to create an archive:
+                            #   cd SomedirectoryPath 
+                            #   tar -c * | gzip -9 >"TGZFilePath"
+                            # To unarchive:
+                            #   cd SomeTempDirectory 
+                            #   cat TGZFilePath | tar -xzf -
+                  
+                            # Check if the source file is in the expected location
+                            if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
+                            then
+                              sv_UnarchiveDirPath=$(dirname "${sv_ManifestSrcPath}")
+                            else
+                              sv_UnarchiveDirPath="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
+                              mkdir -p "${sv_UnarchiveDirPath}"
+                            fi
+                      
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Unarchiving TGZ Manifest ('${sv_ManifestURIPath}')"
+                            cd "${sv_UnarchiveDirPath}"
+                            cat "${sv_ManifestSrcPath}" | tar -xzf -
+                            sv_Err=$?
+                            cd ~/
+                            if [ ${sv_Err} -ne 0 ]
+                            then
+                              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - TGZ unarchive failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
+                              rm -fR "${sv_UnarchiveDirPath}"
+                              break
+                            fi
+                      
+                            # Check if we can remove the original source file
+                            if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
+                            then
+                              rm -f "${sv_ManifestSrcPath}"
+                            fi
+
+                            sv_ManifestSrcPath="${sv_UnarchiveDirPath}"
+                            ;;
+                        
+                          DMG)
+                            if [ -z "${sv_DmgMountPoint}" ]
+                            then
+                              # Mount the DMG file
+                              sv_DmgMountPoint="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
+                              sv_DmgSrcFilePath="${sv_ManifestSrcPath}"
+                    
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Mounting DMG Manifest ('${sv_ManifestURIPath}')"
+                              hdiutil attach "${sv_DmgSrcFilePath}" -mountpoint "${sv_DmgMountPoint}"
+                              sv_Err=$?
+                        
+                              if [ ${sv_Err} -ne 0 ]
+                              then
+                                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - Manifest DMG mount failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
+                                sv_DmgMountPoint=""
+                                break
+                              fi
+                            fi
+                            sv_ManifestSrcPath="${sv_DmgMountPoint}"
+                            ;;
+                            
+                          *)
+                            sv_ItemSrcPath="/$(basename "${sv_ManifestSrcPath}")"
+                            sv_ManifestSrcPath=$(dirname "${sv_ManifestSrcPath}")
+                            ;;
+                    
+                          esac
+                  
+                  
+                          # End - check if manifest is an archive file (zip, tgz or dmg)
+                          # ---
+                          
                         fi
+
                       fi
-
-                      # ---
-                      # Calculate the real manifest source path
-
-                      sv_ManifestSrcPath="${sv_ManifestURIPath}"
-                      sv_DmgMountPoint=""
-                
-                      sv_ManifestExt="$(echo ${sv_ManifestSrcPath} | grep '\.' | sed 's|.*\.||' | tr [a-z] [A-Z] )"
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestExt '${sv_ManifestExt}'"
-                      case ${sv_ManifestExt} in
-                      ZIP)
-                        # To unarchive:
-                        #   cd SomeTempDirectory 
-                        #   unzip ZIPFilePath
-
-                        # Check if the source file is in the expected location
-                        if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
-                        then
-                          sv_UnarchiveDirPath=$(dirname "${sv_ManifestSrcPath}")
-                        else
-                          sv_UnarchiveDirPath="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
-                          mkdir -p "${sv_UnarchiveDirPath}"
-                        fi
-                      
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Unarchiving ZIP Manifest ('${sv_ManifestURI}')"
-                        cd "${sv_UnarchiveDirPath}"
-                        unzip "${sv_ManifestSrcPath}"
-                        sv_Err=$?
-                        cd ~/
-                        if [ ${sv_Err} -ne 0 ]
-                        then
-                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${sv_Action} aborted - ZIP unarchive failed with error ${sv_Err} ('${sv_ManifestURI}')"
-                          rm -fR "${sv_UnarchiveDirPath}"
-                          break
-                        fi
-                      
-                        # Check if we can remove the original source file
-                        if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
-                        then
-                          rm -f "${sv_ManifestSrcPath}"
-                        fi
-
-                        sv_ManifestSrcPath="${sv_UnarchiveDirPath}"
-                        ;;
-                    
-                      TGZ)
-                        # Note, to create an archive:
-                        #   cd SomedirectoryPath 
-                        #   tar -c * | gzip -9 >"TGZFilePath"
-                        # To unarchive:
-                        #   cd SomeTempDirectory 
-                        #   cat TGZFilePath | tar -xzf -
-                  
-                        # Check if the source file is in the expected location
-                        if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
-                        then
-                          sv_UnarchiveDirPath=$(dirname "${sv_ManifestSrcPath}")
-                        else
-                          sv_UnarchiveDirPath="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
-                          mkdir -p "${sv_UnarchiveDirPath}"
-                        fi
-                      
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Unarchiving TGZ Manifest ('${sv_ManifestURI}')"
-                        cd "${sv_UnarchiveDirPath}"
-                        cat "${sv_ManifestSrcPath}" | tar -xzf -
-                        sv_Err=$?
-                        cd ~/
-                        if [ ${sv_Err} -ne 0 ]
-                        then
-                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${sv_Action} aborted - TGZ unarchive failed with error ${sv_Err} ('${sv_ManifestURI}')"
-                          rm -fR "${sv_UnarchiveDirPath}"
-                          break
-                        fi
-                      
-                        # Check if we can remove the original source file
-                        if [ -n "$(echo "${sv_ManifestSrcPath}" | grep "^/usr/local/LabWarden/REPO")" ]
-                        then
-                          rm -f "${sv_ManifestSrcPath}"
-                        fi
-
-                        sv_ManifestSrcPath="${sv_UnarchiveDirPath}"
-                        ;;
                         
-                      DMG)
-                        if [ -z "${sv_DmgMountPoint}" ]
-                        then
-                          # Mount the DMG file
-                          sv_DmgMountPoint="$(mktemp -dq ${GLB_SV_THISSCRIPTTEMPDIRPATH}/XXXXXXXX)"
-                          sv_DmgSrcFilePath="${sv_ManifestSrcPath}"
-                    
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Mounting DMG Manifest ('${sv_ManifestURI}')"
-                          hdiutil attach "${sv_DmgSrcFilePath}" -mountpoint "${sv_DmgMountPoint}"
-                          sv_Err=$?
-                        
-                          if [ ${sv_Err} -ne 0 ]
-                          then
-                            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${sv_Action} aborted - Manifest DMG mount failed with error ${sv_Err} ('${sv_ManifestURI}')"
-                            sv_DmgMountPoint=""
-                            break
-                          fi
-                        fi
-                        sv_ManifestSrcPath="${sv_DmgMountPoint}"
-                        ;;
-                    
-                      esac
-                  
-                      if [ -f "${sv_ManifestSrcPath}" ]
+                    else
+                      sv_ManifestURILocalPath=$(GLB_SF_RESOLVEFILEURITOPATH "${sv_ManifestURIPath}${sv_ItemSrcPath}" "/usr/local/LabWarden/REPO")
+
+                      if [ -z "${sv_ManifestURILocalPath}" ]
                       then
+                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - Manifest URI not resolvable ('${sv_ManifestURIPath}${sv_ItemSrcPath}')"
+                        break
+                        
+                      else
+                        sv_ManifestSrcPath="${sv_ManifestURILocalPath}"
+
+                        sv_ItemSrcPath="/$(basename "${sv_ManifestSrcPath}")"
                         sv_ManifestSrcPath=$(dirname "${sv_ManifestSrcPath}")
                       fi
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPath}'"
-                  
-                      # ---
-                
+                        
                     fi
+
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ManifestURILocalPath '${sv_ManifestURILocalPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ManifestSrcPath '${sv_ManifestSrcPath}'"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: sv_ItemSrcPath '${sv_ItemSrcPath}'"
+
+                    if [ ! -e "${sv_ManifestURILocalPath}" ]
+                    then
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Manifest ${sv_Action} aborted - Manifest file can not be found ('${sv_ManifestURIPath}')"
+                      break
+                    fi
+
+                
                   fi
                 fi
                   
@@ -906,16 +964,16 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                 Package)
                   if [ ! -e "${sv_ManifestSrcPath}${sv_ItemSrcPath}" ]
                   then
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURI}')"
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURIPath}')"
                     continue
                       
                   else
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: ${sv_Action}ing '${sv_ItemSrcPath}'."
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action}ing '${sv_ItemSrcPath}'."
                     installer 2>&1 -pkg "${sv_ManifestSrcPath}${sv_ItemSrcPath}" -target / >> "${GLB_SV_LOGFILEPATH}"
                     sv_Err=$?
                     if [ ${sv_Err} -ne 0 ]
                     then
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${sv_Action} aborted - '${sv_ItemType}' run failed with error ${sv_Err} ('${sv_ManifestURI}')"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - '${sv_ItemType}' run failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
                       continue
                     fi
 
@@ -925,19 +983,19 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                 Executable)
                   if [ ! -e "${sv_ManifestSrcPath}${sv_ItemSrcPath}" ]
                   then
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURI}')"
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURIPath}')"
                     continue
                       
                   else
-                    sv_ItemArgs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:Args")"
+                    sv_ItemArgs="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:${sv_ItemType}:Args")"
 
                     # Do a software update
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Running ${sv_Action} executable ('${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs})"
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Running ${sv_Action} executable ('${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs})"
                     eval "'${sv_ManifestSrcPath}${sv_ItemSrcPath}' ${sv_ItemArgs}"
                     sv_Err=$?
                     if [ ${sv_Err} -ne 0 ]
                     then
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - '${sv_ItemType}' run failed with error ${sv_Err} ('${sv_ManifestURI}')"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - '${sv_ItemType}' run failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
                       continue
                     fi
                   fi
@@ -949,13 +1007,13 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                   then
                     if [ -e "${sv_ItemDstPath}" ]
                     then
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Removing '${sv_ItemType}' at '${sv_ItemDstPath}'"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Removing '${sv_ItemType}' at '${sv_ItemDstPath}'"
                       if [ -d "${sv_ItemDstPath}" ]
                       then
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "rm -fR ${sv_ItemDstPath}"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "rm -fR ${sv_ItemDstPath}"
                         rm -fR "${sv_ItemDstPath}"
                       else
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "rm -f ${sv_ItemDstPath}"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "rm -f ${sv_ItemDstPath}"
                         rm -f "${sv_ItemDstPath}"
                       fi
                     fi
@@ -966,21 +1024,21 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                         
                     if [ ! -e "${sv_ManifestSrcPath}${sv_ItemSrcPath}" ]
                     then
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURI}')"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - Item ('${sv_ItemSrcPath}') not found in Manifest ('${sv_ManifestURIPath}')"
                       continue
                   
                     else
-                      sv_ItemOwner="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:Owner")"
+                      sv_ItemOwner="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:${sv_ItemType}:Owner")"
                       if [ -z "${sv_ItemOwner}" ]
                       then
                         sv_ItemOwner="root"
                       fi
-                      sv_ItemGroup="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:Group")"
+                      sv_ItemGroup="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:${sv_ItemType}:Group")"
                       if [ -z "${sv_ItemGroup}" ]
                       then
                         sv_ItemGroup="wheel"
                       fi
-                      sv_ItemMode="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Item:${iv_ItemIndex}:${sv_ItemType}:Mode")"
+                      sv_ItemMode="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config${sv_ManifestRoot}:Item:${iv_ItemIndex}:${sv_ItemType}:Mode")"
                       if [ -z "${sv_ItemMode}" ]
                       then
                         sv_ItemMode="og-w"
@@ -988,16 +1046,16 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
 
                       if [ ! -d "${sv_ItemDstDir}" ]
                       then
-                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: Creating destination dir '${sv_ItemDstDir}'"
+                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Creating destination dir '${sv_ItemDstDir}'"
                         # At some point, maybe think about setting permissions according to owner/group/mode above
                         mkdir -p "${sv_ItemDstDir}"
                       fi
 
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Item ${iv_ItemIndex}: ${sv_Action}ing '${sv_ItemType}' '${sv_ItemDstPath}'"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: ${sv_Action}ing '${sv_ItemType}' '${sv_ItemDstPath}'"
 
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "cp -pR ${sv_ManifestSrcPath}${sv_ItemSrcPath} ${sv_ItemDstDir}"
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "chown -R ${sv_ItemOwner}:${sv_ItemGroup} ${sv_ItemDstPath}"
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "chmod -R ${sv_ItemMode} ${sv_ItemDstPath}"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "cp -pR ${sv_ManifestSrcPath}${sv_ItemSrcPath} ${sv_ItemDstDir}"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "chown -R ${sv_ItemOwner}:${sv_ItemGroup} ${sv_ItemDstPath}"
+#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "chmod -R ${sv_ItemMode} ${sv_ItemDstPath}"
 
                       if [ -d "${sv_ManifestSrcPath}${sv_ItemSrcPath}" ]
                       then
@@ -1005,7 +1063,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                         sv_Err=$?
                         if [ ${sv_Err} -ne 0 ]
                         then
-                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - '${sv_ItemType}' copy failed with error ${sv_Err} ('${sv_ManifestURI}')"
+                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - '${sv_ItemType}' copy failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
                           # Tidy up after a failed copy
                           rm -fR "${sv_ItemDstPath}"
                           continue
@@ -1018,7 +1076,7 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
                         sv_Err=$?
                         if [ ${sv_Err} -ne 0 ]
                         then
-                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Item ${iv_ItemIndex}: ${sv_Action} aborted - '${sv_ItemType}' copy failed with error ${sv_Err} ('${sv_ManifestURI}')"
+                          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Manifest ${iv_ManifestIndex}: Item ${iv_ItemIndex}: Item ${sv_Action} aborted - '${sv_ItemType}' copy failed with error ${sv_Err} ('${sv_ManifestURIPath}')"
                           # Tidy up after a failed copy
                           rm -f "${sv_ItemDstPath}"
                           continue
@@ -1036,26 +1094,27 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "sv_ManifestSrcPath '${sv_ManifestSrcPa
               
             fi
 
+            # done running through the manifest items
           done
                 
           # ---
           # Unmount if a DMG file is mounted
           if [ -n "${sv_DmgMountPoint}" ]
           then
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Unmounting DMG Manifest ('${sv_ManifestURI}')"
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Unmounting DMG Manifest ('${sv_ManifestURIPath}')"
             hdiutil detach "${sv_DmgMountPoint}"
           fi
 
           # ---
           # Check if we should remove the manifest file
-          if [ -n "$(echo "${sv_ManifestURIPath}" | grep "^/usr/local/LabWarden/REPO")" ]
+          if [ -n "$(echo "${sv_ManifestURILocalPath}" | grep "^/usr/local/LabWarden/REPO")" ]
           then
             if [ ${sv_Err} -eq 9999 ]
             then
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Keeping Manifest in repository for later ('${sv_ManifestURIPath}')"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Keeping Manifest in repository for later ('${sv_ManifestURILocalPath}')"
             else
-GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting Manifest from repository ('${sv_ManifestURIPath}')"
-              rm -f "${sv_ManifestURIPath}"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Deleting Manifest from repository ('${sv_ManifestURILocalPath}')"
+              rm -f "${sv_ManifestURILocalPath}"
               find /usr/local/LabWarden/REPO -depth 1 -empty -type d -delete
             fi
           fi
@@ -1068,6 +1127,11 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting Manifest from repository ('
     # Release lock
     GLB_NF_NAMEDLOCKRELEASE "${GLB_SV_THISSCRIPTFILENAME}"
   fi
+
+    done
+    # done counting through the manifest list
+    
+  fi
 }
 
 # ---
@@ -1075,19 +1139,11 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Deleting Manifest from repository ('
 case ${GLB_SV_EVENTNAME} in
     
 Sys-PolicyUninstall)
-  sv_Action="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Action" | tr [a-z] [A-Z])"
-  if [ "${sv_Action}" = "AUTO" ]
-  then
-    bf_RunAction "UNINSTALL"
-  fi
+  bf_RunAction "UNINSTALL"
   ;;
   
 Sys-PolicyInstall)
-  sv_Action="$(GLB_SF_GETPLISTPROPERTY "${GLB_SV_CONFIGFILEPATH}" ":${GLB_SV_CONFIGUUID}:Config:Action" | tr [a-z] [A-Z])"
-  if [ "${sv_Action}" = "AUTO" ]
-  then
-    bf_RunAction "INSTALL"
-  fi
+  # bf_RunAction "INSTALL"
   ;;
 
 Sys-Idle|Sys-LoginWindowIdle)

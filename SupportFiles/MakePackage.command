@@ -2,12 +2,28 @@
 #
 # Short:    Utility script - Build installation package
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called as follows:    
 #   MakePackage.command
 #
+# Requires
+#  GLB_BC_FALSE
+#  GLB_BV_RUNUSERISADMIN
+#  GLB_IC_MSGLEVELERR
+#  GLB_NF_LOGMESSAGE
+#  GLB_SC_PROJECTNAME
+#  GLB_SC_PROJECTSIGNATURE
+#  GLB_SC_PROJECTVERSION
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTDIRPATH
+#  GLB_SV_THISSCRIPTFILEPATH
+#  GLB_SV_THISSCRIPTTEMPDIRPATH
+#
+#  GLB_IF_GETPLISTARRAYSIZE
+
 
 # ---
   
@@ -16,25 +32,24 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_UTILITYCODEVERSION="3.2.5"
+GLB_SV_UTILITYCODEVERSION="3.3.0"
 
 # ---
 
-# Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+# Include the Base Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
 then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' BASEDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 
@@ -91,9 +106,8 @@ else
   mkdir -p "${sv_PkgScriptDirPath}/inc-sh"
   mkdir -p "${sv_PkgScriptDirPath}/bin"
 
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Common.sh "${sv_PkgScriptDirPath}/inc-sh/"
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Constants.sh "${sv_PkgScriptDirPath}/inc-sh/"
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh "${sv_PkgScriptDirPath}/inc-sh/"
+  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseConst.sh "${sv_PkgScriptDirPath}/inc-sh/"
+  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh "${sv_PkgScriptDirPath}/inc-sh/"
   cp -p "${GLB_SV_PROJECTDIRPATH}"/bin/Uninstall "${sv_PkgScriptDirPath}/bin/"
 
   # -- build the preinstall script
@@ -164,9 +178,8 @@ EOF
   mkdir -p "${sv_PkgScriptDirPath}/inc-sh"
   mkdir -p "${sv_PkgScriptDirPath}/bin"
 
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Common.sh "${sv_PkgScriptDirPath}/inc-sh/"
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Constants.sh "${sv_PkgScriptDirPath}/inc-sh/"
-  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh "${sv_PkgScriptDirPath}/inc-sh/"
+  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseConst.sh "${sv_PkgScriptDirPath}/inc-sh/"
+  cp -p "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh "${sv_PkgScriptDirPath}/inc-sh/"
   cp -p "${GLB_SV_PROJECTDIRPATH}"/bin/PreInstall "${sv_PkgScriptDirPath}/bin/"
   cp -p "${GLB_SV_PROJECTDIRPATH}"/bin/PostInstall "${sv_PkgScriptDirPath}/bin/"
   cp -p "${GLB_SV_PROJECTDIRPATH}"/bin/Uninstall "${sv_PkgScriptDirPath}/bin/"

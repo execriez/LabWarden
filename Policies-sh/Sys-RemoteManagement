@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Sets up remote access to a workstation
 # Author:   Mark J Swift
-# Version:  3.2.13
-# Modified: 05-Nov-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # references:
 #  https://www.jamf.com/jamf-nation/discussions/6682/ard-kickstart-script-to-contribute
@@ -28,7 +28,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.13"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-LocalAccess"
@@ -38,7 +38,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-LocalAccess"
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 

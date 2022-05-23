@@ -28,7 +28,11 @@ See "Quick Demos 1-3" below to get a quick idea of the kind of things that LabWa
 
 This example shows how to manually deploy the ShutdownWhenLidShut policy to a workstation. This policy shuts down a laptop if the lid is closed for more that a pre-defined length of time.
 
-* Install LabWarden by running the package from the following link: [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg)
+Open the Terminal app, and download the [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg) installer to your desktop by typing the following command. 
+
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg --output ~/Desktop/LabWarden.pkg
+
+* Double-click the downloaded package in order to install LabWarden
 * Download (do not install) the mobileconfig from the following link: [LW-Sys-ShutdownWhenLidShut-(15secs).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-ShutdownWhenLidShut-(15secs).mobileconfig)
 
 Take a look at the file in a text editor, and navigate to the config section. 
@@ -103,7 +107,11 @@ After installing the policy profile, the laptop will shut down 15 seconds after 
 
 This example shows how to manually deploy the PolicyBanner policy to a workstation.
 
-* Install LabWarden by running the package from the following link: [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg)
+Open the Terminal app, and download the [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg) installer to your desktop by typing the following command. 
+
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg --output ~/Desktop/LabWarden.pkg
+
+* Double-click the downloaded package in order to install LabWarden
 * Download (do not install) the mobileconfig from the following link: [LW-Sys-PolicyBanner.mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-PolicyBanner.mobileconfig)
 
 Open the file in a text editor.
@@ -188,7 +196,11 @@ Manually install the policy profile by double-clicking the mobileconfig - then r
 
 This example shows how to deploy an application to a workstation from the web via the Sys-SoftwareManifest policy.
 
-* Install LabWarden by running the package from the following link: [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg)
+Open the Terminal app, and download the [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg) installer to your desktop by typing the following command. 
+
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg --output ~/Desktop/LabWarden.pkg
+
+* Double-click the downloaded package in order to install LabWarden
 * Download, then install the mobileconfig from the following link: [LW-Sys-SoftwareManifest-(web-MuseScore3).mobileconfig](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/Profiles/Examples/V3/LW-Sys-SoftwareManifest-(web-MuseScore3).mobileconfig)
 
 After a small delay, a disk image containing the application **MuseScore** will be downloaded from the internet and mounted. The application will be installed into /Applications and the disk image will be unmounted and discarded.
@@ -327,10 +339,13 @@ Most of the above profiles, plus...
 
 ## Installation
 
-[Download](https://github.com/execriez/LabWarden/archive/master.zip) the LabWarden zip archive, then unzip on a Mac workstation. Locate, then double-click the "LabWarden.pkg" installer package which can be found in the "SupportFiles" directory.
+Open the Terminal app, and download the [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg) installer to your desktop by typing the following command. 
 
-Alternatively, install LabWarden by running the package from the following link: [LabWarden.pkg](https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg)
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg --output ~/Desktop/LabWarden.pkg
 
+* Double-click the downloaded package in order to install LabWarden
+
+Alternatively, [download](https://github.com/execriez/LabWarden/archive/master.zip) the LabWarden zip archive, then unzip on a Mac workstation. Locate, then double-click the "LabWarden.pkg" installer package which can be found in the "SupportFiles" directory.
 
 The installer will install the following files and directories:
 
@@ -1310,15 +1325,15 @@ or **File** for everything else.
 
 #### Item try method:
 
-The **TryMethod** key determines how the manifest item entry is treated. **TryMethod** can be **Never**, **Once**, **Always** or **Fix**.
+The **TryMethod** key determines how the manifest item entry is treated. **TryMethod** can be **Check**, **Fix**, **Once**, or **Always**.
 
-**Never** means that the action is never run for the manifest item. The item entry is effectively informational, and any install or uninstall of this item will be completed by another manifest item entry. 
+**Check** means that the item entry is solely informational. The install status is simply checked, and any actual install or uninstall of this item will be completed by another manifest item entry. 
+
+**Fix** means that the action (install or uninstall) will run if there are one or more items in the manifest where the action has not yet completed successfully. 
 
 **Once** means that the action (install or uninstall) is not re-tried if the action has already completed successfully. 
 
 **Always** means that the action is always run for this manifest item, even if the action has already completed successfully. 
-
-**Fix** means that the action (install or uninstall) will only run if there are one or more items in the manifest where the action has not yet completed successfully. 
 
 If **TryMethod** is undefined, it defaults to the value **Once**.
 
@@ -1364,13 +1379,13 @@ This means that if **Action** is defined as **Install** the command will be only
 
 The install status of an item of type **File** is determined via its md5 checksum. This is compared against the defined **md5checksum** key. 
 
-If the **TryMethod** is **Never**, then nothing is done. The item entry is simply used to determine the install status, and it is up to another item entry to **Fix** the install.
+If the **TryMethod** is **Check**, then nothing is done. The item entry is simply used to determine the install status, and it is up to another item entry to **Fix** the install.
 
 Otherwise, items of type **File** are installed by copying the **FileName** from the **SrcDir** (relative to the **ManifestURI**) into the **DstDir**.
 
 Items of type **File** are uninstalled by deleting **FileName** from the **DstDir**.
 
-In the example below, **TryMethod** is defined as **Never** meaning that the item exists simply to determine the install status of the file. It is left to another item in the manifest to do the actual install/uninstall.
+In the example below, **TryMethod** is defined as **Check** meaning that the item exists simply to determine the install status of the file. It is left to another item in the manifest to do the actual install/uninstall.
 
 					<key>Item</key>
 					<array>
@@ -1382,7 +1397,7 @@ In the example below, **TryMethod** is defined as **Never** meaning that the ite
 							<string>File</string>
 
 							<key>TryMethod</key>
-							<string>Never</string>
+							<string>Check</string>
 
 							<key>File</key>
 							<dict>
@@ -1405,7 +1420,7 @@ The install status of an item of type **Package** is determined via a package **
 
 The package is considered to be not installed if the package receipt does not exist. The package is considered to be out-of-date if the installed version is less than the **VersionString** defined in the config. 
 
-If the **TryMethod** is **Never**, then nothing is done. The item entry is simply used to determine the install status, and it is up to another item entry to **Fix** the install.
+If the **TryMethod** is **Check**, then nothing is done. The item entry is simply used to determine the install status, and it is up to another item entry to **Fix** the install.
 
 Otherwise, items of type **Package** are installed or uninstalled, by installing the package specified by **FileName** which is located in **SrcDir** (relative to the **ManifestURI**). 
 
@@ -1914,7 +1929,7 @@ There is one example profile that restricts the use of the Terminal.app and prev
 This should be edited and configured to your own needs.
 
 ### Usr-AppShowHints
-This policy shows a random hint from a list when a specified application is opened. It is called as the user and triggered by an **Usr-AppWillLaunch** event. This script uses CocoaDialog.
+This policy shows a random hint from a list when a specified application is opened. It is called as the user and triggered by an **Usr-AppWillLaunch** event.
 
 The config consists of an **ApplicationBundleIdentifier** key and an array of hints called **AppHints**. 
 
@@ -2568,11 +2583,8 @@ Take a look at the example custom policies and associated mobileconfigs for insp
 LabWarden makes use of the following tools:
 
 * [AppWarden](https://github.com/execriez/AppWarden/ "AppWarden") - Run custom code when a Mac OS app is launched or terminated
-* [CocoaDialog](https://mstratman.github.io/cocoadialog/ "CocoaDialog") - Create macOS dialogs from the command line
 * [ConsoleUserWarden](https://github.com/execriez/ConsoleUserWarden/ "ConsoleUserWarden") - Run custom code when the console user changes on MacOS
-* [duti](https://github.com/moretension/duti "duti") - A command-line tool to select default applications for document types and URL schemes on Mac OS X
 * [dockutil](https://github.com/kcrawford/dockutil "dockutil") - command line tool for managing dock items
-* [iHook](https://sourceforge.net/projects/ihook/ "iHook") - A Mac OS X graphical interface designed as a frontend for commandline executables
 * [MountWarden](https://github.com/execriez/MountWarden/ "MountWarden") - Run custom code when a volume is mounted or umounted on MacOS
 * [mysides](https://github.com/mosen/mysides "mysides") - A command line application for managing OS X Finder sidebar favourites
 * [NetworkStatusWarden](https://github.com/execriez/NetworkStatusWarden/ "NetworkStatusWarden") - Run custom code when the primary network interface changes on MacOS
@@ -2587,9 +2599,39 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.3.0 - 22-May-2022
+
+* Binaries have been updated with fat versions to support both Apple Silicon and Intel Chipsets, hence the version jump. These binaries include: AppWarden, ConsoleUserWarden, MountWarden, NetworkStatusWarden, SleepWarden, mysides and rsync. 
+
+* CocoaDialog has been removed. Notifications now just use an applescript (they don't look as nice). In the future LabWarden may make use of one of the many notification tools, althought they all now require special permissions.
+
+* On MacOS 11 and later the Sys-dot1xWiFi policy should be seen as legacy, as installing mobileconfigs administratively via a script is not allowed. On those systems, the policy builds the config but leaves it to an admin to install it manually (see logs).
+
+* Fixed a divide by zero possibility in policy 'Sys-UsageStats' if you deleted its running prefs.
+
+* The function 'GLB_BF_NAMEDLOCKGRAB' in BaseDefs.sh ignores existing locks if the original process that created the lock no longer exists. This could happen if a critical error kills the process before it has time to clear the lock.
+
+* The script includes have been renamed and modified to separate base (includes used everywhere), core (used in the core control functions) and policy (used only in policies).
+
+* The package creation and installation code has been aligned with other "Warden" projects.
+
+* This version requires MacOS 10.9 or later.
+
+3.2.23 - 21-Feb-2022
+
+* Usr-CreateHomeFolderRedirections can now be triggered by Usr-ConsoleUserLoggedIn as well as Usr-AtDesktop, Usr-Poll and Usr-ManualTrigger.
+
+* The Sys-SoftwareManifest policy can now contain multiple manifests in the same config. (It could already include multiple items in the same manifest, now it can contain multiple unrelated manifests too).
+
+* The NEVER TryMethod keyword in the Sys-SoftwareManifest policy is changed to CHECK, which more effectively describes what it does. The old keyword still works for the time-being.
+
+3.2.22 - 18-Feb-2022
+
+* Usr-CreateHomeFolderRedirections no longer reloads the Finder when the Desktop is redirected on MacOS 10.14 and later, as the desktop view is refreshed automatically by the OS when the Desktop Folder content changes.
+
 3.2.21 - 01-Feb-2022
 
-* Fix in GLB_NF_SCHEDULE4EPOCH in Common.sh. The code that removed redundant schedules meant that only one schedule could be active. The function no longer tries to tidy up redundant schedules. 
+* Fix in GLB\_NF\_SCHEDULE4EPOCH in Common.sh. The code that removed redundant schedules meant that only one schedule could be active. The function no longer tries to tidy up redundant schedules. 
 
 3.2.20 - 26-Jan-2022
 

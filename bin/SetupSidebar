@@ -2,8 +2,8 @@
 #
 # Short:    Setup the sidebar via any installed Usr-SetupSidebar profiles 
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Call from a shell as follows:    
 #   /usr/local/LabWarden/bin/SetupSidebar

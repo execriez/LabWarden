@@ -2,11 +2,14 @@
 #
 # Short:    Usr Policy script - Home folder redirection
 # Author:   Mark J Swift
-# Version:  3.2.17
-# Modified: 22-Nov-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
-# Triggered by the following events:
-#   Usr-AtDesktop   (as user)
+# Can be triggered by the following events (as user):
+#   Usr-AtDesktop
+#   Usr-ConsoleUserLoggedIn
+#   Usr-Poll
+#   Usr-ManualTrigger
 #
 # Called as follows:    
 #   Usr-CreateHomeFolderRedirections <PolicyName> <EventName> <OptionalParam> <ConsoleUserInfo> <ConfigUUID> <ConfigFilePath> <PolicyPrefsFilePath> <SharedPrefsFilePath> <SysDefaultsConfigFilePath> <LogInfo>
@@ -24,7 +27,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.17"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -34,7 +37,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 
@@ -68,7 +70,7 @@ case ${GLB_SV_EVENTNAME} in
 Usr-PolicyInstall|Usr-PolicyUninstall)
   ;;
   
-Usr-AtDesktop|Usr-Poll|Usr-ManualTrigger)
+Usr-ConsoleUserLoggedIn|Usr-AtDesktop|Usr-Poll|Usr-ManualTrigger)
 
   bv_RebuildDockAndSidebar=${GLB_BC_FALSE}
   bv_ReloadFinder=${GLB_BC_FALSE}
@@ -160,9 +162,19 @@ Usr-AtDesktop|Usr-Poll|Usr-ManualTrigger)
   # Check if the Desktop was linked
   if [ "${bv_ReloadFinder}" = ${GLB_BC_TRUE} ]
   then
-    # Kill the Finder (Refreshes Desktop)
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Desktop folder redirected - Finder needs to be reloaded."
-    nf_ReloadFinder
+    # Recently, we don't need to Kill the Finder to refresh the Desktop
+
+    if [ ${GLB_IV_SYSTEMVERSIONSTAMPASNUMBER} -ge 168689664 ]
+    then
+      # MacOS 10.14 and later
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Desktop folder redirected - Finder SHOULD refresh the view automatically."
+          
+    else
+      # MacOS 10.13 and earlier
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Desktop folder redirected - Finder needs to be reloaded."
+      nf_ReloadFinder
+    fi
+
   fi
 
   ;;

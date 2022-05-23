@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Update the LabWarden installation to a later version
 # Author:   Mark J Swift
-# Version:  3.2.17
-# Modified: 10-Nov-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Triggered by the following events:
 #   Sys-Poll            (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.17"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -35,7 +35,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST=""
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 

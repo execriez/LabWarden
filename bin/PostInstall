@@ -2,14 +2,26 @@
 #
 # Short:    Perform post-install checks
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 #
 # Called as follows (by Install as root):    
 #   PostInstall
 
 # need to pass volume
+
+# Requires
+#  GLB_IC_MSGLEVELERR
+#  GLB_IC_MSGLEVELINFO
+#  GLB_IC_MSGLEVELNOTICE
+#  GLB_NF_LOGMESSAGE
+#  GLB_SC_PROJECTNAME
+#  GLB_SC_PROJECTSIGNATURE
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTNAME
+#  GLB_SV_THISSCRIPTTEMPDIRPATH
 
 # ---
   
@@ -18,25 +30,24 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.5"
+GLB_SV_CODEVERSION="3.3.0"
 
 # ---
 
-# Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+# Include the Base Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
 then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' BASEDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 
@@ -63,15 +74,6 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Performing post-install checks"
 
 if test -z "${sv_RootDirPath}"
 then
-  sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
-  if [ ! -e "${sv_ManagedPrefsFilePath}" ]
-  then
-    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Creating empty '${sv_ManagedPrefsFilePath}'"
-    /usr/libexec/PlistBuddy >/dev/null 2>&1 -c "Save" "${sv_ManagedPrefsFilePath}"
-    chown root:wheel "${sv_ManagedPrefsFilePath}"
-    chmod 644 "${sv_ManagedPrefsFilePath}"
-  fi
-
   # Load LaunchDaemon plists
   while read sv_LaunchServiceFileName
   do

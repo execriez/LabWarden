@@ -2,14 +2,39 @@
 #
 # Short:    Utility Script - Update configs from installed mobileconfigs
 # Author:   Mark J Swift
-# Version:  3.2.6
-# Modified: 01-Jan-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called as follows:    
 #   ManagedPrefs [-list|-update]
 #
 # Without a user specified, updates the workstation config.
 # With a user, updates the config for the specified user.
+#
+# Requires BaseDefs
+#  GLB_BC_FALSE
+#  GLB_BC_TRUE
+#  GLB_IC_MSGLEVELERR
+#  GLB_IC_MSGLEVELNOTICE
+#  GLB_IC_MSGLEVELWARN
+#  GLB_NF_LOGMESSAGE
+#  GLB_SC_PROJECTINITIALS
+#  GLB_SC_PROJECTSIGNATURE
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTFILENAME
+#  GLB_SV_THISSCRIPTTEMPDIRPATH
+#
+#  GLB_BF_NAMEDLOCKGRAB
+#  GLB_IF_GETPLISTARRAYSIZE
+#  GLB_NF_NAMEDLOCKRELEASE
+#  GLB_SF_GETPLISTPROPERTY
+#
+# Requires CoreDefs
+#  GLB_SV_COMPUTERCONFIGDIRPATH
+#  GLB_SV_RUNNINGCONFIGDIRPATH
+
+
 
 # ---
   
@@ -40,25 +65,24 @@ esac
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.6"
+GLB_SV_CODEVERSION="3.3.0"
 
 # ---
 
 # Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
 then
   . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' COREDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 
@@ -214,7 +238,7 @@ case ${sv_CommandOption} in
     if [ -e "${sv_ManagedPrefsFilePath}" ]
     then
 
-    sv_ConfigTmpDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/${GLB_SV_HOSTNAME}-${GLB_SV_RUNUSERNAME}/Config"
+    sv_ConfigTmpDirPath="${GLB_SV_THISSCRIPTTEMPDIRPATH}/Config"
     mkdir -p "${sv_ConfigTmpDirPath}"
 
     bv_CheckConfig=${GLB_BC_TRUE}
@@ -252,12 +276,10 @@ case ${sv_CommandOption} in
         # Export the all the managed prefs into a file
         if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
         then
-#          profiles -L | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u > "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt"
           sv_Result=$(profiles -L | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u)
           iv_Err=$?
           sv_TopLevelKeyName="_computerlevel"
         else
-#          profiles -L -U ${GLB_SV_RUNUSERNAME} | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u > "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt"
           sv_Result=$(profiles -L -U ${GLB_SV_RUNUSERNAME} | grep "profileIdentifier:" | cut -d" " -f 4- | sort -u)
           iv_Err=$?
           sv_TopLevelKeyName=${GLB_SV_RUNUSERNAME}
@@ -274,9 +296,6 @@ case ${sv_CommandOption} in
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Processing Managed prefs"
 
       cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_KnownProfilesFileName}" | sort -u > "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}"
-
-#      diff "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}" "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt" | grep -E "^> " | cut -d" " -f2 > "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt"
-#      diff "${sv_ConfigTmpDirPath}/${sv_KnownProfilesFileName}" "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt" | grep -E "^< " | cut -d" " -f2 > "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt"
 
       echo "$(cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_KnownProfilesFileName}";echo;cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_KnownProfilesFileName}";echo;cat "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt";echo)" | sort | grep . | uniq -u > "${sv_ConfigTmpDirPath}/DoInstallTheseProfiles.txt"
       echo "$(cat "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt";echo;cat "${sv_ConfigTmpDirPath}/LabWarden-InstalledProfiles.txt";echo;cat "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_KnownProfilesFileName}";echo)" | sort | grep . | uniq -u > "${sv_ConfigTmpDirPath}/DoUninstallTheseProfiles.txt"
@@ -323,48 +342,6 @@ case ${sv_CommandOption} in
     	    	chmod 755 "${sv_EventsFilePath}"
               fi
           
-#              sv_PolicyConfigFilePath="${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
-#              if [ ! -e "${sv_PolicyConfigFilePath}" ]
-#              then
-#                sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
-#              fi
-#              
-#              sv_PolicyName=$(GLB_SF_GETPLISTPROPERTY "${sv_PolicyConfigFilePath}" ":${sv_PolicyConfigUUID}:Name")
-#              if [ -n "${sv_PolicyName}" ]
-#              then  
-#                sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
-#                if test -n "${sv_PolicyExeFilePath}"
-#                then
-#          
-#                  # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls.
-#                  sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
-#
-#                  # Local prefs are referenced by Policy UUID. These are deleted when the policy is updated or uninstalled.
-#                  sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/${sv_PolicyConfigUUID}.plist"
-#
-## By the time we are here, these need to be defined
-## y sv_PolicyExeFilePath
-## y sv_PolicyName
-## y sv_EventName
-## y GLB_SV_OPTIONALPARAM
-## y GLB_SV_CONSOLEUSERINFO
-## y sv_PolicyConfigUUID
-## y sv_PolicyConfigFilePath 
-## y sv_PolicyPrefsFilePath
-## y sv_SharedPrefsFilePath
-## y GLB_SV_SYSDEFAULTSCONFIGFILEPATH
-## y GLB_SV_LOGINFO
-#
-#                    # Call Policy script passing an "PolicyUninstall" event - wait for policy to finish before continuing (don't run in background)
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventName}' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
-#"${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_UninstallEventName}" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}"
-#            
-#                fi
-#              fi
-
-              # Delete config
-              #rm -f "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
-
               # Backup config
               mv -f "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist" "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Config/${sv_PolicyConfigUUID}.plist"
 
@@ -574,39 +551,6 @@ case ${sv_CommandOption} in
                       
                       echo "${sv_ProfileDisplayName}:${sv_ProfileIdentifier}:${sv_PolicyName}:${sv_PolicyConfigUUID}" >> "${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_KnownPayloadsFileName}"
 
-#                      sv_PolicyExeFilePath=$(GLB_SF_POLICYEXEFILEPATH "${sv_PolicyName}")
-#                      if test -n "${sv_PolicyExeFilePath}"
-#                      then
-#                        # Shared prefs are referenced by Policy Name. These survive policy updates and uninstalls
-#                        sv_SharedPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Shared/${sv_PolicyName}.plist"
-#
-#                        # Local prefs are referenced by Policy UUID. These are deleted when the policy is updated or uninstalled.
-#                        sv_PolicyPrefsFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Prefs/${sv_PolicyConfigUUID}.plist"
-#
-#                        sv_PolicyConfigFilePath="${GLB_SV_COMPUTERCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
-#                        if [ ! -e "${sv_PolicyConfigFilePath}" ]
-#                        then
-#                          sv_PolicyConfigFilePath="${GLB_SV_RUNNINGCONFIGDIRPATH}/Config/${sv_PolicyConfigUUID}.plist"
-#                        fi
-#
-# By the time we are here, these need to be defined
-# y sv_PolicyExeFilePath
-# y sv_PolicyName
-# y sv_EventName
-# y GLB_SV_OPTIONALPARAM
-# y GLB_SV_CONSOLEUSERINFO
-# y sv_PolicyConfigUUID
-# y sv_PolicyConfigFilePath 
-# y sv_PolicyPrefsFilePath
-# y sv_SharedPrefsFilePath
-# y GLB_SV_SYSDEFAULTSCONFIGFILEPATH
-# y GLB_SV_LOGINFO
-#
-#                          # Call Policy script passing an "PolicyInstall" event - wait for policy to finish before continuing (don't run in background)
-#GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventName}' '${GLB_SV_OPTIONALPARAM}' '${GLB_SV_CONSOLEUSERINFO}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
-#"${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_InstallEventName}" "${GLB_SV_OPTIONALPARAM}" "${GLB_SV_CONSOLEUSERINFO}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}"
-#
-#                      fi
                     fi
                   fi
                 fi

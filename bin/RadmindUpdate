@@ -2,8 +2,8 @@
 #
 # Short:    Simple Radmind update script
 # Author:   Mark J Swift
-# Version:  3.2.7
-# Modified: 30-May-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called as follows:    
 #   RadmindUpdate "radmindserver,Cksum,AuthLevel,CaseSwitch,MaxDeletes" [<NotifyURI>]
@@ -13,6 +13,20 @@
 # about to happen. The server should do what it needs to in order to prep the future update.
 #
 # During a notification, NotifyURI is passed the following info: 'os', 'loglevelstr', 'logtextstr'.
+#
+# Requires
+#  GLB_IC_MSGLEVELERR
+#  GLB_IC_MSGLEVELINFO
+#  GLB_IC_MSGLEVELNOTICE
+#  GLB_NF_LOGMESSAGE
+#  GLB_SC_PROJECTSIGNATURE
+#  GLB_SV_PROJECTDIRPATH
+#  GLB_SV_RUNUSERNAME
+#  GLB_SV_THISSCRIPTFILENAME
+#
+#  iv_SystemVersionStampAsNumber
+#  sf_urlencode
+
 
 # ---
   
@@ -21,7 +35,24 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_CODEVERSION="3.2.7"
+GLB_SV_CODEVERSION="3.3.0"
+
+# ---
+
+# Include the Base Defs library (if it is not already loaded)
+if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseDefs.sh
+
+  # Exit if something went wrong unexpectedly
+  if [ -z "${GLB_BC_BASEDEFS_INCLUDED}" ]
+  then
+    echo >&2 "Something unexpected happened - '${0}' BASEDEFS"
+    exit 90
+  fi
+fi
+
+# By the time we get here, quite a few global variables have been set up.
 
 # ---
 
@@ -33,39 +64,10 @@ fi
 
 # ---
 
-# Get filename of this script
-sv_ThisScriptFileName="$(basename "${0}")"
-
-# Get dir of this script
-sv_ThisScriptDirPath="$(dirname "${0}")"
-
-# Get Process ID of this script
-iv_ThisScriptPID=$$
-
-# ---
-
-# Get user name
-sv_ThisUserName="$(whoami)"
-
-if [ "${sv_ThisUserName}" != "root" ]
+if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
 then
   # we only like root
   exit 0
-fi
-
-# ---
-
-# Include the constants library (if it is not already loaded)
-if [ -z "${GLB_BC_CONST_ISINCLUDED}" ]
-then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Constants.sh
-
-  # Exit if something went wrong unexpectedly
-  if test -z "${GLB_BC_CONST_ISINCLUDED}"
-  then
-    echo >&2 "Something unexpected happened"
-    exit 90
-  fi
 fi
 
 # ---
@@ -100,9 +102,9 @@ then
       else
         echo "%WINDOWSIZE 640 456"
         echo "%TEXTCOLOR BLACK"
-        if test -f "${GLB_SV_PROJECTDIRPATH}"/images/${sv_ThisScriptFileName}.jpg
+        if test -f "${GLB_SV_PROJECTDIRPATH}"/images/${GLB_SV_THISSCRIPTFILENAME}.jpg
         then
-          echo "%BACKGROUND ${GLB_SV_PROJECTDIRPATH}/images/${sv_ThisScriptFileName}.jpg"
+          echo "%BACKGROUND ${GLB_SV_PROJECTDIRPATH}/images/${GLB_SV_THISSCRIPTFILENAME}.jpg"
         else
           if test -f "${GLB_SV_PROJECTDIRPATH}"/images/SplashScreenLight.jpg
           then
@@ -112,7 +114,7 @@ then
         echo "%UIMODE AUTOCRATIC"
         echo "%WINDOWZOOM DISABLE"
         echo "%SHOWTIMER"
-        echo "%TITLE ${sv_ThisScriptFileName}"
+        echo "%TITLE ${GLB_SV_THISSCRIPTFILENAME}"
         echo "%LOG APPEND /Library/Logs/${GLB_SC_PROJECTSIGNATURE}.log"
       fi
     fi
@@ -167,75 +169,6 @@ sf_urlencode() {
     done
 }
 
-# Convert log level integer into log level text
-sf_LogLevel()   # loglevel
-{  
-  local iv_LogLevel
-  local sv_LogLevel
-
-  iv_LogLevel=${1}
-
-  case ${iv_LogLevel} in
-  ${GLB_IC_MSGLEVELEMERG})
-    sv_LogLevel="Emergency"
-    ;;
-
-  ${GLB_IC_MSGLEVELALERT})
-    sv_LogLevel="Alert"
-    ;;
-
-  ${GLB_IC_MSGLEVELCRIT})
-    sv_LogLevel="Critical"
-    ;;
-
-  ${GLB_IC_MSGLEVELERR})
-    sv_LogLevel="Error"
-    ;;
-  
-  ${GLB_IC_MSGLEVELWARN})
-    sv_LogLevel="Warning"
-    ;;
-
-  ${GLB_IC_MSGLEVELNOTICE})
-    sv_LogLevel="Notice"
-    ;;
-
-  ${GLB_IC_MSGLEVELINFO})
-    sv_LogLevel="Information"
-    ;;
-
-  ${GLB_IC_MSGLEVELDEBUG})
-    sv_LogLevel="Debug"
-    ;;
-
-  *)
-    sv_LogLevel="Unknown"
-    ;;
-
-  esac
-  
-  echo ${sv_LogLevel}
-}
-  
-# Save a message to the log file
-nf_showmessage()   # intloglevel strmessage 
-{
-  local iv_LogLevel
-  local sv_Message
-  local sv_LogLevel
-  
-  iv_LogLevel=${1}
-  sv_LogText="${2}"
-  
-  if [ -n "${sv_LogText}" ]
-  then
-    sv_LogLevel="$(sf_LogLevel ${iv_LogLevel})"
-
-    echo "$(date '+%d %b %Y %H:%M:%S %Z') ${sv_ThisScriptFileName}[${iv_ThisScriptPID}]${GLB_SV_CODEVERSION}: ${sv_LogLevel}: ${sv_LogText}"
-    sleep 2
-  fi
-}
-
 nf_notifyserver()   # intloglevel strmessage
 {
   if test -n "${sv_NotifyURI}"
@@ -244,7 +177,7 @@ nf_notifyserver()   # intloglevel strmessage
     if [ $? != "0" ]
     then
       # Some kind of error occurred
-      nf_showmessage ${GLB_IC_MSGLEVELERR} "Cannot connect to '${sv_NotifyURI}'"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Cannot connect to '${sv_NotifyURI}'"
       sv_NotifyURI=""
     fi
   fi
@@ -260,7 +193,7 @@ chmod 755 /private/var/radmind/client
 sv_fsdiffCompareSysPath="/"
 sv_fsdiffOutputFilePath="/tmp/diff.T.$$"
 
-nf_showmessage ${GLB_IC_MSGLEVELINFO} "Checking server ${sv_RadServer} for transcript changes"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Checking server ${sv_RadServer} for transcript changes"
 
 nf_notifyserver
 
@@ -270,19 +203,19 @@ iv_ErrCode="$?"
 # Check exit status of ktcheck. If > 1, an error occurred.
 case "${iv_ErrCode}" in
 0)
-  nf_showmessage ${GLB_IC_MSGLEVELINFO} "No transcript changes found - no need to update"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "No transcript changes found - no need to update"
   exit 0
   ;;
 1)
-  nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Transcript changes found"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Transcript changes found"
   ;;
 *)
-  nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - ktcheck failed (${iv_ErrCode})"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Update aborted - ktcheck failed (${iv_ErrCode})"
   exit 99
   ;;
 esac
 
-nf_showmessage ${GLB_IC_MSGLEVELINFO} "Examining the filesystem for differences..."
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Examining the filesystem for differences..."
 
 nf_notifyserver
 
@@ -313,7 +246,7 @@ case "${iv_ErrCode}" in
     ;;
   *)
     rm -f ${sv_fsdiffOutputFilePath}
-    nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - fsdiff failed (${iv_ErrCode})"
+    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Update aborted - fsdiff failed (${iv_ErrCode})"
     exit 99
     ;;
   esac
@@ -321,7 +254,7 @@ case "${iv_ErrCode}" in
 esac
 
 # Fix for SIP on 10.11
-nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Removing SIP protected entries from transcript"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Removing SIP protected entries from transcript"
 "${GLB_SV_PROJECTDIRPATH}"/bin/RadmindTfix4SIP ${sv_fsdiffOutputFilePath}
 
 # Check we aren't deleting more than we would reasonably expect to (optional simple safeguard)
@@ -335,7 +268,7 @@ then
     if [ ${iv_NegChanges} -gt ${iv_MaxDeletes} ]
     then
       rm -f ${sv_fsdiffOutputFilePath}
-      nf_showmessage ${GLB_IC_MSGLEVELERR} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Update aborted - too many deletes (${iv_NegChanges} -gt ${iv_MaxDeletes})"
       exit 99
     fi
   fi
@@ -345,7 +278,7 @@ fi
 # Apply the changes
 launchctl stop org.cups.cupsd
 
-nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
+GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Applying $((${iv_Additions} - ${iv_Removals})) changes…(+$iv_Additions -$iv_Removals)"
 
 nf_notifyserver
 
@@ -360,17 +293,17 @@ rm -f /private/var/radmind/client/error.T
 case "${iv_ErrCode}" in
 0)
   # Restart after a successful update
-  nf_showmessage ${GLB_IC_MSGLEVELNOTICE} "Apply successful - we should restart."
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Apply successful - we should restart."
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/last.T
   exit 0
   ;;
 1)
-  nf_showmessage ${GLB_IC_MSGLEVELERR} "Apply failed - no changes made"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Apply failed - no changes made"
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 99
   ;;
 2)
-  nf_showmessage ${GLB_IC_MSGLEVELERR} "Apply failed - changes made"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Apply failed - changes made"
   mv "${sv_fsdiffOutputFilePath}" /private/var/radmind/client/error.T
   exit 99
   ;;

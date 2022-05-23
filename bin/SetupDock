@@ -2,8 +2,8 @@
 #
 # Short:    Setup the dock via any installed Usr-SetupDock profiles 
 # Author:   Mark J Swift
-# Version:  3.2.8
-# Modified: 27-Aug-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Call from a shell as follows:    
 #   /usr/local/LabWarden/bin/SetupDock

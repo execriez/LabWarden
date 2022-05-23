@@ -1,8 +1,10 @@
 INSTALLATION:
 
-Download the LabWarden zip archive from <https://github.com/execriez/LabWarden>, then unzip the archive on a Mac workstation. Locate, then double-click the "LabWarden.pkg" installer package which can be found in the "SupportFiles" directory.
+Open the Terminal app, and download the LabWarden.pkg installer to your desktop by typing the following command. 
 
-Alternatively, install by running the package from the following link: https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg
+	curl -k --silent --retry 3 --retry-max-time 6 --fail https://raw.githubusercontent.com/execriez/LabWarden/master/SupportFiles/LabWarden.pkg --output ~/Desktop/LabWarden.pkg
+
+Double-click the downloaded package in order to install LabWarden
 
 The installer will install the following files and directories:
 
@@ -24,6 +26,6 @@ The installer will install the following files and directories:
 
 /usr/LabWarden/
 
-You should note that LabWarden does not (by default) make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
+You should note that LabWarden does not make use of Login and Logout hooks - so can be installed side-by-side with projects that do.
 
 After installation, you should reboot.

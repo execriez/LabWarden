@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy Footer - Included at the end of every (bash) gen policy
 # Author:   Mark J Swift
-# Version:  3.2.5
-# Modified: 30-Dec-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Should be included at the bottom of any policy script as follows:
 #   . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyFooter.sh

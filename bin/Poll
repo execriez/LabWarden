@@ -2,8 +2,8 @@
 #
 # Short:    Handle a Poll Trigger
 # Author:   Mark J Swift
-# Version:  3.2.19
-# Modified: 28-Nov-2021
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Called as follows:    
 #   Poll [LoginWindow]
@@ -48,15 +48,31 @@ fi
 
 # ---
 
+# We are only interested in the constants, we'll re-define anything else we need
+
 # Include the constants library (if it is not already loaded)
-if [ -z "${GLB_BC_CONST_ISINCLUDED}" ]
+if [ -z "${GLB_BC_BASECONST_INCLUDED}" ]
 then
-  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/Constants.sh
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/BaseConst.sh
 
   # Exit if something went wrong unexpectedly
-  if test -z "${GLB_BC_CONST_ISINCLUDED}"
+  if test -z "${GLB_BC_BASECONST_INCLUDED}"
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' BASECONST"
+    exit 90
+  fi
+fi
+
+
+# Include the constants library (if it is not already loaded)
+if [ -z "${GLB_BC_CORECONST_INCLUDED}" ]
+then
+  . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreConst.sh
+
+  # Exit if something went wrong unexpectedly
+  if test -z "${GLB_BC_CORECONST_INCLUDED}"
+  then
+    echo >&2 "Something unexpected happened - '${0}' CORECONST"
     exit 90
   fi
 fi
@@ -64,7 +80,7 @@ fi
 # ---
 
 # Get seconds that mac mouse/keyboard is idle - ref https://github.com/CLCMacTeam/IdleLogout
-GLB_if_HIDIdleTime()
+GLB_IF_HIDIdleTime()
 {
   echo $(($(ioreg -c IOHIDSystem | sed -e '/HIDIdleTime/ !{ d' -e 't' -e '}' -e 's/.* = //g' -e 'q') / 1000000000))
 }
@@ -114,31 +130,17 @@ GLB_if_HIDIdleTime()
 
 # ---
 
-  # The base locations of all temporary directories
-  GLB_SV_TEMPROOT="/tmp/${GLB_SC_PROJECTNAME}"
-  GLB_AV_TEMPUSERSROOT="${GLB_SV_TEMPROOT}/Users"
+  # -- Create temporary directories
   
-  # Create base temporary directories
-  if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
-  then
-    mkdir -p "${GLB_SV_TEMPROOT}"
-    chown root:wheel "${GLB_SV_TEMPROOT}"
-    chmod 1755 "${GLB_SV_TEMPROOT}"
-
-    mkdir -p "${GLB_AV_TEMPUSERSROOT}"
-    chown root:wheel "${GLB_AV_TEMPUSERSROOT}"
-    chmod 1777 "${GLB_AV_TEMPUSERSROOT}"
-  fi
-    
   # Create a temporary directory private to this user (and admins)
-  GLB_SV_RUNUSERTEMPDIRPATH=${GLB_AV_TEMPUSERSROOT}/${GLB_SV_RUNUSERNAME}
+  GLB_SV_RUNUSERTEMPDIRPATH="/tmp/${GLB_SV_RUNUSERNAME}/${GLB_SC_PROJECTNAME}"
   if ! test -d "${GLB_SV_RUNUSERTEMPDIRPATH}"
   then
     mkdir -p "${GLB_SV_RUNUSERTEMPDIRPATH}"
-    chown ${GLB_SV_RUNUSERNAME}:admin "${GLB_SV_RUNUSERTEMPDIRPATH}"
+    chown -R ${GLB_SV_RUNUSERNAME}:admin "/tmp/${GLB_SV_RUNUSERNAME}"
     chmod 770 "${GLB_SV_RUNUSERTEMPDIRPATH}"
   fi
-
+  
 # ---
 
 case ${sv_PollType} in
@@ -157,7 +159,7 @@ esac
 # If there continues to be no input, the idle event will continue to be triggered with every subsequent poll event
 
 iv_NowEpoch=$(date -u "+%s")
-iv_IdleSecs=$(GLB_if_HIDIdleTime)
+iv_IdleSecs=$(GLB_IF_HIDIdleTime)
       
 if [ ${iv_IdleSecs} -gt ${iv_IdleTriggerSecs} ]
 then

@@ -2,8 +2,8 @@
 #
 # Short:    Usr Policy script - Creates symbolic links between a network users network home and local home
 # Author:   Mark J Swift
-# Version:  3.2.0
-# Modified: 12-Nov-2020
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # This policy creates symbolic links at a path within a network users home folder that 
 # point to files/folders in an "alternative" home. 
@@ -45,7 +45,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.2.0"
+GLB_SV_CODEVERSION="3.3.0"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-HomeFolderRedirection,Usr-CreateHomeFolderAliases,Usr-CreateHomeFolderRedirections"
@@ -55,7 +55,6 @@ GLB_SV_DEPRECATEDBYPOLICYLIST="Usr-HomeFolderRedirection,Usr-CreateHomeFolderAli
 . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/PolicyHeader.sh
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at '/inc-sh/Common.sh' for a complete list.
 
 # ---
 

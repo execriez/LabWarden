@@ -2,8 +2,8 @@
 #
 # Short:    Initialise the LabWarden configs
 # Author:   Mark J Swift
-# Version:  3.2.20
-# Modified: 26-Jan-2022
+# Version:  3.3.0
+# Modified: 22-May-2022
 #
 # Note to self - exclude personalised settings before publishing
 # ---
@@ -12,7 +12,7 @@ GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # ---
 
-GLB_SV_UTILITYCODEVERSION="3.2.20"
+GLB_SV_UTILITYCODEVERSION="3.3.0"
 
 # ---
 
@@ -22,20 +22,19 @@ cd "$(dirname "${0}")"
 # ---
 
 # Include the Core Defs library (if it is not already loaded)
-if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
 then
   . "${GLB_SV_PROJECTDIRPATH}"/inc-sh/CoreDefs.sh
 
   # Exit if something went wrong unexpectedly
-  if [ -z "${GLB_BC_CORE_ISINCLUDED}" ]
+  if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
   then
-    echo >&2 "Something unexpected happened"
+    echo >&2 "Something unexpected happened - '${0}' COREDEFS"
     exit 90
   fi
 fi
 
 # By the time we get here, quite a few global variables have been set up.
-# Look at 'inc/Common.sh' for a complete list.
 
 # ---
 
@@ -103,6 +102,713 @@ sf_MakeConfigFile()   # PolicyName Tag - returns string "<ConfigFilePath>,<Prope
 sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 
 # ---
+# /usr/libexec/PlistBuddy 2>/dev/null -c "Print 'CFBundleShortVersionString'" "/Applications/Adobe Acrobat DC/Adobe Acrobat.app/Contents/Info.plist"
+# ---
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="Apple-Gracious"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-LoginWindowIdle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:URI" "file://localhost/usr/sbin/"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:Item:0:FileName" "softwareupdate"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:Item:0:Executable:Args" "-i -r"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Manifest:0:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+# ---
+GLB_SV_POLICYNAME="Usr-CreateHomeFolderRedirections"
+sv_Tag=""
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Usr-ConsoleUserLoggedIn"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Usr-Poll"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:2:Name" "Usr-AtDesktop"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:0" "/Desktop/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:1" "/Documents/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:2" "/Downloads/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:3" "/Movies/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:4" "/Music/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Path:5" "/Pictures/"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="Apple-Ungracious"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(10.13.[4-9])|(10.1[4-5]($|.[0-9]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/usr/sbin/softwareupdate"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "softwareupdate"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "-i -r --restart"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="Microsoft-Gracious"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+#GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(10.13.[4-9])|(10.1[4-5]($|.[0-9]))"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Idle"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "7200"  # How long to wait between triggered events (2 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/Library/Application Support/Microsoft/MAU2.0/Microsoft AutoUpdate.app/Contents/MacOS/msupdate"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "msupdate"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "--install"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+exit 0
+# ---
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeAcrobatDC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-LoginWindowIdle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Acrobat.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Acrobat DC"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "20.013.20074"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeAfterEffectsCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AfterEffectsCC2018-15v1v2-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe After Effects CC 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe After Effects 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "18.2"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeAnimateCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AnimateCC2018-18v0v2-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Animate 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Animate 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "21.0.6"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeAuditionCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AuditionCC2018-11v1v0-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Audition 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Audition 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "11.1.0"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeBridgeCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-BridgeCC2018-8v1v0-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Bridge 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Bridge 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "8.1.0"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeCharacterAnimatorCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-CharacterAnimatorCC2018-1v5v0-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Character Animator 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Character Animator 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "1.5.0"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+
+# --- Adobe Creative Cloud
+# --- Adobe Dimension
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeDreamweaverCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-DreamweaverCC2018-18v2v1-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Dreamweaver 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Dreamweaver 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "18.2.1"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeIllustratorCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-IllustratorCC2018-22v1v0-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.4.6"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Illustrator.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Illustrator 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "22.1.0"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeInCopyCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-InCopyCC2018-13v1v1-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe InCopy 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe InCopy 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "13.1.1"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeInDesignCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-InDesignCC2018-13v1v1-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe InDesign 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe InDesign 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "13.1.1"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeLightroomClassicCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-LightroomClassicCC2018-7v5-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Lightroom Classic.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Lightroom Classic"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleVersion"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleVersion" "7.5"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobeMediaEncoderCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-MediaEncoderCC2018-12v1v2-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Media Encoder 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Media Encoder 2021"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "12.1.2"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobePhotoshopCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
+
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PhotoShopCC2018-19v1v19-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Photoshop 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Photoshop 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "19.1.9"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobePreludeCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PreludeCC2018-7v1v1-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Prelude 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Prelude 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "7.1.1"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="AdobePremiereProCC"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PremiereProCC2018-12v1v2-10v10.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Premiere Pro 2021.app"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Premiere Pro 2021"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "12.1.2"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# Adobe Premiere Rush
+
+# Adobe XD
+
+# ---
+exit 0
+# ---
+
+
+
+
+
+
+
+
+
+
+
 GLB_SV_POLICYNAME="Sys-SoftwareManifest"
 sv_Tag="Adobe-Overrides-2201"
 
@@ -113,6 +819,10 @@ sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
 # 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
 
 GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "10.1[0-5]($|.[0-9])"
+#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
 
 GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Idle"
 GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
@@ -258,76 +968,6 @@ fi
 # ---
 exit 0
 # ---
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="Apple-Ungracious"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(10.13.[4-9])|(10.1[4-5]($|.[0-9]))"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Idle"
-GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Pattern" "[0-5]|2[2-3]"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "25200"  # How long to wait between triggered events (7 hours)
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/usr/sbin/softwareupdate"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "softwareupdate"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "-i -r --restart"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
-
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="Apple-Gracious"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-# 10.[1-9][0-9]($|.[0-9]) match 10.10 - 10.99.99
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Value" "%SV_OS%"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Pattern" "(10.13.[4-9])|(10.1[4-5]($|.[0-9]))"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Match:Condition" ${GLB_BC_TRUE}
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-LoginWindowIdle"
-GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Value" "%IV_HOUR%"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Match:Pattern" "[0-5]|2[2-3]"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "25200"  # How long to wait between triggered events (7 hours)
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file://localhost/usr/sbin/softwareupdate"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "softwareupdate"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Executable:Args" "-i -r --restart"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Always"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
-
-# ---
-exit 0
 # ---
 GLB_SV_POLICYNAME="Sys-SoftwareManifest"
 sv_Tag="LabWarden"
@@ -713,44 +1353,6 @@ then
 fi
 # ---
 # exit 0
-# ---
-
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobePhotoshopCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-GLB_NF_RAWSETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Value" "%IV_HOUR%"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Match:Pattern" "[0-5]|2[2-3]"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Interval" "25200"  # How long to wait between triggered events (7 hours)
-
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PhotoShopCC2018-19v1v19-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Photoshop CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Photoshop CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "19.1.9"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 # ---
 # exit 0
 # ---
@@ -2500,270 +3102,17 @@ fi
 # ---
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeAcrobatDC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AcrobatDC-19v0-10v12.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Acrobat.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Acrobat DC"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "19.0"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeAnimateCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AnimateCC2018-18v0v2-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Animate CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Animate CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "18.0.2"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeAfterEffectsCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AfterEffectsCC2018-15v1v2-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe After Effects CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe After Effects CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "15.1.2"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeAuditionCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-AuditionCC2018-11v1v0-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Audition CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Audition CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "11.1.0"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeBridgeCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-BridgeCC2018-8v1v0-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Bridge CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Bridge CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "8.1.0"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeCharacterAnimatorCC"
 
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-CharacterAnimatorCC2018-1v5v0-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Character Animator CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Character Animator CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "1.5.0"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
-
-
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeDreamweaverCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-DreamweaverCC2018-18v2v1-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Dreamweaver CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Dreamweaver CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "18.2.1"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
 # ---
@@ -2993,193 +3342,12 @@ then
 fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeIllustratorCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-IllustratorCC2018-22v1v0-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.4.6"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Illustrator.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Illustrator CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "22.1.0"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeInCopyCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-InCopyCC2018-13v1v1-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe InCopy CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe InCopy CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "13.1.1"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeInDesignCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-InDesignCC2018-13v1v1-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe InDesign CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe InDesign CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "13.1.1"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeLightroomClassicCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-LightroomClassicCC2018-7v5-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Lightroom Classic CC.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Lightroom Classic CC"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleVersion"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleVersion" "7.5"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
-
-
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobeMediaEncoderCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-MediaEncoderCC2018-12v1v2-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.11.0"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Media Encoder CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Media Encoder CC 2018"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "12.1.2"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
 # ---
@@ -3220,80 +3388,8 @@ then
 fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobePreludeCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PreludeCC2018-7v1v1-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Prelude CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Prelude CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "7.1.1"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
-# ---
-GLB_SV_POLICYNAME="Sys-SoftwareManifest"
-sv_Tag="AdobePremiereProCC"
-
-sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
-sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
-sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-ManualTrigger"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:1:Name" "Sys-Idle"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Start:Hour" "22"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:End:Hour" "5"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:IdleDelaySecs" "900"   # How long to wait before updating workstations when idle at the LoginWindow    
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "file:///Volumes/REPO/MacOS-apl-Adobe-PremiereProCC2018-12v1v2-10v10.dmg"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Install"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "Install.command"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Executable"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Fix"
-
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:FileName" "Adobe Premiere Pro CC 2018.app"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Type" "Application"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:TryMethod" "Never"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:SrcDir" "/"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:DstDir" "/Applications/Adobe Premiere Pro CC 2018"
-#GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:VersionKey" "CFBundleShortVersionString"
-GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:1:Application:CFBundleShortVersionString" "12.1.2"
-
-if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
-then
-  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
-fi
 
 
 # ---
