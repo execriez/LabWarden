@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs Software
 # Author:   Mark J Swift
-# Version:  3.3.1
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 29-May-2022
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger  (as root)
@@ -26,7 +26,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.1"
+GLB_SV_CODEVERSION="3.3.2"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -498,11 +498,12 @@ GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: sv_Mani
 
 GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Manifest ${iv_ManifestIndex}: sv_Action '${sv_Action}'"
   
-  # Grab lock - we only want to install when there are no other installs or uninstalls happening, wait up to 10 mins
-  if [ $(GLB_BF_NAMEDLOCKGRAB "${GLB_SV_THISSCRIPTFILENAME}" 600 ${GLB_BC_TRUE}) = ${GLB_BC_FALSE} ]
+  # Grab lock - we only want to install when there are no other installs or uninstalls happening, wait up to 2 mins
+  if [ $(GLB_BF_NAMEDLOCKGRAB "${GLB_SV_THISSCRIPTFILENAME}" ${GLB_IC_MAXWAITSECS} ${GLB_BC_TRUE}) = ${GLB_BC_FALSE} ]
   then
     bv_ActionAborted=${GLB_BC_TRUE}
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Manifest ${iv_ManifestIndex}: Software ${sv_Action} aborted - Cannot grab lock"
+    GLB_NF_NAMEDFLAGCREATE "DELAYPOWEROFF"
 
   else  
     GLB_NF_SETPLISTPROPERTY "${GLB_SV_POLICYPREFSFILEPATH}" ":${GLB_SV_CONFIGUUID}:Prefs:LastTryEpoch" "${GLB_IV_THISSCRIPTSTARTEPOCH}"

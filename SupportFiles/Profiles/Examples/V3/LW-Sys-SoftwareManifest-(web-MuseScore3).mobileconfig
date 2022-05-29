@@ -5,21 +5,19 @@
 	<key>PayloadContent</key>
 	<array>
 		<dict>
-			<key>09F8DDA0-CCC4-481E-9350-31E5E45D046B</key>
+			<key>EAB098D9-60A5-4B84-83E5-7E97FB81C601</key>
 			<dict>
 				<key>Config</key>
 				<dict>
 					<key>Action</key>
 					<string>Auto</string>
-					<key>IdleDelaySecs</key>
-					<integer>900</integer>
 					<key>Item</key>
 					<array>
 						<dict>
 							<key>Application</key>
 							<dict>
 								<key>CFBundleLongVersionString</key>
-								<string>3.5.2</string>
+								<string>3.6.2</string>
 								<key>VersionKey</key>
 								<string>CFBundleLongVersionString</string>
 							</dict>
@@ -36,7 +34,7 @@
 						</dict>
 					</array>
 					<key>ManifestURI</key>
-					<string>https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.5.2.312126096.dmg</string>
+					<string>https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.6.2.548020600.dmg</string>
 					<key>MinOS</key>
 					<string>10.10</string>
 				</dict>
@@ -45,23 +43,21 @@
 				<key>Trigger</key>
 				<array>
 					<dict>
+						<key>Interval</key>
+						<integer>3600</integer>
 						<key>Name</key>
-						<string>Sys-ManualTrigger</string>
-					</dict>
-					<dict>
-						<key>Name</key>
-						<string>Sys-Idle</string>
+						<string>Sys-Poll</string>
 					</dict>
 				</array>
 			</dict>
 			<key>PayloadEnabled</key>
 			<true/>
 			<key>PayloadIdentifier</key>
-			<string>09F8DDA0-CCC4-481E-9350-31E5E45D046B</string>
+			<string>EAB098D9-60A5-4B84-83E5-7E97FB81C601</string>
 			<key>PayloadType</key>
 			<string>com.github.execriez.labwarden</string>
 			<key>PayloadUUID</key>
-			<string>09F8DDA0-CCC4-481E-9350-31E5E45D046B</string>
+			<string>EAB098D9-60A5-4B84-83E5-7E97FB81C601</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
 		</dict>
@@ -71,7 +67,7 @@
 	<key>PayloadDisplayName</key>
 	<string>LW Sys-SoftwareManifest (web-MuseScore3)</string>
 	<key>PayloadIdentifier</key>
-	<string>846E7538-C755-44E4-A08B-1AFA7B6382B4</string>
+	<string>4095A29D-45AF-443B-BB0B-6B689449BDEB</string>
 	<key>PayloadOrganization</key>
 	<string></string>
 	<key>PayloadRemovalDisallowed</key>
@@ -81,7 +77,7 @@
 	<key>PayloadType</key>
 	<string>Configuration</string>
 	<key>PayloadUUID</key>
-	<string>846E7538-C755-44E4-A08B-1AFA7B6382B4</string>
+	<string>4095A29D-45AF-443B-BB0B-6B689449BDEB</string>
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 </dict>

@@ -214,73 +214,59 @@ The profile contents are shown below. See the Sys-SoftwareManifest section in th
 		<key>PayloadContent</key>
 		<array>
 			<dict>
-				<key>A2113065-E6DE-4872-875D-FEAF97280F3D</key>
+				<key>EAB098D9-60A5-4B84-83E5-7E97FB81C601</key>
 				<dict>
-				
 					<key>Config</key>
 					<dict>
 						<key>Action</key>
 						<string>Auto</string>
-
-						<key>ManifestURI</key>
-						<string>https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.5.2.312126096.dmg</string>
-
-						<key>MinOS</key>
-						<string>10.10</string>
-
 						<key>Item</key>
 						<array>
-						
 							<dict>
-								<key>FileName</key>
-								<string>MuseScore 3.app</string>
-
-								<key>Type</key>
-								<string>Application</string>
-
-								<key>TryMethod</key>
-								<string>Once</string>
-
 								<key>Application</key>
 								<dict>
 									<key>CFBundleLongVersionString</key>
-									<string>3.5.2</string>
+									<string>3.6.2</string>
 									<key>VersionKey</key>
 									<string>CFBundleLongVersionString</string>
 								</dict>
-								
-								<key>SrcDir</key>
-								<string>/</string>
-
 								<key>DstDir</key>
 								<string>/Applications</string>
+								<key>FileName</key>
+								<string>MuseScore 3.app</string>
+								<key>SrcDir</key>
+								<string>/</string>
+								<key>TryMethod</key>
+								<string>Once</string>
+								<key>Type</key>
+								<string>Application</string>
 							</dict>
-							
 						</array>
-						
+						<key>ManifestURI</key>
+						<string>https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.6.2.548020600.dmg</string>
+						<key>MinOS</key>
+						<string>10.10</string>
 					</dict>
 					<key>Name</key>
 					<string>Sys-SoftwareManifest</string>
 					<key>Trigger</key>
 					<array>
 						<dict>
-							<key>Name</key>
-							<string>Sys-ManualTrigger</string>
-						</dict>
-						<dict>
-							<key>Name</key>
-							<string>Sys-Idle</string>
+							<key>Interval</key>
+							<integer>3600</integer>
+								<key>Name</key>
+							<string>Sys-Poll</string>
 						</dict>
 					</array>
 				</dict>
 				<key>PayloadEnabled</key>
 				<true/>
 				<key>PayloadIdentifier</key>
-				<string>A2113065-E6DE-4872-875D-FEAF97280F3D</string>
+				<string>EAB098D9-60A5-4B84-83E5-7E97FB81C601</string>
 				<key>PayloadType</key>
 				<string>com.github.execriez.labwarden</string>
 				<key>PayloadUUID</key>
-				<string>A2113065-E6DE-4872-875D-FEAF97280F3D</string>
+				<string>EAB098D9-60A5-4B84-83E5-7E97FB81C601</string>
 				<key>PayloadVersion</key>
 				<integer>1</integer>
 			</dict>
@@ -290,7 +276,7 @@ The profile contents are shown below. See the Sys-SoftwareManifest section in th
 		<key>PayloadDisplayName</key>
 		<string>LW Sys-SoftwareManifest (web-MuseScore3)</string>
 		<key>PayloadIdentifier</key>
-		<string>F8DEDB14-604B-48A4-9FAB-B34372490F7A</string>
+		<string>4095A29D-45AF-443B-BB0B-6B689449BDEB</string>
 		<key>PayloadOrganization</key>
 		<string></string>
 		<key>PayloadRemovalDisallowed</key>
@@ -300,7 +286,7 @@ The profile contents are shown below. See the Sys-SoftwareManifest section in th
 		<key>PayloadType</key>
 		<string>Configuration</string>
 		<key>PayloadUUID</key>
-		<string>F8DEDB14-604B-48A4-9FAB-B34372490F7A</string>
+		<string>4095A29D-45AF-443B-BB0B-6B689449BDEB</string>
 		<key>PayloadVersion</key>
 		<integer>1</integer>
 	</dict>
@@ -1288,9 +1274,6 @@ The **Item** array contains a list of media types relevant to the install (or un
 				<dict>
 					<key>Action</key>
 					<string>Install</string>
-
-					<key>IdleDelaySecs</key>
-					<integer>900</integer>
 
 					<key>ManifestURI</key>
 					<string>https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.5.2.312126096.dmg</string>
@@ -2599,9 +2582,19 @@ LabWarden includes code from the following sources:
 
 ## History
 
+3.3.2 - 29-May-2022
+
+* The Named flags have been capitalised for easier reading.
+
+* Minor fix in Trigger code that didn't always tidy up temporary folders.
+
+* Removed the anti-flapping code from 'NetworkStatusWarden-NetworkUp' and 'NetworkStatusWarden-NetworkDown'. It doesn't appear to be needed since the latest update to NetworkStatusWarden.
+
+* If the Sys-SoftwareManifest policy fails to run because another policy with the same name has been running for over 2 minutes, the policy now creates the DELAYPOWEROFF named flag. This flag delays any restart or shutdown events for a sufficient amount of time to allow all policies to complete.
+
 3.3.1 - 23-May-2022
 
-* Fix in 'ManagedPrefs' utility for case where you uninstall the last managed pref, leaving no managed prefs file. 
+* Fix in 'ManagedPrefs' utility that missed the uninstall event when you uninstalled the last managed pref. 
 
 * Added the 'Sys-Poll' trigger as an option in the 'Sys-SoftwareManifest' policy. 
 
@@ -2615,7 +2608,7 @@ LabWarden includes code from the following sources:
 
 * Fixed a divide by zero possibility in policy 'Sys-UsageStats' if you deleted its running prefs.
 
-* The function 'GLB_BF_NAMEDLOCKGRAB' in BaseDefs.sh ignores existing locks if the original process that created the lock no longer exists. This could happen if a critical error kills the process before it has time to clear the lock.
+* The function 'GLB\_BF\_NAMEDLOCKGRAB' in BaseDefs.sh ignores existing locks if the original process that created the lock no longer exists. This could happen if a critical error kills the process before it has time to clear the lock.
 
 * The script includes have been renamed and modified to separate base (includes used everywhere), core (used in the core control functions) and policy (used only in policies).
 

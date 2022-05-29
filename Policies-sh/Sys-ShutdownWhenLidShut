@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Will shutdown laptop when the lid is shut
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 27-May-2022
 #
 # Triggered by the following events:
 #   Sys-WillSleep (as root)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.2"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -74,7 +74,7 @@ Sys-WillSleep)
     then
       # Shutdown if the lid has been closed for a while
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Laptop lid has been closed for ${iv_ShutdownDelaySecs} seconds - we need to shutdown."
-      GLB_NF_NAMEDFLAGCREATE "Shutdown"
+      GLB_NF_NAMEDFLAGCREATE "SHUTDOWN"
     
     else
       GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy aborted - laptop lid has been re-opened."

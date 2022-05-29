@@ -357,7 +357,7 @@ EOF
       then
         if [ "${sv_LockName}" != "ManipulateLog" ]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Grabbed lock '${sv_LockName}'"
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Lock grab '${sv_LockName}'"
         fi
         bv_Result=${GLB_BC_TRUE}
         break
@@ -375,7 +375,7 @@ EOF
         then
           if [ "${sv_LockName}" != "ManipulateLog" ]
           then
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Grab lock failed, another task is being greedy '${sv_LockName}'"
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Lock grab failed, another task is being greedy '${sv_LockName}'"
           fi
         fi
         break
@@ -385,7 +385,7 @@ EOF
       then
         if [ "${sv_LockName}" != "ManipulateLog" ]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Waiting for lock '${sv_LockName}'"
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Lock busy waiting... '${sv_LockName}'"
         fi
       fi
       sleep 1
@@ -437,7 +437,7 @@ EOF
       then
         if [ "${sv_LockName}" != "ManipulateLog" ]
         then
-          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Releasing lock '${sv_LockName}'"
+          GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Lock release '${sv_LockName}'"
         fi
         rm -f "${sv_LockDirPath}/${sv_LockName}"
       fi
@@ -464,7 +464,7 @@ EOF
     fi
     
     chown "$(whoami)" "${sv_FlagDirPath}/${sv_FlagName}"
-#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Creating flag '${sv_FlagDirPath}/${sv_FlagName}'"
+#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Flag create '${sv_FlagDirPath}/${sv_FlagName}'"
   }
 
   GLB_NF_NAMEDFLAGMEPOCH() # ; FlagName
@@ -498,7 +498,7 @@ EOF
     
     sv_FlagDirPath="${GLB_SV_RUNUSERTEMPDIRPATH}/Flags"
     
-#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Testing flag '${sv_FlagDirPath}/${sv_FlagName}'"
+#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Flag test '${sv_FlagDirPath}/${sv_FlagName}'"
     sv_Result=${GLB_BC_FALSE}
     if test -e "${sv_FlagDirPath}/${sv_FlagName}"
     then
@@ -522,7 +522,7 @@ EOF
     sv_FlagDirPath="${GLB_SV_RUNUSERTEMPDIRPATH}/Flags"
     
     rm -f "${sv_FlagDirPath}/${sv_FlagName}"
-#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Deleting flag '${sv_FlagDirPath}/${sv_FlagName}'"
+#    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Flag delete '${sv_FlagDirPath}/${sv_FlagName}'"
   }
   
   # NOTE: if things go wrong, this function and code that uses this function, are good places to look
@@ -890,7 +890,7 @@ EOF
   fi
   
   # Create a temporary directory private to this script
-  GLB_SV_THISSCRIPTTEMPDIRPATH="$(mktemp -dq ${GLB_SV_RUNUSERTEMPDIRPATH}/${GLB_SV_THISSCRIPTFILENAME}-XXXXXXXX)"
+  GLB_SV_THISSCRIPTTEMPDIRPATH="$(mktemp -dq ${GLB_SV_RUNUSERTEMPDIRPATH}/${GLB_SV_THISSCRIPTFILENAME}-${GLB_IV_THISSCRIPTPID}-XXXXXXXX)"
   mkdir -p "${GLB_SV_THISSCRIPTTEMPDIRPATH}"
   
   # ---

@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Runs a custom update script
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 27-May-2022
 #
 # Triggered by the following events:
 #   Sys-ManualTrigger   (as root)
@@ -27,7 +27,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.2"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-SoftwareManifest"
@@ -587,7 +587,7 @@ Sys-LoginWindowIdle)
       if [ "${bv_DoUpdate}" = ${GLB_BC_TRUE} ]
       then
         nf_DoUpdate
-        GLB_NF_NAMEDFLAGCREATE "Restart"
+        GLB_NF_NAMEDFLAGCREATE "RESTART"
       fi
 
       if [ ${iv_LoginWindowIdleShutdownSecs} -gt 0 ]
@@ -596,7 +596,7 @@ Sys-LoginWindowIdle)
         then
           # Shutdown if the workstation is still idle
           GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Workstation has been idle for ${iv_IdleSecs} seconds - we should shutdown"
-          GLB_NF_NAMEDFLAGCREATE "Shutdown"
+          GLB_NF_NAMEDFLAGCREATE "SHUTDOWN"
         fi
       fi
     fi

@@ -106,6 +106,40 @@ sv_ConfigDirPath="${sv_ConfigLabDirPath}"
 # ---
 
 # ---
+
+GLB_SV_POLICYNAME="Sys-SoftwareManifest"
+sv_Tag="web-MuseScore3"
+
+sv_Info="$(sf_MakeConfigFile "${GLB_SV_POLICYNAME}" "${sv_Tag}")"
+sv_ThisConfigFilePath="$(echo ${sv_Info} | cut -d"," -f1)"
+sv_PropertyBase="$(echo ${sv_Info} | cut -d"," -f2)"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Name" "${GLB_SV_POLICYNAME}"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Name" "Sys-Poll"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Trigger:0:Interval" "3600"  # How long to wait between triggered events (7 hours)
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:ManifestURI" "https://ftp.osuosl.org/pub/musescore-nightlies/macos/3x/stable/MuseScore-3.6.2.548020600.dmg"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:MinOS" "10.10"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Action" "Auto"
+
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:FileName" "MuseScore 3.app"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Type" "Application"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:TryMethod" "Once"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:SrcDir" "/"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:DstDir" "/Applications"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Application:VersionKey" "CFBundleLongVersionString"
+GLB_NF_SETPLISTPROPERTY "${sv_ThisConfigFilePath}" "${sv_PropertyBase}:Config:Item:0:Application:CFBundleLongVersionString" "3.6.2"
+
+if [ -e "/usr/local/LabNotes/bin/PackForDeployment" ]
+then
+  "/usr/local/LabNotes/bin/PackForDeployment" "${sv_ThisConfigFilePath}"
+fi
+
+# ---
+#exit 0
+# ---
+# ---
 GLB_SV_POLICYNAME="Sys-SoftwareManifest"
 sv_Tag="Apple-Gracious"
 

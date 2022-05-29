@@ -2,8 +2,8 @@
 #
 # Short:    Trigger an event
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 29-May-2022
 #
 # Called as follows:    
 #   Trigger <event> [<optionalparam>]
@@ -91,6 +91,48 @@ fi
 
 # ---
 
+# Get event type - Sys, Usr or App
+sv_EventType=$(echo "${GLB_SV_EVENTNAME}" | sed "s|-.*||")
+
+case ${sv_EventType} in
+
+Usr|App)
+  if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+  then
+    exit 0
+  fi
+
+  sv_ConsoleUserName="${GLB_SV_RUNUSERNAME}"
+  ;;
+
+Sys)
+  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
+  then
+    exit 0
+  fi
+
+  case ${GLB_SV_EVENTNAME} in
+
+  Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
+    sv_ConsoleUserName="${GLB_SV_OPTIONALPARAM}"
+    if [ -z "${sv_ConsoleUserName}" ]
+    then
+      exit 0
+    fi
+    ;;
+  
+  *)
+    sv_ConsoleUserName=""
+    ;;
+    
+  esac
+
+  ;;
+  
+esac
+
+# ---
+
 # Include the Core Defs library (if it is not already loaded)
 if [ -z "${GLB_BC_COREDEFS_INCLUDED}" ]
 then
@@ -107,46 +149,13 @@ fi
 # By the time we get here, quite a few global variables have been set up.
 
 # ---
-
-# Get event type - Sys, Usr or App
-sv_EventType=$(echo "${GLB_SV_EVENTNAME}" | sed "s|-.*||")
-
-case ${sv_EventType} in
-
-Usr|App)
-  if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
-  then
-    exit 0
-  fi
-  sv_ConsoleUserName="${GLB_SV_RUNUSERNAME}"
-  sv_ManagedPrefsFilePath=~/"Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
-  ;;
-
-Sys)
-  if [ "${GLB_SV_RUNUSERNAME}" != "root" ]
-  then
-    exit 0
-  fi
-  sv_ConsoleUserName=""
-  sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
-  ;;
   
-esac
-
-# ---
-
-# Get info from optional parameter
-case ${GLB_SV_EVENTNAME} in
-
-Sys-ConsoleUserLoggedIn|Sys-ConsoleUserLoggedOut|Sys-ConsoleUserSwitch|Sys-Login|Sys-Logout)
-  sv_ConsoleUserName="${GLB_SV_OPTIONALPARAM}"
-  if [ -z "${sv_ConsoleUserName}" ]
-  then
-    exit 0
-  fi
-  ;;
-  
-esac
+if test -z "${GLB_SV_TARGETPOLICYNAME}"
+then
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event begin - '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}'"
+else
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event begin (targeted) - '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}'"
+fi
 
 # -- Begin Function Definition --
 
@@ -252,15 +261,6 @@ nf_LimitSpawns() # <ConfigPlist> <EventName>
   done
 }
 
-# ---
-  
-if test -z "${GLB_SV_TARGETPOLICYNAME}"
-then
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' triggered"
-else
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Targeted event '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' triggered"
-fi
-
 # -- Get some info about the logged in user
 
 if test -n "${sv_ConsoleUserName}"
@@ -350,12 +350,12 @@ then
       
     if [ -n "${sv_Value}" ]
     then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "SMBHome ${sv_Value}"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Network account - SMBHome ${sv_Value}"
       # Check for characters that we may not have considered
       sv_CheckString=$(GLB_SF_URLENCODE "${sv_Value}" | sed 's|%5c|\\|g;s|%20| |g')
       if [ "${sv_CheckString}" != "${sv_Value}" ]
       then
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Unexpected characters in SMBHome property ${sv_Value}"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Network account - Unexpected characters in SMBHome property ${sv_Value}"
       fi
       # Prepend the preferred protocol
       sv_PropertyString="Network protocol to be used";sv_protocol=$(dsconfigad -show | grep "${sv_PropertyString}" | cut -d "=" -f2 | sed "s|^[ ]*||;s|[ ]*$||")
@@ -364,7 +364,7 @@ then
         sv_protocol="smb"
       fi
       sv_ConsoleUserShareURI=$(GLB_SF_URLENCODE "${sv_Value}" | sed "s|%5c|/|g"| sed "s|^[/]*|${sv_protocol}://|")
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Network account - sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
 
     else
       #  Get 'HomeDirectory' property
@@ -377,7 +377,7 @@ then
       # We are only interested in one entry
       sv_Value=$(echo ${sv_Value} | head -n1)
       
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "HomeDirectory ${sv_Value}"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Network account - HomeDirectory ${sv_Value}"
       sv_ConsoleUserShareURI=$(echo "${sv_Value}" | sed "s|<[^>]*>||g;s|/$||;s|^[^:]*:||")
       if test -z "${sv_ConsoleUserShareURI}"
       then
@@ -391,10 +391,10 @@ then
         # We are only interested in one entry
         sv_Value=$(echo ${sv_Value} | head -n1)
       
-        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "OriginalHomeDirectory ${sv_Value}"
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Network account - OriginalHomeDirectory ${sv_Value}"
         sv_ConsoleUserShareURI=$(echo "${sv_Value}" | sed "s|<[^>]*>||g;s|/$||;s|^[^:]*:||")    
       fi  
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Network account - sv_ConsoleUserShareURI ${sv_ConsoleUserShareURI}"
     fi
     
     if test -n "${sv_ConsoleUserShareURI}"
@@ -450,6 +450,14 @@ then
     mkdir -p "${GLB_SV_RUNNINGCONFIGDIRPATH}/Archive/Prefs"
 
     # Make sure profile changes are being watched
+    
+    if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
+    then
+      sv_ManagedPrefsFilePath="/Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
+    else
+      sv_ManagedPrefsFilePath=~/"Library/Managed Preferences/${GLB_SC_PROJECTSIGNATURE}.plist"
+    fi
+
     if [ -e "${sv_ManagedPrefsFilePath}" ]
     then
       if [ -z "$(launchctl list | grep "${GLB_SC_PROJECTSIGNATURE}.${sv_EventType}-ManagedPrefs" )" ]
@@ -503,7 +511,7 @@ then
             nf_LimitSpawns
 
             # Install policy
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyInstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Policy Execute - '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyInstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
             "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyInstall" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
 
           fi
@@ -557,7 +565,7 @@ then
             nf_LimitSpawns
 
             # Uninstall policy
-            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyUninstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+            GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Policy Execute - '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${sv_EventType}-PolicyUninstall' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
             "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${sv_EventType}-PolicyUninstall" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
             
           fi
@@ -636,13 +644,13 @@ fi
             if [ ${iv_Err} -gt 1 ]
             then  
               bv_ExecutePolicy=${GLB_BC_FALSE}
-              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Policy syntax error in match statement - '${sv_PolicyName}' '${sv_PolicyConfigUUID}', error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
             
             else
               if [ ${iv_Err} -eq 1 ]
               then  
                 bv_ExecutePolicy=${GLB_BC_FALSE}
-                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - conditions not met"
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy skip, conditions not met - '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
               fi
             fi
                          
@@ -696,13 +704,13 @@ fi
                   if [ ${iv_Err} -gt 1 ]
                   then  
                     bv_ExecutePolicy=${GLB_BC_FALSE}
-                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Error in policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - Index'${iv_TriggerIndex}' error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
+                    GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELERR} "Policy syntax error in match statement - '${sv_PolicyName}' '${sv_PolicyConfigUUID}', Index'${iv_TriggerIndex}' error '${iv_Err}' matching conditions '${sv_MatchValue}' '${sv_MatchPattern}' '${bv_MatchCondition}'"
             
                   else
                     if [ ${iv_Err} -eq 1 ]
                     then  
                       bv_ExecutePolicy=${GLB_BC_FALSE}
-                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - conditions not met"
+                      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy skip, conditions not met '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
                     fi
                   fi
 
@@ -732,7 +740,7 @@ fi
                       if [ ${iv_LastRunSecs} -lt ${iv_Interval} ]
                       then
                         bv_ExecutePolicy=${GLB_BC_FALSE}
-                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - policy recently run"
+                        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Policy Skip, recently run - '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
                       fi
                       
                     fi
@@ -752,7 +760,7 @@ fi
             sv_PolicyExeFilePath=$(sf_PolicyExeFilePath "${sv_PolicyName}")
             if test -z "${sv_PolicyExeFilePath}"
             then
-              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Skipping policy '${sv_PolicyName}' '${sv_PolicyConfigUUID}' - named policy not found"
+              GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELWARN} "Policy skip, named policy not found - '${sv_PolicyName}' '${sv_PolicyConfigUUID}'"
               
             else
               # Run script in background, but wait if too many already running
@@ -774,7 +782,7 @@ fi
 
 
                 # Run policy against event
-                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Executing: '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
+                GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELDEBUG} "Policy execute - '${sv_PolicyExeFilePath}' '${sv_PolicyName}' '${GLB_SV_EVENTNAME}' '${GLB_SV_OPTIONALPARAM}' '${sv_ConsoleUserInfo}' '${sv_PolicyConfigUUID}' '${sv_PolicyConfigFilePath}' '${sv_PolicyPrefsFilePath}' '${sv_SharedPrefsFilePath}' '${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}' '${GLB_SV_LOGINFO}'"
                 "${sv_PolicyExeFilePath}" "${sv_PolicyName}" "${GLB_SV_EVENTNAME}" "${GLB_SV_OPTIONALPARAM}" "${sv_ConsoleUserInfo}" "${sv_PolicyConfigUUID}" "${sv_PolicyConfigFilePath}" "${sv_PolicyPrefsFilePath}" "${sv_SharedPrefsFilePath}" "${GLB_SV_SYSDEFAULTSCONFIGFILEPATH}" "${GLB_SV_LOGINFO}" &
 
                 iv_NowEpoch=$(date -u "+%s")
@@ -791,7 +799,7 @@ fi
     
     if [ "${bv_EventHasPolicies}" = ${GLB_BC_FALSE} ]
     then
-      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' ignored - no associated policy"
+      GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event ignored, no associated policy - '${GLB_SV_EVENTNAME}'"
     fi
 
 # ---
@@ -809,6 +817,7 @@ done
 # Should we shutdown or restart
 if [ "${GLB_SV_RUNUSERNAME}" = "root" ]
 then
+
   # Count how many 'Trigger' processes are running
   ps -U root -xo "pid, command" | grep -v "grep" | grep "${GLB_SV_THISSCRIPTFILEPATH}" > "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt"
   iv_TriggerCount=$(cat "${GLB_SV_THISSCRIPTTEMPDIRPATH}/PID.txt" | wc -l | sed "s|^[ ]*||;s|[ ]*$||")
@@ -816,15 +825,26 @@ then
   # Only check for shutdown and restart requests if we are the sole Trigger process
   if [ ${iv_TriggerCount} -eq 1 ]
   then
-    if [ "$(GLB_NF_NAMEDFLAGTEST Restart)" = ${GLB_BC_TRUE} ]
+    iv_NowEpoch=$(date -u "+%s")
+    iv_LastDelayRequestEpoch=$(GLB_NF_NAMEDFLAGMEPOCH "DELAYPOWEROFF")
+    
+    # Only shutdown or restart if there has been no recent delay requests
+    if [ $((${iv_NowEpoch}-${iv_LastDelayRequestEpoch})) -gt $((${GLB_IC_SYSPOLLTRIGGERSECS}*2)) ]
     then
-      shutdown -r now
-    fi
+      if [ "$(GLB_NF_NAMEDFLAGTEST RESTART)" = ${GLB_BC_TRUE} ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "System restart"
+        shutdown -r now
+      fi
   
-    if [ "$(GLB_NF_NAMEDFLAGTEST Shutdown)" = ${GLB_BC_TRUE} ]
-    then
-      shutdown -h now
+      if [ "$(GLB_NF_NAMEDFLAGTEST SHUTDOWN)" = ${GLB_BC_TRUE} ]
+      then
+        GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "System shutdown"
+        shutdown -h now
+      fi
     fi
+
+
   fi
 fi
 
@@ -832,9 +852,9 @@ fi
 
 if test -z "${GLB_SV_TARGETPOLICYNAME}"
 then
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event '${GLB_SV_EVENTNAME}' complete"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event end - '${GLB_SV_EVENTNAME}'"
 else
-  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Targeted event '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}' complete"
+  GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELINFO} "Event end (targeted) - '${GLB_SV_TARGETPOLICYNAME}.${GLB_SV_EVENTNAME}'"
 fi
 
 # ---

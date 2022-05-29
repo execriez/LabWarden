@@ -2,8 +2,8 @@
 #
 # Short:    Base constants (shell)
 # Author:   Mark J Swift
-# Version:  3.3.1
-# Modified: 23-May-2022
+# Version:  3.3.2
+# Modified: 27-May-2022
 #
 # Defines base global constants that are used in all project scripts.
 #
@@ -82,7 +82,7 @@ then
 
   GLB_SC_PROJECTNAME="LabWarden"
   GLB_SC_PROJECTINITIALS="LW"
-  GLB_SC_PROJECTVERSION="3.3.1"
+  GLB_SC_PROJECTVERSION="3.3.2"
   GLB_SC_PROJECTMAJORVERSION="3"
   GLB_SC_PROJECTDEVELOPER="com.github.execriez"
   GLB_SC_PROJECTSIGNATURE="com.github.execriez.labwarden"

@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Installs packages from a specified folder
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 27-May-2022
 #
 # Triggered by the following events:
 #   Sys-Poll            (as root)
@@ -25,7 +25,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.2"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST="Sys-SoftwareManifest"
@@ -77,7 +77,7 @@ bf_InstallPackageFromFolder() # PackageDirPath
             if [ -n "${sv_WillRestart}" ]
             then
               GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "The installed Package requires a restart."
-              GLB_NF_NAMEDFLAGCREATE "Restart"
+              GLB_NF_NAMEDFLAGCREATE "RESTART"
             fi
             echo ${GLB_BC_TRUE}
             

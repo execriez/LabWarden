@@ -40,6 +40,7 @@ then
   
   # These constants are fixed and must match the values in the corresponding LaunchAgent and LaunchDaemon plists
   
+  GLB_IC_MAXWAITSECS=127 # 2 minutes, maximum wait time before giving up on something
   GLB_IC_USRPOLLTRIGGERSECS=181 # 3 minutes, the point at which we trigger a Usr-Poll event
   GLB_IC_SYSPOLLTRIGGERSECS=241 # 4 minutes, the point at which we trigger a Sys-Poll event
   GLB_IC_SYSLOGINWINDOWPOLLTRIGGERSECS=307 # 5 minutes, the point at which we trigger a Sys-LoginWindowPoll

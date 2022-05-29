@@ -2,8 +2,8 @@
 #
 # Short:    Sys Policy script - Will reboot if the workstation is at the LoginWindow and the system detects that there is a network drive mounted
 # Author:   Mark J Swift
-# Version:  3.3.0
-# Modified: 22-May-2022
+# Version:  3.3.2
+# Modified: 27-May-2022
 #
 # Triggered by the following events:
 #   Sys-LoginWindow (as root)
@@ -24,7 +24,7 @@ fi
 GLB_SV_PROJECTDIRPATH="$(dirname $(dirname ${0}))"
 
 # Define the policy code version
-GLB_SV_CODEVERSION="3.3.0"
+GLB_SV_CODEVERSION="3.3.2"
 
 # Define a list of policies that replace this one
 GLB_SV_DEPRECATEDBYPOLICYLIST=""
@@ -47,7 +47,7 @@ Sys-LoginWindow)
   else
     # Restart if there are any mounted network volumes
     GLB_NF_LOGMESSAGE ${GLB_IC_MSGLEVELNOTICE} "Network shares are mounted - we need to restart."
-    GLB_NF_NAMEDFLAGCREATE "Restart"
+    GLB_NF_NAMEDFLAGCREATE "RESTART"
     
   fi
   ;;
